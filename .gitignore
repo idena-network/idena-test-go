@@ -1,0 +1,10 @@
+# IdeaIDE
+.idea
+
+# executables
+/*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+**/idena-test-go
