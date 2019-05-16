@@ -34,10 +34,16 @@ func main() {
 			Value: "idena-go",
 			Usage: "Command to run node",
 		},
+		cli.IntFlag{
+			Name:  "ceremonyMinOffset",
+			Usage: "First ceremony time offset in minutes",
+			Value: int(log.LvlInfo),
+		},
 	}
 
 	app.Action = func(context *cli.Context) error {
-		logLvl := log.Lvl(context.Int("verbosity"))
+		verbosity := context.Int("verbosity")
+		logLvl := log.Lvl(verbosity)
 		if runtime.GOOS == "windows" {
 			log.Root().SetHandler(log.LvlFilterHandler(logLvl, log.StreamHandler(os.Stdout, log.LogfmtFormat())))
 		} else {
@@ -48,6 +54,8 @@ func main() {
 			context.Int("users"),
 			context.String("workdir"),
 			context.String("command"),
+			verbosity,
+			context.Int("ceremonyMinOffset"),
 		).Start()
 		return nil
 	}

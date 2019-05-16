@@ -22,6 +22,7 @@ const (
 	argIpfsPort     = "--ipfsport"
 	argPort         = "--port"
 	argDataDir      = "--datadir"
+	verbosity       = "--verbosity"
 
 	ipfsBootNode = "/ip4/127.0.0.1/tcp/4002/ipfs/QmUFXPD48z5tQkV2oLEse9oewgg9JoNotA4LVB7sobUXqX"
 
@@ -48,9 +49,10 @@ type Node struct {
 	CeremonyTime    int64
 	process         *os.Process
 	logFile         *os.File
+	verbosity       int
 }
 
-func NewNode(workDir string, execCommandName string, dataDir string, port int, autoMine bool, rpcPort int, bootNode string, ipfsPort int, godAddress string, ceremonyTime int64) *Node {
+func NewNode(workDir string, execCommandName string, dataDir string, port int, autoMine bool, rpcPort int, bootNode string, ipfsPort int, godAddress string, ceremonyTime int64, verbosity int) *Node {
 	return &Node{
 		workDir:         workDir,
 		execCommandName: execCommandName,
@@ -62,6 +64,7 @@ func NewNode(workDir string, execCommandName string, dataDir string, port int, a
 		ipfsPort:        ipfsPort,
 		GodAddress:      godAddress,
 		CeremonyTime:    ceremonyTime,
+		verbosity:       verbosity,
 	}
 }
 
@@ -84,7 +87,7 @@ func (node *Node) Start(deleteMode int) {
 	}
 
 	args := node.getArgs()
-	command := exec.Command(node.workDir+node.execCommandName, args...)
+	command := exec.Command(node.workDir+string(os.PathSeparator)+node.execCommandName, args...)
 	command.Dir = node.workDir
 	if debug {
 		f, err := os.Create(node.workDir + string(os.PathSeparator) + fmt.Sprintf("port-%v", node.ipfsPort))
@@ -187,6 +190,9 @@ func (node *Node) getArgs() []string {
 
 	args = append(args, argIpfsBootNode)
 	args = append(args, ipfsBootNode)
+
+	args = append(args, verbosity)
+	args = append(args, strconv.Itoa(node.verbosity))
 
 	return args
 }

@@ -18,7 +18,7 @@ const (
 	firstIpfsPort = 4010
 	firstPort     = 40410
 
-	firstCeremonyTimeSecShift = 3 * 60
+	defaultFirstCeremonyTimeMinOffset = 3
 
 	invite    = "Invite"
 	candidate = "Candidate"
@@ -36,24 +36,31 @@ const (
 )
 
 type Process struct {
-	usersCount      int
-	workDir         string
-	execCommandName string
-	users           []*user.User
-	firstUser       *user.User
-	godAddress      string
-	bootNode        string
-	ceremonyTime    int64
-	testCounter     int
-	reqIdHolder     *client.ReqIdHolder
+	usersCount        int
+	workDir           string
+	execCommandName   string
+	users             []*user.User
+	firstUser         *user.User
+	godAddress        string
+	bootNode          string
+	ceremonyTime      int64
+	testCounter       int
+	reqIdHolder       *client.ReqIdHolder
+	verbosity         int
+	ceremonyMinOffset int
 }
 
-func NewProcess(usersCount int, workDir string, execCommandName string) *Process {
+func NewProcess(usersCount int, workDir string, execCommandName string, verbosity int, ceremonyMinOffset int) *Process {
+	if ceremonyMinOffset == 0 {
+		ceremonyMinOffset = defaultFirstCeremonyTimeMinOffset
+	}
 	return &Process{
-		usersCount:      usersCount,
-		workDir:         workDir,
-		reqIdHolder:     client.NewReqIdHolder(),
-		execCommandName: execCommandName,
+		usersCount:        usersCount,
+		workDir:           workDir,
+		reqIdHolder:       client.NewReqIdHolder(),
+		execCommandName:   execCommandName,
+		verbosity:         verbosity,
+		ceremonyMinOffset: ceremonyMinOffset,
 	}
 }
 
@@ -85,7 +92,7 @@ func (process *Process) init() {
 
 	process.getBootNode()
 
-	process.ceremonyTime = getCeremonyTime()
+	process.ceremonyTime = process.getCeremonyTime()
 
 	process.restartFirstNode()
 
@@ -126,6 +133,7 @@ func (process *Process) createFirstUser() {
 		firstIpfsPort,
 		process.godAddress,
 		0,
+		process.verbosity,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, 0)
 	process.firstUser = u
@@ -182,6 +190,7 @@ func (process *Process) createUser(index int) *user.User {
 		firstIpfsPort+index,
 		process.godAddress,
 		process.ceremonyTime,
+		process.verbosity,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
 	process.users = append(process.users, u)
@@ -473,8 +482,8 @@ func waitForSessionFinish(u *user.User) {
 	waitForPeriod(u, periodNone)
 }
 
-func getCeremonyTime() int64 {
-	return time.Now().UTC().Unix() + firstCeremonyTimeSecShift
+func (process *Process) getCeremonyTime() int64 {
+	return time.Now().UTC().Unix() + int64(process.ceremonyMinOffset*60)
 }
 
 func (process *Process) handleError(err error, prefix string) {
