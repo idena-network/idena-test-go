@@ -246,3 +246,17 @@ func (client *Client) sendRequestAndParseResponse(req request, resp *response) {
 		panic(err)
 	}
 }
+
+func (client *Client) CeremonyIntervals() (CeremonyIntervals, error) {
+	req := request{
+		Id:     client.getReqId(),
+		Method: "dna_ceremonyIntervals",
+	}
+	ceremonyIntervals := CeremonyIntervals{}
+	resp := response{Result: &ceremonyIntervals}
+	client.sendRequestAndParseResponse(req, &resp)
+	if resp.Error != nil {
+		return CeremonyIntervals{}, errors.New(resp.Error.Message)
+	}
+	return ceremonyIntervals, nil
+}

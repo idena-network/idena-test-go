@@ -32,8 +32,7 @@ const (
 	periodNone             = "None"
 
 	stateWaitingTimeout = 180 * time.Second
-	testTimeout         = 11 * time.Minute
-	submitFlipDelay     = 5 * time.Second
+	submitFlipDelay     = 1 * time.Second
 )
 
 type Process struct {
@@ -327,7 +326,7 @@ func getNodeIdentity(identites []client.Identity, nodeAddress string) *client.Id
 
 func (process *Process) test() {
 	log.Info(fmt.Sprintf("Start waiting for verification sessions (test #%v)", process.testCounter))
-	timeout := time.NewTimer(testTimeout)
+	timeout := time.NewTimer(process.getTestTimeout())
 	defer timeout.Stop()
 	ch := make(chan struct{}, len(process.users))
 	for _, u := range process.users {
@@ -346,10 +345,29 @@ func (process *Process) test() {
 	log.Info(fmt.Sprintf("All verification sessions completed (test #%v)", process.testCounter))
 }
 
+func (process *Process) getTestTimeout() time.Duration {
+	u := process.firstUser
+	epoch, err := u.Client.GetEpoch()
+	process.handleError(err, fmt.Sprintf("%v, unable to get epoch", u.GetInfo()))
+	intervals, err := u.Client.CeremonyIntervals()
+	process.handleError(err, fmt.Sprintf("%v, unable to get ceremony intervals", u.GetInfo()))
+	now := time.Now()
+	nextValidation := epoch.NextValidation
+	testTimeout := nextValidation.Sub(now) +
+		time.Second*time.Duration(intervals.FlipLotteryDuration) +
+		time.Second*time.Duration(intervals.ShortSessionDuration) +
+		time.Second*time.Duration(intervals.LongSessionDuration) +
+		time.Second*time.Duration(intervals.AfterLongSessionDuration)
+	log.Info(fmt.Sprintf("Verification session waiting timeout: %s", testTimeout))
+	return testTimeout
+}
+
 func (process *Process) testUser(u *user.User, godAddress string, ch chan struct{}) {
 	process.submitFlips(u, godAddress)
 
 	waitForShortSession(u)
+
+	log.Info(fmt.Sprintf("%v, required flips count: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
 
 	process.getShortFlipHashes(u)
 
@@ -373,43 +391,37 @@ func (process *Process) testUser(u *user.User, godAddress string, ch chan struct
 }
 
 func (process *Process) submitFlips(u *user.User, godAddress string) {
-	requiredFlipsCount := process.getRequiredFlipsCount(u, godAddress, true)
+	requiredFlipsCount := process.getRequiredFlipsCount(u)
+	if u.Address == godAddress && requiredFlipsCount == 0 {
+		requiredFlipsCount = 5
+	}
 	log.Info(fmt.Sprintf("%v, required flips count: %v", u.GetInfo(), requiredFlipsCount))
 	if requiredFlipsCount == 0 {
 		return
 	}
 	submittedFlipsCount := 0
-	for requiredFlipsCount > 0 {
-		for i := 0; i < requiredFlipsCount; i++ {
-			flipHex, err := randomHex(10)
-			if err != nil {
-				process.handleError(err, "unable to generate hex")
-			}
-			_, err = u.Client.SubmitFlip(flipHex)
-			if err != nil {
-				log.Error(fmt.Sprintf("%v, unable to submit flip", u.GetInfo()))
-			} else {
-				submittedFlipsCount++
-			}
-			time.Sleep(submitFlipDelay)
+	for submittedFlipsCount != requiredFlipsCount {
+		flipHex, err := randomHex(10)
+		if err != nil {
+			process.handleError(err, "unable to generate hex")
 		}
-		requiredFlipsCount = process.getRequiredFlipsCount(u, godAddress, false)
+		_, err = u.Client.SubmitFlip(flipHex)
+		if err != nil {
+			log.Error(fmt.Sprintf("%v, unable to submit flip", u.GetInfo()))
+		} else {
+			log.Info(fmt.Sprintf("%v, submitted flip", u.GetInfo()))
+			submittedFlipsCount++
+		}
+		time.Sleep(submitFlipDelay)
 	}
 	log.Info(fmt.Sprintf("%v, submitted %v flips", u.GetInfo(), submittedFlipsCount))
 }
 
-func (process *Process) getRequiredFlipsCount(u *user.User, godAddress string, isFirst bool) int {
-	var defaultValue int
-	if u.Address == godAddress && isFirst {
-		defaultValue = 5
-	}
+func (process *Process) getRequiredFlipsCount(u *user.User) int {
 	identities, err := u.Client.GetIdentities()
 	process.handleError(err, fmt.Sprintf("%v, unable to get identities", u.GetInfo()))
 	identity := getNodeIdentity(identities, u.Address)
 	requiredFlipsCount := identity.RequiredFlips - identity.MadeFlips
-	if requiredFlipsCount == 0 {
-		requiredFlipsCount = defaultValue
-	}
 	return requiredFlipsCount
 }
 

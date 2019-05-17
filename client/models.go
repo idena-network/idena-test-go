@@ -76,3 +76,11 @@ type FlipResponse struct {
 type SubmitAnswersResponse struct {
 	TxHash string `json:"txHash"`
 }
+
+type CeremonyIntervals struct {
+	ValidationInterval       float64
+	FlipLotteryDuration      float64
+	ShortSessionDuration     float64
+	LongSessionDuration      float64
+	AfterLongSessionDuration float64
+}
