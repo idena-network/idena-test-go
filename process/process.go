@@ -33,6 +33,7 @@ const (
 
 	stateWaitingTimeout = 180 * time.Second
 	testTimeout         = 11 * time.Minute
+	submitFlipDelay     = 5 * time.Second
 )
 
 type Process struct {
@@ -358,40 +359,44 @@ func (process *Process) testUser(u *user.User, godAddress string, ch chan struct
 }
 
 func (process *Process) submitFlips(u *user.User, godAddress string) {
-	requiredFlipsCount := process.getRequiredFlipsCount(u, godAddress)
+	requiredFlipsCount := process.getRequiredFlipsCount(u, godAddress, true)
+	log.Info(fmt.Sprintf("%v, required flips count: %v", u.GetInfo(), requiredFlipsCount))
 	if requiredFlipsCount == 0 {
 		return
 	}
-	for i := 0; i < requiredFlipsCount; i++ {
-		flipHex, err := randomHex(10)
-		if err != nil {
-			process.handleError(err, "unable to generate hex")
+	submittedFlipsCount := 0
+	for requiredFlipsCount > 0 {
+		for i := 0; i < requiredFlipsCount; i++ {
+			flipHex, err := randomHex(10)
+			if err != nil {
+				process.handleError(err, "unable to generate hex")
+			}
+			_, err = u.Client.SubmitFlip(flipHex)
+			if err != nil {
+				log.Error(fmt.Sprintf("%v, unable to submit flip", u.GetInfo()))
+			} else {
+				submittedFlipsCount++
+			}
+			time.Sleep(submitFlipDelay)
 		}
-		_, err = u.Client.SubmitFlip(flipHex)
-		process.handleError(err, fmt.Sprintf("%v, unable to submit flip", u.GetInfo()))
+		requiredFlipsCount = process.getRequiredFlipsCount(u, godAddress, false)
 	}
-	log.Info(fmt.Sprintf("%v, submitted %v flips", u.GetInfo(), requiredFlipsCount))
+	log.Info(fmt.Sprintf("%v, submitted %v flips", u.GetInfo(), submittedFlipsCount))
 }
 
-func (process *Process) getRequiredFlipsCount(u *user.User, godAddress string) int {
-	//todo
+func (process *Process) getRequiredFlipsCount(u *user.User, godAddress string, isFirst bool) int {
 	var defaultValue int
-	if u.Address == godAddress {
-		defaultValue = 20
+	if u.Address == godAddress && isFirst {
+		defaultValue = 5
 	}
 	identities, err := u.Client.GetIdentities()
 	process.handleError(err, fmt.Sprintf("%v, unable to get identities", u.GetInfo()))
 	identity := getNodeIdentity(identities, u.Address)
-	if identity == nil {
-		return defaultValue
+	requiredFlipsCount := identity.RequiredFlips - identity.MadeFlips
+	if requiredFlipsCount == 0 {
+		requiredFlipsCount = defaultValue
 	}
-	if identity.State == newbie {
-		return 1
-	}
-	if identity.State == verified {
-		return 3
-	}
-	return defaultValue
+	return requiredFlipsCount
 }
 
 func randomHex(n int) (string, error) {
