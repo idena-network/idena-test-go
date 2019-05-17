@@ -64,6 +64,19 @@ func (client *Client) GetEnode() (string, error) {
 	return resp.Result.(string), nil
 }
 
+func (client *Client) GetIpfsAddress() (string, error) {
+	req := request{
+		Id:     client.getReqId(),
+		Method: "net_ipfsAddress",
+	}
+	resp := response{}
+	client.sendRequestAndParseResponse(req, &resp)
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
 func (client *Client) GetIdentities() ([]Identity, error) {
 	req := request{
 		Id:     client.getReqId(),

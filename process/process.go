@@ -44,6 +44,7 @@ type Process struct {
 	firstUser         *user.User
 	godAddress        string
 	bootNode          string
+	ipfsBootNode      string
 	ceremonyTime      int64
 	testCounter       int
 	reqIdHolder       *client.ReqIdHolder
@@ -89,9 +90,11 @@ func (process *Process) init() {
 
 	process.startFirstNode()
 
-	process.getGodAddress()
+	process.initGodAddress()
 
-	process.getBootNode()
+	process.initBootNode()
+
+	process.initIpfsBootNode()
 
 	process.ceremonyTime = process.getCeremonyTime()
 
@@ -130,9 +133,10 @@ func (process *Process) createFirstUser() {
 		firstPort,
 		true,
 		firstRpcPort,
-		process.bootNode,
+		"",
+		"",
 		firstIpfsPort,
-		process.godAddress,
+		"",
 		0,
 		process.verbosity,
 	)
@@ -147,7 +151,7 @@ func (process *Process) startFirstNode() {
 	log.Info("Started first node")
 }
 
-func (process *Process) getGodAddress() {
+func (process *Process) initGodAddress() {
 	var err error
 	u := process.firstUser
 	process.godAddress, err = u.Client.GetCoinbaseAddr()
@@ -155,7 +159,7 @@ func (process *Process) getGodAddress() {
 	log.Info(fmt.Sprintf("Got god address: %v", process.godAddress))
 }
 
-func (process *Process) getBootNode() {
+func (process *Process) initBootNode() {
 	var err error
 	u := process.firstUser
 	process.bootNode, err = u.Client.GetEnode()
@@ -163,10 +167,19 @@ func (process *Process) getBootNode() {
 	log.Info(fmt.Sprintf("Got boot node enode: %v", process.bootNode))
 }
 
+func (process *Process) initIpfsBootNode() {
+	var err error
+	u := process.firstUser
+	process.ipfsBootNode, err = u.Client.GetIpfsAddress()
+	process.handleError(err, fmt.Sprintf("%v, unable to get ipfs boot node", u.GetInfo()))
+	log.Info(fmt.Sprintf("Got ipfs boot node: %v", process.ipfsBootNode))
+}
+
 func (process *Process) restartFirstNode() {
 	n := process.firstUser
 	n.Node.BootNode = process.bootNode
 	n.Node.GodAddress = process.godAddress
+	n.Node.IpfsBootNode = process.ipfsBootNode
 	n.Node.CeremonyTime = process.ceremonyTime
 	n.Node.Start(node.DeleteDb)
 	log.Info("Restarted first node")
@@ -188,6 +201,7 @@ func (process *Process) createUser(index int) *user.User {
 		false,
 		firstRpcPort+index,
 		process.bootNode,
+		process.ipfsBootNode,
 		firstIpfsPort+index,
 		process.godAddress,
 		process.ceremonyTime,

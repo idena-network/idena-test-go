@@ -24,8 +24,6 @@ const (
 	argDataDir      = "--datadir"
 	verbosity       = "--verbosity"
 
-	ipfsBootNode = "/ip4/127.0.0.1/tcp/4002/ipfs/QmUFXPD48z5tQkV2oLEse9oewgg9JoNotA4LVB7sobUXqX"
-
 	NodeStartWaitingTime = 5 * time.Second
 	nodeStopWaitingTime  = 2 * time.Second
 )
@@ -44,6 +42,7 @@ type Node struct {
 	autoMine        bool
 	RpcPort         int
 	BootNode        string
+	IpfsBootNode    string
 	ipfsPort        int
 	GodAddress      string
 	CeremonyTime    int64
@@ -52,7 +51,8 @@ type Node struct {
 	verbosity       int
 }
 
-func NewNode(workDir string, execCommandName string, dataDir string, port int, autoMine bool, rpcPort int, bootNode string, ipfsPort int, godAddress string, ceremonyTime int64, verbosity int) *Node {
+func NewNode(workDir string, execCommandName string, dataDir string, port int, autoMine bool, rpcPort int,
+	bootNode string, ipfsBootNode string, ipfsPort int, godAddress string, ceremonyTime int64, verbosity int) *Node {
 	return &Node{
 		workDir:         workDir,
 		execCommandName: execCommandName,
@@ -61,6 +61,7 @@ func NewNode(workDir string, execCommandName string, dataDir string, port int, a
 		autoMine:        autoMine,
 		RpcPort:         rpcPort,
 		BootNode:        bootNode,
+		IpfsBootNode:    ipfsBootNode,
 		ipfsPort:        ipfsPort,
 		GodAddress:      godAddress,
 		CeremonyTime:    ceremonyTime,
@@ -188,8 +189,10 @@ func (node *Node) getArgs() []string {
 		args = append(args, strconv.Itoa(node.port))
 	}
 
-	args = append(args, argIpfsBootNode)
-	args = append(args, ipfsBootNode)
+	if len(node.IpfsBootNode) > 0 {
+		args = append(args, argIpfsBootNode)
+		args = append(args, node.IpfsBootNode)
+	}
 
 	args = append(args, verbosity)
 	args = append(args, strconv.Itoa(node.verbosity))
