@@ -291,12 +291,9 @@ func (process *Process) waitForNodeState(u *user.User, states []string) {
 	log.Info(fmt.Sprintf("%v, start waiting for one of the states %v", u.GetInfo(), states))
 	var currentState string
 	for {
-		identities, err := u.Client.GetIdentities()
+		identity, err := u.Client.GetIdentity(u.Address)
 		process.handleError(err, fmt.Sprintf("%v, unable to get identities", u.GetInfo()))
-		identity := getNodeIdentity(identities, u.Address)
-		if identity != nil {
-			currentState = identity.State
-		}
+		currentState = identity.State
 		log.Debug(fmt.Sprintf("%v, state %v", u.GetInfo(), currentState))
 		if in(currentState, states) {
 			break
@@ -418,9 +415,8 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 }
 
 func (process *Process) getRequiredFlipsCount(u *user.User) int {
-	identities, err := u.Client.GetIdentities()
+	identity, err := u.Client.GetIdentity(u.Address)
 	process.handleError(err, fmt.Sprintf("%v, unable to get identities", u.GetInfo()))
-	identity := getNodeIdentity(identities, u.Address)
 	requiredFlipsCount := identity.RequiredFlips - identity.MadeFlips
 	return requiredFlipsCount
 }

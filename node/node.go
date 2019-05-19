@@ -197,5 +197,8 @@ func (node *Node) getArgs() []string {
 	args = append(args, verbosity)
 	args = append(args, strconv.Itoa(node.verbosity))
 
+	args = append(args, "--maxnetdelay")
+	args = append(args, "500")
+
 	return args
 }

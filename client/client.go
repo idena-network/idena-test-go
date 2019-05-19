@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Client struct {
@@ -89,6 +90,21 @@ func (client *Client) GetIdentities() ([]Identity, error) {
 		return nil, errors.New(resp.Error.Message)
 	}
 	return identities, nil
+}
+
+func (client *Client) GetIdentity(addr string) (Identity, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "dna_identity",
+		Payload: []string{addr},
+	}
+	var identity Identity
+	resp := response{Result: &identity}
+	client.sendRequestAndParseResponse(req, &resp)
+	if resp.Error != nil {
+		return Identity{}, errors.New(resp.Error.Message)
+	}
+	return identity, nil
 }
 
 func (client *Client) SendInvite(to string) (Invite, error) {
@@ -223,10 +239,22 @@ func (client *Client) sendRequest(req request) []byte {
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	httpClient := &http.Client{}
-	resp, err := httpClient.Do(httpReq)
-	if err != nil {
-		panic(err)
+	var resp *http.Response
+	counter := 5
+	for {
+		counter--
+		httpClient := &http.Client{}
+		resp, err = httpClient.Do(httpReq)
+		if err == nil {
+			break
+		}
+		if counter > 0 {
+			time.Sleep(time.Millisecond * 50)
+			continue
+		}
+		if err != nil {
+			panic(err)
+		}
 	}
 	defer resp.Body.Close()
 
