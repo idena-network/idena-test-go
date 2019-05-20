@@ -373,7 +373,18 @@ func (process *Process) getTestTimeout() time.Duration {
 func (process *Process) testUser(u *user.User, godAddress string, ch chan struct{}) {
 	process.initTest(u)
 
-	process.submitFlips(u, godAddress)
+	process.passVerification(u, godAddress)
+
+	waitForSessionFinish(u)
+
+	ch <- struct{}{}
+}
+
+func (process *Process) passVerification(u *user.User, godAddress string) {
+	if !process.submitFlips(u, godAddress) {
+		log.Warn(fmt.Sprintf("%v, didn't manage to submit all required flips, verification will be missed", u.GetInfo()))
+		return
+	}
 
 	waitForShortSession(u)
 
@@ -394,10 +405,6 @@ func (process *Process) testUser(u *user.User, godAddress string, ch chan struct
 	process.submitLongAnswers(u)
 
 	process.waitForNodeState(u, []string{newbie, verified})
-
-	waitForSessionFinish(u)
-
-	ch <- struct{}{}
 }
 
 func (process *Process) initTest(u *user.User) {
@@ -407,30 +414,31 @@ func (process *Process) initTest(u *user.User) {
 	u.LongFlips = nil
 }
 
-func (process *Process) submitFlips(u *user.User, godAddress string) {
+func (process *Process) submitFlips(u *user.User, godAddress string) bool {
 	requiredFlipsCount := process.getRequiredFlipsCount(u)
 	if u.Address == godAddress && requiredFlipsCount == 0 {
 		requiredFlipsCount = 5
 	}
 	log.Info(fmt.Sprintf("%v, required flips count: %v", u.GetInfo(), requiredFlipsCount))
 	if requiredFlipsCount == 0 {
-		return
+		return true
 	}
 	submittedFlipsCount := 0
-	for submittedFlipsCount != requiredFlipsCount {
+	for i := 0; i < requiredFlipsCount; i++ {
 		flipHex, err := randomHex(10)
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
 		_, err = u.Client.SubmitFlip(flipHex)
 		if err != nil {
-			log.Error(fmt.Sprintf("%v, unable to submit flip", u.GetInfo()))
+			log.Error(fmt.Sprintf("%v, unable to submit flip: %s", u.GetInfo(), err))
 		} else {
 			log.Info(fmt.Sprintf("%v, submitted flip", u.GetInfo()))
 			submittedFlipsCount++
 		}
 	}
 	log.Info(fmt.Sprintf("%v, submitted %v flips", u.GetInfo(), submittedFlipsCount))
+	return submittedFlipsCount == requiredFlipsCount
 }
 
 func (process *Process) getRequiredFlipsCount(u *user.User) int {
