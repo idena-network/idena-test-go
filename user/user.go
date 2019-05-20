@@ -24,5 +24,5 @@ func NewUser(client *client.Client, node *node.Node) *User {
 }
 
 func (user *User) GetInfo() string {
-	return fmt.Sprintf("[User %v; %v]", user.Node.RpcPort, user.Address)
+	return fmt.Sprintf("[User %v]", user.Node.RpcPort)
 }

@@ -5,7 +5,7 @@ import (
 	"idena-test-go/log"
 	"idena-test-go/process"
 	"os"
-	"runtime"
+	"path/filepath"
 )
 
 func main() {
@@ -18,6 +18,11 @@ func main() {
 			Name:  "verbosity",
 			Usage: "Log verbosity",
 			Value: int(log.LvlInfo),
+		},
+		cli.IntFlag{
+			Name:  "nodeverbosity",
+			Usage: "Node log verbosity",
+			Value: int(log.LvlTrace),
 		},
 		cli.IntFlag{
 			Name:  "maxnetdelay",
@@ -47,19 +52,28 @@ func main() {
 	}
 
 	app.Action = func(context *cli.Context) error {
-		verbosity := context.Int("verbosity")
-		logLvl := log.Lvl(verbosity)
-		if runtime.GOOS == "windows" {
-			log.Root().SetHandler(log.LvlFilterHandler(logLvl, log.StreamHandler(os.Stdout, log.LogfmtFormat())))
-		} else {
-			log.Root().SetHandler(log.LvlFilterHandler(logLvl, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
+
+		workDir := context.String("workdir")
+
+		createWorkDir(workDir)
+
+		clearDataDir(filepath.Join(workDir, process.DataDir))
+
+		logFileFullName := filepath.Join(workDir, process.DataDir, "bot.log")
+
+		createLogFile(logFileFullName)
+
+		fileHandler, err := log.FileHandler(logFileFullName, log.TerminalFormat(false))
+		if err != nil {
+			panic(err)
 		}
+		log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(context.Int("verbosity")), log.MultiHandler(log.StreamHandler(os.Stdout, log.LogfmtFormat()), fileHandler)))
 
 		process.NewProcess(
 			context.Int("users"),
-			context.String("workdir"),
+			workDir,
 			context.String("command"),
-			verbosity,
+			context.Int("nodeverbosity"),
 			context.Int("maxnetdelay"),
 			context.Int("ceremonyMinOffset"),
 		).Start()
@@ -67,4 +81,30 @@ func main() {
 	}
 
 	app.Run(os.Args)
+}
+
+func createWorkDir(workDir string) {
+	if _, err := os.Stat(workDir); os.IsNotExist(err) {
+		err := os.MkdirAll(workDir, os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func clearDataDir(dataDir string) {
+	if err := os.RemoveAll(dataDir); err != nil {
+		panic(err)
+	}
+	if err := os.Mkdir(dataDir, os.ModePerm); err != nil {
+		panic(err)
+	}
+}
+
+func createLogFile(fullName string) {
+	logFile, err := os.Create(fullName)
+	if err != nil {
+		panic(err)
+	}
+	logFile.Close()
 }

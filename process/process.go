@@ -9,8 +9,6 @@ import (
 	"idena-test-go/log"
 	"idena-test-go/node"
 	"idena-test-go/user"
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -34,8 +32,8 @@ const (
 
 	stateWaitingTimeout = 180 * time.Second
 	flipsWaitingTimeout = time.Minute
-	dataDir             = "dataDir"
-	requestRetryDelay   = 2 * time.Second
+	DataDir             = "dataDir"
+	requestRetryDelay   = 8 * time.Second
 )
 
 type Process struct {
@@ -88,10 +86,6 @@ func (process *Process) destroy() {
 func (process *Process) init() {
 	log.Debug("Start initializing")
 
-	process.createWorkDir()
-
-	process.clearDataDir()
-
 	process.createFirstUser()
 
 	process.startFirstNode()
@@ -123,27 +117,10 @@ func (process *Process) init() {
 	log.Debug("Initialization completed")
 }
 
-func (process *Process) createWorkDir() {
-	if _, err := os.Stat(process.workDir); os.IsNotExist(err) {
-		err := os.MkdirAll(process.workDir, os.ModePerm)
-		if err != nil {
-			process.handleError(err, "Unable to create dir")
-		}
-	}
-}
-
-func (process *Process) clearDataDir() {
-	dataDirFullPath := process.workDir + string(filepath.Separator) + dataDir
-	err := os.RemoveAll(dataDirFullPath)
-	process.handleError(err, "Unable to remove data dir")
-	err = os.Mkdir(dataDirFullPath, os.ModePerm)
-	process.handleError(err, "Unable to create data dir")
-}
-
 func (process *Process) createFirstUser() {
 	n := node.NewNode(process.workDir,
 		process.execCommandName,
-		dataDir,
+		DataDir,
 		getNodeDataDir(firstRpcPort),
 		firstPort,
 		true,
@@ -175,7 +152,7 @@ func (process *Process) initGodAddress() {
 	var err error
 	u := process.firstUser
 	process.godAddress, err = u.Client.GetCoinbaseAddr()
-	process.handleError(err, fmt.Sprintf("%v, unable to get address", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to get address", u.GetInfo()))
 	log.Info(fmt.Sprintf("Got god address: %v", process.godAddress))
 }
 
@@ -183,7 +160,7 @@ func (process *Process) initBootNode() {
 	var err error
 	u := process.firstUser
 	process.bootNode, err = u.Client.GetEnode()
-	process.handleError(err, fmt.Sprintf("%v, unable to get enode", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to get enode", u.GetInfo()))
 	log.Info(fmt.Sprintf("Got boot node enode: %v", process.bootNode))
 }
 
@@ -191,7 +168,7 @@ func (process *Process) initIpfsBootNode() {
 	var err error
 	u := process.firstUser
 	process.ipfsBootNode, err = u.Client.GetIpfsAddress()
-	process.handleError(err, fmt.Sprintf("%v, unable to get ipfs boot node", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to get ipfs boot node", u.GetInfo()))
 	log.Info(fmt.Sprintf("Got ipfs boot node: %v", process.ipfsBootNode))
 }
 
@@ -217,7 +194,7 @@ func (process *Process) createUser(index int) *user.User {
 	rpcPort := firstRpcPort + index
 	n := node.NewNode(process.workDir,
 		process.execCommandName,
-		dataDir,
+		DataDir,
 		getNodeDataDir(rpcPort),
 		firstPort+index,
 		false,
@@ -249,8 +226,8 @@ func (process *Process) getNodeAddresses() {
 	for _, u := range process.users {
 		var err error
 		u.Address, err = u.Client.GetCoinbaseAddr()
-		process.handleError(err, fmt.Sprintf("%v, unable to get node address", u.GetInfo()))
-		log.Info(fmt.Sprintf("%v, got address %v", u.GetInfo(), u.Address))
+		process.handleError(err, fmt.Sprintf("%v unable to get node address", u.GetInfo()))
+		log.Info(fmt.Sprintf("%v got coinbase address %v", u.GetInfo(), u.Address))
 	}
 }
 
@@ -263,7 +240,7 @@ func (process *Process) sendInvites() {
 	invitesCount := 0
 	for _, u := range process.users {
 		_, err := process.firstUser.Client.SendInvite(u.Address)
-		process.handleError(err, fmt.Sprintf("%v, unable to send invite to %v", u.GetInfo(), u.Address))
+		process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", u.GetInfo(), u.Address))
 		invitesCount++
 	}
 	log.Info(fmt.Sprintf("Sent %v invites", invitesCount))
@@ -276,7 +253,7 @@ func (process *Process) waitForInvites() {
 func (process *Process) activateInvites() {
 	for _, u := range process.users {
 		_, err := u.Client.ActivateInvite(u.Address)
-		process.handleError(err, fmt.Sprintf("%v, unable to activate invite for %v", u.GetInfo(), u.Address))
+		process.handleError(err, fmt.Sprintf("%v unable to activate invite for %v", u.GetInfo(), u.Address))
 	}
 	log.Info("Activated invites")
 }
@@ -312,19 +289,19 @@ func (process *Process) waitForNodeStateWithSignal(u *user.User, states []string
 }
 
 func (process *Process) waitForNodeState(u *user.User, states []string) {
-	log.Info(fmt.Sprintf("%v, start waiting for one of the states %v", u.GetInfo(), states))
+	log.Info(fmt.Sprintf("%v start waiting for one of the states %v", u.GetInfo(), states))
 	var currentState string
 	for {
 		identity, err := u.Client.GetIdentity(u.Address)
-		process.handleError(err, fmt.Sprintf("%v, unable to get identities", u.GetInfo()))
+		process.handleError(err, fmt.Sprintf("%v unable to get identities", u.GetInfo()))
 		currentState = identity.State
-		log.Debug(fmt.Sprintf("%v, state %v", u.GetInfo(), currentState))
+		log.Debug(fmt.Sprintf("%v state %v", u.GetInfo(), currentState))
 		if in(currentState, states) {
 			break
 		}
 		time.Sleep(requestRetryDelay)
 	}
-	log.Info(fmt.Sprintf("%v, got target state %v", u.GetInfo(), currentState))
+	log.Info(fmt.Sprintf("%v got target state %v", u.GetInfo(), currentState))
 }
 
 func in(value string, list []string) bool {
@@ -337,7 +314,7 @@ func in(value string, list []string) bool {
 }
 
 func (process *Process) test() {
-	log.Info(fmt.Sprintf("Start waiting for verification sessions (test #%v)", process.testCounter))
+	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.testCounter))
 	timeout := time.NewTimer(process.getTestTimeout())
 	defer timeout.Stop()
 	ch := make(chan struct{}, len(process.users))
@@ -354,15 +331,15 @@ func (process *Process) test() {
 			process.handleError(errors.New("verification sessions timeout"), "")
 		}
 	}
-	log.Info(fmt.Sprintf("All verification sessions completed (test #%v)", process.testCounter))
+	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%v) **************", process.testCounter))
 }
 
 func (process *Process) getTestTimeout() time.Duration {
 	u := process.firstUser
 	epoch, err := u.Client.GetEpoch()
-	process.handleError(err, fmt.Sprintf("%v, unable to get epoch", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to get epoch", u.GetInfo()))
 	intervals, err := u.Client.CeremonyIntervals()
-	process.handleError(err, fmt.Sprintf("%v, unable to get ceremony intervals", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to get ceremony intervals", u.GetInfo()))
 	now := time.Now()
 	nextValidation := epoch.NextValidation
 	testTimeout := nextValidation.Sub(now) +
@@ -371,7 +348,7 @@ func (process *Process) getTestTimeout() time.Duration {
 		time.Second*time.Duration(intervals.LongSessionDuration) +
 		time.Second*time.Duration(intervals.AfterLongSessionDuration) +
 		time.Minute*3
-	log.Info(fmt.Sprintf("Verification session waiting timeout: %s", testTimeout))
+	log.Debug(fmt.Sprintf("Verification session waiting timeout: %v", testTimeout))
 	return testTimeout
 }
 
@@ -382,18 +359,20 @@ func (process *Process) testUser(u *user.User, godAddress string, ch chan struct
 
 	waitForSessionFinish(u)
 
+	log.Info(fmt.Sprintf("%v passed verification session", u.GetInfo()))
+
 	ch <- struct{}{}
 }
 
 func (process *Process) passVerification(u *user.User, godAddress string) {
 	if !process.submitFlips(u, godAddress) {
-		log.Warn(fmt.Sprintf("%v, didn't manage to submit all required flips, verification will be missed", u.GetInfo()))
+		log.Warn(fmt.Sprintf("%v didn't manage to submit all required flips, verification will be missed", u.GetInfo()))
 		return
 	}
 
 	waitForShortSession(u)
 
-	log.Info(fmt.Sprintf("%v, required flips count: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
+	log.Debug(fmt.Sprintf("%v required flips count: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
 
 	process.getShortFlipHashes(u)
 
@@ -424,7 +403,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) bool {
 	if u.Address == godAddress && requiredFlipsCount == 0 {
 		requiredFlipsCount = 5
 	}
-	log.Info(fmt.Sprintf("%v, required flips count: %v", u.GetInfo(), requiredFlipsCount))
+	log.Info(fmt.Sprintf("%v required flips count: %v", u.GetInfo(), requiredFlipsCount))
 	if requiredFlipsCount == 0 {
 		return true
 	}
@@ -436,19 +415,19 @@ func (process *Process) submitFlips(u *user.User, godAddress string) bool {
 		}
 		_, err = u.Client.SubmitFlip(flipHex)
 		if err != nil {
-			log.Error(fmt.Sprintf("%v, unable to submit flip: %s", u.GetInfo(), err))
+			log.Error(fmt.Sprintf("%v unable to submit flip: %v", u.GetInfo(), err))
 		} else {
-			log.Info(fmt.Sprintf("%v, submitted flip", u.GetInfo()))
+			log.Debug(fmt.Sprintf("%v submitted flip", u.GetInfo()))
 			submittedFlipsCount++
 		}
 	}
-	log.Info(fmt.Sprintf("%v, submitted %v flips", u.GetInfo(), submittedFlipsCount))
+	log.Info(fmt.Sprintf("%v submitted %v flips", u.GetInfo(), submittedFlipsCount))
 	return submittedFlipsCount == requiredFlipsCount
 }
 
 func (process *Process) getRequiredFlipsCount(u *user.User) int {
 	identity, err := u.Client.GetIdentity(u.Address)
-	process.handleError(err, fmt.Sprintf("%v, unable to get identities", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to get identities", u.GetInfo()))
 	requiredFlipsCount := identity.RequiredFlips - identity.MadeFlips
 	return requiredFlipsCount
 }
@@ -466,17 +445,17 @@ func waitForShortSession(u *user.User) {
 }
 
 func waitForPeriod(u *user.User, period string) {
-	log.Info(fmt.Sprintf("%v, start waiting for period %v", u.GetInfo(), period))
+	log.Info(fmt.Sprintf("%v start waiting for period %v", u.GetInfo(), period))
 	for {
 		epoch, _ := u.Client.GetEpoch()
 		currentPeriod := epoch.CurrentPeriod
-		log.Debug(fmt.Sprintf("%v, current period: %v", u.GetInfo(), currentPeriod))
+		log.Debug(fmt.Sprintf("%v current period: %v", u.GetInfo(), currentPeriod))
 		if currentPeriod == period {
 			break
 		}
 		time.Sleep(requestRetryDelay)
 	}
-	log.Info(fmt.Sprintf("%v, period %v started", u.GetInfo(), period))
+	log.Info(fmt.Sprintf("%v period %v started", u.GetInfo(), period))
 }
 
 func (process *Process) getShortFlipHashes(u *user.User) {
@@ -488,10 +467,10 @@ func (process *Process) getShortFlipHashes(u *user.User) {
 			continue
 		}
 		u.ShortFlipHashes = shortFlipHashes
-		log.Info(fmt.Sprintf("%v, got %d short flip hashes", u.GetInfo(), len(shortFlipHashes)))
+		log.Info(fmt.Sprintf("%v got %d short flip hashes", u.GetInfo(), len(shortFlipHashes)))
 		return
 	}
-	process.handleError(errors.New(fmt.Sprintf("%v, short flip hashes waiting timeout", u.GetInfo())), "")
+	process.handleError(errors.New(fmt.Sprintf("%v short flip hashes waiting timeout", u.GetInfo())), "")
 }
 
 func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse) bool {
@@ -526,12 +505,12 @@ func (process *Process) getShortFlips(u *user.User) {
 				flips = append(flips, *f)
 			}
 			u.ShortFlips = flips
-			log.Info(fmt.Sprintf("%v, got %v short flips", u.GetInfo(), len(flips)))
+			log.Info(fmt.Sprintf("%v got %v short flips", u.GetInfo(), len(flips)))
 			return
 		}
 		time.Sleep(requestRetryDelay)
 	}
-	process.handleError(errors.New(fmt.Sprintf("%v, short flips waiting timeout", u.GetInfo())), "")
+	process.handleError(errors.New(fmt.Sprintf("%v short flips waiting timeout", u.GetInfo())), "")
 }
 
 func (process *Process) submitShortAnswers(u *user.User) {
@@ -540,8 +519,8 @@ func (process *Process) submitShortAnswers(u *user.User) {
 		answers = append(answers, 1)
 	}
 	_, err := u.Client.SubmitShortAnswers(answers)
-	process.handleError(err, fmt.Sprintf("%v, unable to submit short answers", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v, submitted short answers", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to submit short answers", u.GetInfo()))
+	log.Info(fmt.Sprintf("%v submitted %d short answers: %v", u.GetInfo(), len(answers), answers))
 }
 
 func waitForLongSession(u *user.User) {
@@ -551,20 +530,20 @@ func waitForLongSession(u *user.User) {
 func (process *Process) getLongFlipHashes(u *user.User) {
 	var err error
 	u.LongFlipHashes, err = u.Client.GetLongFlipHashes()
-	process.handleError(err, fmt.Sprintf("%v, unable to load long flip hashes", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v, got long flip hashes", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to load long flip hashes", u.GetInfo()))
+	log.Info(fmt.Sprintf("%v got %d long flip hashes", u.GetInfo(), len(u.LongFlipHashes)))
 }
 
 func (process *Process) getLongFlips(u *user.User) {
 	u.LongFlips = process.getFlips(u, u.LongFlipHashes)
-	log.Info(fmt.Sprintf("%v, got long flips", u.GetInfo()))
+	log.Info(fmt.Sprintf("%v got %d long flips", u.GetInfo(), len(u.LongFlips)))
 }
 
 func (process *Process) getFlips(u *user.User, flipHashes []client.FlipHashesResponse) []client.FlipResponse {
 	var result []client.FlipResponse
 	for _, flipHashResponse := range flipHashes {
 		flipResponse, err := u.Client.GetFlip(flipHashResponse.Hash)
-		process.handleError(err, fmt.Sprintf("%v, unable to get flip %v", u.GetInfo(), flipHashResponse.Hash))
+		process.handleError(err, fmt.Sprintf("%v unable to get flip %v", u.GetInfo(), flipHashResponse.Hash))
 		result = append(result, flipResponse)
 	}
 	return result
@@ -576,8 +555,8 @@ func (process *Process) submitLongAnswers(u *user.User) {
 		answers = append(answers, 1)
 	}
 	_, err := u.Client.SubmitLongAnswers(answers)
-	process.handleError(err, fmt.Sprintf("%v, unable to submit long answers", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v, submitted long answers", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v unable to submit long answers", u.GetInfo()))
+	log.Info(fmt.Sprintf("%v submitted %d long answers: %v", u.GetInfo(), len(answers), answers))
 }
 
 func waitForSessionFinish(u *user.User) {

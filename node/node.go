@@ -97,7 +97,7 @@ func (node *Node) Start(deleteMode int) {
 	command.Dir = node.workDir
 	if debug {
 		f, err := os.Create(node.workDir + string(os.PathSeparator) + node.dataDir +
-			string(os.PathSeparator) + fmt.Sprintf("port-%v", node.RpcPort))
+			string(os.PathSeparator) + fmt.Sprintf("node-%v.log", node.RpcPort))
 		if err != nil {
 			panic(err)
 		}
