@@ -38,6 +38,7 @@ type Node struct {
 	workDir         string
 	execCommandName string
 	dataDir         string
+	nodeDataDir     string
 	port            int
 	autoMine        bool
 	RpcPort         int
@@ -51,12 +52,13 @@ type Node struct {
 	verbosity       int
 }
 
-func NewNode(workDir string, execCommandName string, dataDir string, port int, autoMine bool, rpcPort int,
+func NewNode(workDir string, execCommandName string, dataDir string, nodeDataDir string, port int, autoMine bool, rpcPort int,
 	bootNode string, ipfsBootNode string, ipfsPort int, godAddress string, ceremonyTime int64, verbosity int) *Node {
 	return &Node{
 		workDir:         workDir,
 		execCommandName: execCommandName,
 		dataDir:         dataDir,
+		nodeDataDir:     nodeDataDir,
 		port:            port,
 		autoMine:        autoMine,
 		RpcPort:         rpcPort,
@@ -91,7 +93,8 @@ func (node *Node) Start(deleteMode int) {
 	command := exec.Command(node.workDir+string(os.PathSeparator)+node.execCommandName, args...)
 	command.Dir = node.workDir
 	if debug {
-		f, err := os.Create(node.workDir + string(os.PathSeparator) + fmt.Sprintf("port-%v", node.ipfsPort))
+		f, err := os.Create(node.workDir + string(os.PathSeparator) + node.dataDir +
+			string(os.PathSeparator) + fmt.Sprintf("port-%v", node.RpcPort))
 		if err != nil {
 			panic(err)
 		}
@@ -103,12 +106,6 @@ func (node *Node) Start(deleteMode int) {
 	command.Start()
 	node.process = command.Process
 	time.Sleep(NodeStartWaitingTime)
-
-	//if debug {
-	//log.Debug(fmt.Sprintf("Node with rpc port %v start log:", node.RpcPort))
-	//log.Debug(out.String())
-	//log.Debug("-----------------------------------------")
-	//}
 
 	log.Info(fmt.Sprintf("Started node, workDir: %v, parameters: %v", node.workDir, args))
 }
@@ -132,11 +129,13 @@ func (node *Node) killProcess() {
 }
 
 func (node *Node) deleteDataDir() {
-	deleteDir(node.workDir + node.dataDir)
+	deleteDir(node.workDir + string(os.PathSeparator) + node.dataDir +
+		string(os.PathSeparator) + node.nodeDataDir)
 }
 
 func (node *Node) deleteDb() {
-	deleteDir(node.workDir + node.dataDir + string(os.PathSeparator) + dbFileName)
+	deleteDir(node.workDir + string(os.PathSeparator) + node.dataDir +
+		string(os.PathSeparator) + node.nodeDataDir + string(os.PathSeparator) + dbFileName)
 }
 
 func deleteDir(path string) {
@@ -152,9 +151,9 @@ func deleteDir(path string) {
 func (node *Node) getArgs() []string {
 	var args []string
 
-	if len(node.dataDir) > 0 {
+	if len(node.nodeDataDir) > 0 {
 		args = append(args, argDataDir)
-		args = append(args, node.dataDir)
+		args = append(args, node.dataDir+string(os.PathSeparator)+node.nodeDataDir)
 	}
 
 	if node.autoMine {

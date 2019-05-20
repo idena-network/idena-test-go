@@ -14,17 +14,15 @@ type User struct {
 	ShortFlips      []client.FlipResponse
 	LongFlipHashes  []client.FlipHashesResponse
 	LongFlips       []client.FlipResponse
-	index           int
 }
 
-func NewUser(client *client.Client, node *node.Node, index int) *User {
+func NewUser(client *client.Client, node *node.Node) *User {
 	return &User{
 		Client: client,
 		Node:   node,
-		index:  index,
 	}
 }
 
 func (user *User) GetInfo() string {
-	return fmt.Sprintf("[User %v; %v; %v]", user.index, user.Address, user.Node.RpcPort)
+	return fmt.Sprintf("[User %v; %v]", user.Node.RpcPort, user.Address)
 }

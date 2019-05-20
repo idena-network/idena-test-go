@@ -10,6 +10,7 @@ import (
 	"idena-test-go/node"
 	"idena-test-go/user"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -33,6 +34,7 @@ const (
 
 	stateWaitingTimeout = 180 * time.Second
 	submitFlipDelay     = 1 * time.Second
+	dataDir             = "dataDir"
 )
 
 type Process struct {
@@ -85,6 +87,8 @@ func (process *Process) init() {
 
 	process.createWorkDir()
 
+	process.clearDataDir()
+
 	process.createFirstUser()
 
 	process.startFirstNode()
@@ -125,10 +129,19 @@ func (process *Process) createWorkDir() {
 	}
 }
 
+func (process *Process) clearDataDir() {
+	dataDirFullPath := process.workDir + string(filepath.Separator) + dataDir
+	err := os.RemoveAll(dataDirFullPath)
+	process.handleError(err, "Unable to remove data dir")
+	err = os.Mkdir(dataDirFullPath, os.ModePerm)
+	process.handleError(err, "Unable to create data dir")
+}
+
 func (process *Process) createFirstUser() {
 	n := node.NewNode(process.workDir,
 		process.execCommandName,
-		"datadir-automine",
+		dataDir,
+		getNodeDataDir(firstRpcPort),
 		firstPort,
 		true,
 		firstRpcPort,
@@ -139,10 +152,14 @@ func (process *Process) createFirstUser() {
 		0,
 		process.verbosity,
 	)
-	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, 0)
+	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n)
 	process.firstUser = u
 	process.users = append(process.users, u)
 	log.Info("Created first user")
+}
+
+func getNodeDataDir(port int) string {
+	return fmt.Sprintf("datadir-%d", port)
 }
 
 func (process *Process) startFirstNode() {
@@ -193,12 +210,14 @@ func (process *Process) createUsers() {
 }
 
 func (process *Process) createUser(index int) *user.User {
+	rpcPort := firstRpcPort + index
 	n := node.NewNode(process.workDir,
 		process.execCommandName,
-		fmt.Sprintf("datadir-%v", index),
+		dataDir,
+		getNodeDataDir(rpcPort),
 		firstPort+index,
 		false,
-		firstRpcPort+index,
+		rpcPort,
 		process.bootNode,
 		process.ipfsBootNode,
 		firstIpfsPort+index,
@@ -206,7 +225,7 @@ func (process *Process) createUser(index int) *user.User {
 		process.ceremonyTime,
 		process.verbosity,
 	)
-	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
+	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n)
 	process.users = append(process.users, u)
 	log.Info(fmt.Sprintf("%v created", u.GetInfo()))
 	return u
