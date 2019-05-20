@@ -365,7 +365,8 @@ func (process *Process) getTestTimeout() time.Duration {
 		time.Second*time.Duration(intervals.FlipLotteryDuration) +
 		time.Second*time.Duration(intervals.ShortSessionDuration) +
 		time.Second*time.Duration(intervals.LongSessionDuration) +
-		time.Second*time.Duration(intervals.AfterLongSessionDuration)
+		time.Second*time.Duration(intervals.AfterLongSessionDuration) +
+		time.Minute*3
 	log.Info(fmt.Sprintf("Verification session waiting timeout: %s", testTimeout))
 	return testTimeout
 }
