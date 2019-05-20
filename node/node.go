@@ -23,6 +23,7 @@ const (
 	argPort         = "--port"
 	argDataDir      = "--datadir"
 	verbosity       = "--verbosity"
+	maxNetDelay     = "--maxnetdelay"
 
 	NodeStartWaitingTime = 5 * time.Second
 	nodeStopWaitingTime  = 2 * time.Second
@@ -50,10 +51,11 @@ type Node struct {
 	process         *os.Process
 	logFile         *os.File
 	verbosity       int
+	maxNetDelay     int
 }
 
 func NewNode(workDir string, execCommandName string, dataDir string, nodeDataDir string, port int, autoMine bool, rpcPort int,
-	bootNode string, ipfsBootNode string, ipfsPort int, godAddress string, ceremonyTime int64, verbosity int) *Node {
+	bootNode string, ipfsBootNode string, ipfsPort int, godAddress string, ceremonyTime int64, verbosity int, maxNetDelay int) *Node {
 	return &Node{
 		workDir:         workDir,
 		execCommandName: execCommandName,
@@ -68,6 +70,7 @@ func NewNode(workDir string, execCommandName string, dataDir string, nodeDataDir
 		GodAddress:      godAddress,
 		CeremonyTime:    ceremonyTime,
 		verbosity:       verbosity,
+		maxNetDelay:     maxNetDelay,
 	}
 }
 
@@ -196,8 +199,10 @@ func (node *Node) getArgs() []string {
 	args = append(args, verbosity)
 	args = append(args, strconv.Itoa(node.verbosity))
 
-	args = append(args, "--maxnetdelay")
-	args = append(args, "500")
+	if node.maxNetDelay > 0 {
+		args = append(args, maxNetDelay)
+		args = append(args, strconv.Itoa(node.maxNetDelay))
+	}
 
 	return args
 }

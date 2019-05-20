@@ -20,6 +20,11 @@ func main() {
 			Value: int(log.LvlInfo),
 		},
 		cli.IntFlag{
+			Name:  "maxnetdelay",
+			Usage: "Node max net delay",
+			Value: 500,
+		},
+		cli.IntFlag{
 			Name:  "users",
 			Usage: "Users count",
 			Value: 1,
@@ -55,6 +60,7 @@ func main() {
 			context.String("workdir"),
 			context.String("command"),
 			verbosity,
+			context.Int("maxnetdelay"),
 			context.Int("ceremonyMinOffset"),
 		).Start()
 		return nil

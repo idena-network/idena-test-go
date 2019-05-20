@@ -51,10 +51,11 @@ type Process struct {
 	testCounter       int
 	reqIdHolder       *client.ReqIdHolder
 	verbosity         int
+	maxNetDelay       int
 	ceremonyMinOffset int
 }
 
-func NewProcess(usersCount int, workDir string, execCommandName string, verbosity int, ceremonyMinOffset int) *Process {
+func NewProcess(usersCount int, workDir string, execCommandName string, verbosity int, maxNetDelay int, ceremonyMinOffset int) *Process {
 	if ceremonyMinOffset == 0 {
 		ceremonyMinOffset = defaultFirstCeremonyTimeMinOffset
 	}
@@ -64,6 +65,7 @@ func NewProcess(usersCount int, workDir string, execCommandName string, verbosit
 		reqIdHolder:       client.NewReqIdHolder(),
 		execCommandName:   execCommandName,
 		verbosity:         verbosity,
+		maxNetDelay:       maxNetDelay,
 		ceremonyMinOffset: ceremonyMinOffset,
 	}
 }
@@ -152,6 +154,7 @@ func (process *Process) createFirstUser() {
 		"",
 		0,
 		process.verbosity,
+		process.maxNetDelay,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n)
 	process.firstUser = u
@@ -225,6 +228,7 @@ func (process *Process) createUser(index int) *user.User {
 		process.godAddress,
 		process.ceremonyTime,
 		process.verbosity,
+		process.maxNetDelay,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n)
 	process.users = append(process.users, u)
