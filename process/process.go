@@ -33,8 +33,9 @@ const (
 	periodNone             = "None"
 
 	stateWaitingTimeout = 180 * time.Second
-	submitFlipDelay     = 1 * time.Second
+	flipsWaitingTimeout = time.Minute
 	dataDir             = "dataDir"
+	requestRetryDelay   = 2 * time.Second
 )
 
 type Process struct {
@@ -317,7 +318,7 @@ func (process *Process) waitForNodeState(u *user.User, states []string) {
 		if in(currentState, states) {
 			break
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(requestRetryDelay)
 	}
 	log.Info(fmt.Sprintf("%v, got target state %v", u.GetInfo(), currentState))
 }
@@ -329,15 +330,6 @@ func in(value string, list []string) bool {
 		}
 	}
 	return false
-}
-
-func getNodeIdentity(identites []client.Identity, nodeAddress string) *client.Identity {
-	for _, identity := range identites {
-		if identity.Address == nodeAddress {
-			return &identity
-		}
-	}
-	return nil
 }
 
 func (process *Process) test() {
@@ -379,6 +371,8 @@ func (process *Process) getTestTimeout() time.Duration {
 }
 
 func (process *Process) testUser(u *user.User, godAddress string, ch chan struct{}) {
+	process.initTest(u)
+
 	process.submitFlips(u, godAddress)
 
 	waitForShortSession(u)
@@ -406,6 +400,13 @@ func (process *Process) testUser(u *user.User, godAddress string, ch chan struct
 	ch <- struct{}{}
 }
 
+func (process *Process) initTest(u *user.User) {
+	u.ShortFlipHashes = nil
+	u.ShortFlips = nil
+	u.LongFlipHashes = nil
+	u.LongFlips = nil
+}
+
 func (process *Process) submitFlips(u *user.User, godAddress string) {
 	requiredFlipsCount := process.getRequiredFlipsCount(u)
 	if u.Address == godAddress && requiredFlipsCount == 0 {
@@ -428,7 +429,6 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			log.Info(fmt.Sprintf("%v, submitted flip", u.GetInfo()))
 			submittedFlipsCount++
 		}
-		time.Sleep(submitFlipDelay)
 	}
 	log.Info(fmt.Sprintf("%v, submitted %v flips", u.GetInfo(), submittedFlipsCount))
 }
@@ -461,31 +461,64 @@ func waitForPeriod(u *user.User, period string) {
 		if currentPeriod == period {
 			break
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(requestRetryDelay)
 	}
 	log.Info(fmt.Sprintf("%v, period %v started", u.GetInfo(), period))
 }
 
 func (process *Process) getShortFlipHashes(u *user.User) {
-	var err error
-	u.ShortFlipHashes, err = u.Client.GetShortFlipHashes()
-	process.handleError(err, fmt.Sprintf("%v, unable to load short flip hashes", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v, got short flip hashes", u.GetInfo()))
+	deadline := time.Now().Add(flipsWaitingTimeout)
+	for time.Now().Before(deadline) {
+		shortFlipHashes, err := u.Client.GetShortFlipHashes()
+		if err != nil || !process.checkFlipHashes(shortFlipHashes) {
+			time.Sleep(requestRetryDelay)
+			continue
+		}
+		u.ShortFlipHashes = shortFlipHashes
+		log.Info(fmt.Sprintf("%v, got %d short flip hashes", u.GetInfo(), len(shortFlipHashes)))
+		return
+	}
+	process.handleError(errors.New(fmt.Sprintf("%v, short flip hashes waiting timeout", u.GetInfo())), "")
+}
+
+func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse) bool {
+	if len(flipHashes) == 0 {
+		return false
+	}
+	for _, f := range flipHashes {
+		if !f.Ready {
+			return false
+		}
+	}
+	return true
 }
 
 func (process *Process) getShortFlips(u *user.User) {
-	u.ShortFlips = process.getFlips(u, u.ShortFlipHashes)
-	log.Info(fmt.Sprintf("%v, got short flips", u.GetInfo()))
-}
-
-func (process *Process) getFlips(u *user.User, flipHashes []client.FlipHashesResponse) []client.FlipResponse {
-	var result []client.FlipResponse
-	for _, flipHashResponse := range flipHashes {
-		flipResponse, err := u.Client.GetFlip(flipHashResponse.Hash)
-		process.handleError(err, fmt.Sprintf("%v, unable to get flip %v", u.GetInfo(), flipHashResponse.Hash))
-		result = append(result, flipResponse)
+	deadline := time.Now().Add(flipsWaitingTimeout)
+	flipsByHash := make(map[string]*client.FlipResponse)
+	for time.Now().Before(deadline) {
+		for _, h := range u.ShortFlipHashes {
+			if flipsByHash[h.Hash] != nil {
+				continue
+			}
+			flipResponse, err := u.Client.GetFlip(h.Hash)
+			if err != nil {
+				continue
+			}
+			flipsByHash[h.Hash] = &flipResponse
+		}
+		if len(flipsByHash) == len(u.ShortFlipHashes) {
+			var flips []client.FlipResponse
+			for _, f := range flipsByHash {
+				flips = append(flips, *f)
+			}
+			u.ShortFlips = flips
+			log.Info(fmt.Sprintf("%v, got %v short flips", u.GetInfo(), len(flips)))
+			return
+		}
+		time.Sleep(requestRetryDelay)
 	}
-	return result
+	process.handleError(errors.New(fmt.Sprintf("%v, short flips waiting timeout", u.GetInfo())), "")
 }
 
 func (process *Process) submitShortAnswers(u *user.User) {
@@ -494,7 +527,7 @@ func (process *Process) submitShortAnswers(u *user.User) {
 		answers = append(answers, 1)
 	}
 	_, err := u.Client.SubmitShortAnswers(answers)
-	process.handleError(err, fmt.Sprintf("%v, unable to submit long answers", u.GetInfo()))
+	process.handleError(err, fmt.Sprintf("%v, unable to submit short answers", u.GetInfo()))
 	log.Info(fmt.Sprintf("%v, submitted short answers", u.GetInfo()))
 }
 
@@ -512,6 +545,16 @@ func (process *Process) getLongFlipHashes(u *user.User) {
 func (process *Process) getLongFlips(u *user.User) {
 	u.LongFlips = process.getFlips(u, u.LongFlipHashes)
 	log.Info(fmt.Sprintf("%v, got long flips", u.GetInfo()))
+}
+
+func (process *Process) getFlips(u *user.User, flipHashes []client.FlipHashesResponse) []client.FlipResponse {
+	var result []client.FlipResponse
+	for _, flipHashResponse := range flipHashes {
+		flipResponse, err := u.Client.GetFlip(flipHashResponse.Hash)
+		process.handleError(err, fmt.Sprintf("%v, unable to get flip %v", u.GetInfo(), flipHashResponse.Hash))
+		result = append(result, flipResponse)
+	}
+	return result
 }
 
 func (process *Process) submitLongAnswers(u *user.User) {

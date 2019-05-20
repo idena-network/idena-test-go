@@ -66,7 +66,7 @@ type FlipSubmitResponse struct {
 
 type FlipHashesResponse struct {
 	Hash  string `json:"hash"`
-	Ready bool   `json:"ready"` // todo
+	Ready bool   `json:"ready"`
 }
 
 type FlipResponse struct {
