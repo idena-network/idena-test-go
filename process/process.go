@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"idena-test-go/client"
+	"idena-test-go/common"
 	"idena-test-go/log"
 	"idena-test-go/node"
 	"idena-test-go/user"
+	"sync"
 	"time"
 )
 
@@ -34,6 +36,8 @@ const (
 	flipsWaitingTimeout = time.Minute
 	DataDir             = "dataDir"
 	requestRetryDelay   = 8 * time.Second
+
+	initialRequiredFlips = 5
 )
 
 type Process struct {
@@ -215,10 +219,15 @@ func (process *Process) createUser(index int) *user.User {
 
 func (process *Process) startNodes() {
 	n := len(process.users) - 1
+	wg := sync.WaitGroup{}
+	wg.Add(n)
 	for i := 0; i < n; i++ {
-		go process.startNode(process.users[i+1].Node)
+		go func(i int) {
+			process.startNode(process.users[i+1].Node)
+			wg.Done()
+		}(i)
 	}
-	time.Sleep(node.NodeStartWaitingTime)
+	wg.Wait()
 	log.Info(fmt.Sprintf("Started %v nodes", n))
 }
 
@@ -264,28 +273,20 @@ func (process *Process) waitForCandidates() {
 
 func (process *Process) waitForNodesState(state string) {
 	log.Info(fmt.Sprintf("Start waiting for user states %v", state))
-	timeout := time.NewTimer(stateWaitingTimeout)
-	defer timeout.Stop()
-	ch := make(chan struct{}, process.usersCount)
+	wg := sync.WaitGroup{}
+	wg.Add(process.usersCount)
+	targetStates := []string{state}
 	for _, u := range process.users {
-		go process.waitForNodeStateWithSignal(u, []string{state}, ch)
+		go func(u *user.User) {
+			process.waitForNodeState(u, targetStates)
+			wg.Done()
+		}(u)
 	}
-	target := process.usersCount
-	counter := 0
-	for counter < target {
-		select {
-		case <-ch:
-			counter++
-		case <-timeout.C:
-			process.handleError(errors.New(fmt.Sprintf("State %v waiting timeout", state)), "")
-		}
+	ok := common.WaitWithTimeout(&wg, stateWaitingTimeout)
+	if !ok {
+		process.handleError(errors.New(fmt.Sprintf("State %v waiting timeout", state)), "")
 	}
 	log.Info(fmt.Sprintf("Got state %v for all users", state))
-}
-
-func (process *Process) waitForNodeStateWithSignal(u *user.User, states []string, ch chan struct{}) {
-	process.waitForNodeState(u, states)
-	ch <- struct{}{}
 }
 
 func (process *Process) waitForNodeState(u *user.User, states []string) {
@@ -315,21 +316,17 @@ func in(value string, list []string) bool {
 
 func (process *Process) test() {
 	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.testCounter))
-	timeout := time.NewTimer(process.getTestTimeout())
-	defer timeout.Stop()
-	ch := make(chan struct{}, len(process.users))
+	wg := sync.WaitGroup{}
+	wg.Add(len(process.users))
 	for _, u := range process.users {
-		go process.testUser(u, process.godAddress, ch)
+		go func(u *user.User) {
+			process.testUser(u, process.godAddress)
+			wg.Done()
+		}(u)
 	}
-	target := len(process.users)
-	counter := 0
-	for counter < target {
-		select {
-		case <-ch:
-			counter++
-		case <-timeout.C:
-			process.handleError(errors.New("verification sessions timeout"), "")
-		}
+	ok := common.WaitWithTimeout(&wg, process.getTestTimeout())
+	if !ok {
+		process.handleError(errors.New("verification sessions timeout"), "")
 	}
 	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%v) **************", process.testCounter))
 }
@@ -352,7 +349,7 @@ func (process *Process) getTestTimeout() time.Duration {
 	return testTimeout
 }
 
-func (process *Process) testUser(u *user.User, godAddress string, ch chan struct{}) {
+func (process *Process) testUser(u *user.User, godAddress string) {
 	process.initTest(u)
 
 	process.passVerification(u, godAddress)
@@ -360,8 +357,6 @@ func (process *Process) testUser(u *user.User, godAddress string, ch chan struct
 	waitForSessionFinish(u)
 
 	log.Info(fmt.Sprintf("%v passed verification session", u.GetInfo()))
-
-	ch <- struct{}{}
 }
 
 func (process *Process) passVerification(u *user.User, godAddress string) {
@@ -372,7 +367,7 @@ func (process *Process) passVerification(u *user.User, godAddress string) {
 
 	waitForShortSession(u)
 
-	log.Debug(fmt.Sprintf("%v required flips count: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
+	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
 
 	process.getShortFlipHashes(u)
 
@@ -401,9 +396,9 @@ func (process *Process) initTest(u *user.User) {
 func (process *Process) submitFlips(u *user.User, godAddress string) bool {
 	requiredFlipsCount := process.getRequiredFlipsCount(u)
 	if u.Address == godAddress && requiredFlipsCount == 0 {
-		requiredFlipsCount = 5
+		requiredFlipsCount = initialRequiredFlips
 	}
-	log.Info(fmt.Sprintf("%v required flips count: %v", u.GetInfo(), requiredFlipsCount))
+	log.Info(fmt.Sprintf("%v required flips: %v", u.GetInfo(), requiredFlipsCount))
 	if requiredFlipsCount == 0 {
 		return true
 	}
@@ -441,6 +436,8 @@ func randomHex(n int) (string, error) {
 }
 
 func waitForShortSession(u *user.User) {
+	epoch, _ := u.Client.GetEpoch()
+	log.Info(fmt.Sprintf("%v next validation time: %v", u.GetInfo(), epoch.NextValidation))
 	waitForPeriod(u, periodShortSession)
 }
 
