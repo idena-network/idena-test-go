@@ -7,22 +7,39 @@ import (
 )
 
 type User struct {
-	Client          *client.Client
-	Node            *node.Node
-	Address         string
+	Client      *client.Client
+	Node        *node.Node
+	Address     string
+	TestContext *TestContext
+	Index       int
+	Active      bool
+}
+
+type TestContext struct {
 	ShortFlipHashes []client.FlipHashesResponse
 	ShortFlips      []client.FlipResponse
 	LongFlipHashes  []client.FlipHashesResponse
 	LongFlips       []client.FlipResponse
 }
 
-func NewUser(client *client.Client, node *node.Node) *User {
+func NewUser(client *client.Client, node *node.Node, index int) *User {
 	return &User{
 		Client: client,
 		Node:   node,
+		Index:  index,
 	}
 }
 
-func (user *User) GetInfo() string {
-	return fmt.Sprintf("[User %v]", user.Node.RpcPort)
+func (u *User) GetInfo() string {
+	return fmt.Sprintf("[User %d-%d]", u.Index, u.Node.RpcPort)
+}
+
+func (u *User) Start(mode node.StartMode) {
+	u.Node.Start(mode)
+	u.Active = true
+}
+
+func (u *User) Stop() {
+	u.Node.Stop()
+	u.Active = false
 }

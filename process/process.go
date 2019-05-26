@@ -1,14 +1,13 @@
 package process
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"idena-test-go/client"
 	"idena-test-go/common"
 	"idena-test-go/log"
 	"idena-test-go/node"
+	"idena-test-go/scenario"
 	"idena-test-go/user"
 	"sync"
 	"time"
@@ -18,8 +17,6 @@ const (
 	firstRpcPort  = 9010
 	firstIpfsPort = 4010
 	firstPort     = 40410
-
-	defaultFirstCeremonyTimeMinOffset = 3
 
 	invite    = "Invite"
 	candidate = "Candidate"
@@ -41,34 +38,29 @@ const (
 )
 
 type Process struct {
-	usersCount        int
-	workDir           string
-	execCommandName   string
-	users             []*user.User
-	firstUser         *user.User
-	godAddress        string
-	bootNode          string
-	ipfsBootNode      string
-	ceremonyTime      int64
-	testCounter       int
-	reqIdHolder       *client.ReqIdHolder
-	verbosity         int
-	maxNetDelay       int
-	ceremonyMinOffset int
+	sc              scenario.Scenario
+	workDir         string
+	execCommandName string
+	users           []*user.User
+	firstUser       *user.User
+	godAddress      string
+	bootNode        string
+	ipfsBootNode    string
+	ceremonyTime    int64
+	testCounter     int
+	reqIdHolder     *client.ReqIdHolder
+	verbosity       int
+	maxNetDelay     int
 }
 
-func NewProcess(usersCount int, workDir string, execCommandName string, verbosity int, maxNetDelay int, ceremonyMinOffset int) *Process {
-	if ceremonyMinOffset == 0 {
-		ceremonyMinOffset = defaultFirstCeremonyTimeMinOffset
-	}
+func NewProcess(sc scenario.Scenario, workDir string, execCommandName string, verbosity int, maxNetDelay int) *Process {
 	return &Process{
-		usersCount:        usersCount,
-		workDir:           workDir,
-		reqIdHolder:       client.NewReqIdHolder(),
-		execCommandName:   execCommandName,
-		verbosity:         verbosity,
-		maxNetDelay:       maxNetDelay,
-		ceremonyMinOffset: ceremonyMinOffset,
+		sc:              sc,
+		workDir:         workDir,
+		reqIdHolder:     client.NewReqIdHolder(),
+		execCommandName: execCommandName,
+		verbosity:       verbosity,
+		maxNetDelay:     maxNetDelay,
 	}
 }
 
@@ -76,6 +68,11 @@ func (process *Process) Start() {
 	defer process.destroy()
 	process.init()
 	for {
+		process.createNewUsers()
+		process.switchNodes()
+		if !process.checkActiveUser() {
+			process.handleError(errors.New("there are no active users"), "")
+		}
 		process.test()
 		process.testCounter++
 	}
@@ -104,28 +101,16 @@ func (process *Process) init() {
 
 	process.restartFirstNode()
 
-	process.createUsers()
-
-	process.startNodes()
-
-	process.getNodeAddresses()
-
-	process.sendInvites()
-
-	process.waitForInvites()
-
-	process.activateInvites()
-
-	process.waitForCandidates()
-
 	log.Debug("Initialization completed")
 }
 
 func (process *Process) createFirstUser() {
-	n := node.NewNode(process.workDir,
+	index := 0
+	n := node.NewNode(index,
+		process.workDir,
 		process.execCommandName,
 		DataDir,
-		getNodeDataDir(firstRpcPort),
+		getNodeDataDir(index, firstRpcPort),
 		firstPort,
 		true,
 		firstRpcPort,
@@ -137,18 +122,18 @@ func (process *Process) createFirstUser() {
 		process.verbosity,
 		process.maxNetDelay,
 	)
-	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n)
+	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
 	process.firstUser = u
 	process.users = append(process.users, u)
 	log.Info("Created first user")
 }
 
-func getNodeDataDir(port int) string {
-	return fmt.Sprintf("datadir-%d", port)
+func getNodeDataDir(index int, port int) string {
+	return fmt.Sprintf("datadir-%d-%d", index, port)
 }
 
 func (process *Process) startFirstNode() {
-	process.firstUser.Node.Start(node.DeleteDataDir)
+	process.firstUser.Start(node.DeleteDataDir)
 	log.Info("Started first node")
 }
 
@@ -177,29 +162,68 @@ func (process *Process) initIpfsBootNode() {
 }
 
 func (process *Process) restartFirstNode() {
-	n := process.firstUser
-	n.Node.BootNode = process.bootNode
-	n.Node.GodAddress = process.godAddress
-	n.Node.IpfsBootNode = process.ipfsBootNode
-	n.Node.CeremonyTime = process.ceremonyTime
-	n.Node.Start(node.DeleteDb)
+	u := process.firstUser
+	u.Stop()
+	u.Node.BootNode = process.bootNode
+	u.Node.GodAddress = process.godAddress
+	u.Node.IpfsBootNode = process.ipfsBootNode
+	u.Node.CeremonyTime = process.ceremonyTime
+	u.Start(node.DeleteDb)
 	log.Info("Restarted first node")
 }
 
-func (process *Process) createUsers() {
-	n := process.usersCount - 1
-	for i := 0; i < n; i++ {
-		process.createUser(i + 1)
+func (process *Process) createNewUsers() {
+	epoch := process.getCurrentTestEpoch()
+	currentUsers := len(process.users)
+	newUsers := process.sc.EpochNewUsers[epoch]
+	if newUsers == 0 {
+		return
 	}
-	log.Info(fmt.Sprintf("Created %v users", n))
+	if epoch == 0 {
+		newUsers--
+	}
+	if newUsers > 0 {
+		process.createUsers(newUsers)
+	}
+
+	var users []*user.User
+	usersToStart := process.users[currentUsers : currentUsers+newUsers]
+	if epoch == 0 {
+		users = process.users[currentUsers-1 : currentUsers+newUsers]
+	} else {
+		users = usersToStart
+	}
+
+	process.startNodes(usersToStart, node.DeleteDataDir)
+
+	process.getNodeAddresses(users)
+
+	process.sendInvites(users)
+
+	process.waitForInvites(users)
+
+	process.activateInvites(users)
+
+	process.waitForCandidates(users)
+
+	log.Debug("New users creation completed")
+}
+
+func (process *Process) createUsers(count int) {
+	currentUsersCount := len(process.users)
+	for i := 0; i < count; i++ {
+		process.createUser(i + currentUsersCount)
+	}
+	log.Info(fmt.Sprintf("Created %v users", count))
 }
 
 func (process *Process) createUser(index int) *user.User {
 	rpcPort := firstRpcPort + index
-	n := node.NewNode(process.workDir,
+	n := node.NewNode(index,
+		process.workDir,
 		process.execCommandName,
 		DataDir,
-		getNodeDataDir(rpcPort),
+		getNodeDataDir(index, rpcPort),
 		firstPort+index,
 		false,
 		rpcPort,
@@ -211,28 +235,28 @@ func (process *Process) createUser(index int) *user.User {
 		process.verbosity,
 		process.maxNetDelay,
 	)
-	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n)
+	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
 	process.users = append(process.users, u)
 	log.Info(fmt.Sprintf("%v created", u.GetInfo()))
 	return u
 }
 
-func (process *Process) startNodes() {
-	n := len(process.users) - 1
+func (process *Process) startNodes(users []*user.User, mode node.StartMode) {
+	n := len(users)
 	wg := sync.WaitGroup{}
 	wg.Add(n)
-	for i := 0; i < n; i++ {
-		go func(i int) {
-			process.startNode(process.users[i+1].Node)
+	for _, u := range users {
+		go func(u *user.User) {
+			process.startNode(u, mode)
 			wg.Done()
-		}(i)
+		}(u)
 	}
 	wg.Wait()
 	log.Info(fmt.Sprintf("Started %v nodes", n))
 }
 
-func (process *Process) getNodeAddresses() {
-	for _, u := range process.users {
+func (process *Process) getNodeAddresses(users []*user.User) {
+	for _, u := range users {
 		var err error
 		u.Address, err = u.Client.GetCoinbaseAddr()
 		process.handleError(err, fmt.Sprintf("%v unable to get node address", u.GetInfo()))
@@ -240,14 +264,33 @@ func (process *Process) getNodeAddresses() {
 	}
 }
 
-func (process *Process) startNode(n *node.Node) {
-	n.Start(node.DeleteDataDir)
-	log.Info(fmt.Sprintf("Started node %v", n.RpcPort))
+func (process *Process) startNode(u *user.User, mode node.StartMode) {
+	u.Start(mode)
+	log.Info(fmt.Sprintf("Started node %v", u.GetInfo()))
 }
 
-func (process *Process) sendInvites() {
+func (process *Process) stopNodes(users []*user.User) {
+	n := len(users)
+	wg := sync.WaitGroup{}
+	wg.Add(n)
+	for _, u := range users {
+		go func(u *user.User) {
+			process.stopNode(u)
+			wg.Done()
+		}(u)
+	}
+	wg.Wait()
+	log.Info(fmt.Sprintf("Stopped %v nodes", n))
+}
+
+func (process *Process) stopNode(u *user.User) {
+	u.Stop()
+	log.Info(fmt.Sprintf("Stopped node %v", u.GetInfo()))
+}
+
+func (process *Process) sendInvites(users []*user.User) {
 	invitesCount := 0
-	for _, u := range process.users {
+	for _, u := range users {
 		_, err := process.firstUser.Client.SendInvite(u.Address)
 		process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", u.GetInfo(), u.Address))
 		invitesCount++
@@ -255,28 +298,28 @@ func (process *Process) sendInvites() {
 	log.Info(fmt.Sprintf("Sent %v invites", invitesCount))
 }
 
-func (process *Process) waitForInvites() {
-	process.waitForNodesState(invite)
+func (process *Process) waitForInvites(users []*user.User) {
+	process.waitForNodesState(users, invite)
 }
 
-func (process *Process) activateInvites() {
-	for _, u := range process.users {
+func (process *Process) activateInvites(users []*user.User) {
+	for _, u := range users {
 		_, err := u.Client.ActivateInvite(u.Address)
 		process.handleError(err, fmt.Sprintf("%v unable to activate invite for %v", u.GetInfo(), u.Address))
 	}
 	log.Info("Activated invites")
 }
 
-func (process *Process) waitForCandidates() {
-	process.waitForNodesState(candidate)
+func (process *Process) waitForCandidates(users []*user.User) {
+	process.waitForNodesState(users, candidate)
 }
 
-func (process *Process) waitForNodesState(state string) {
+func (process *Process) waitForNodesState(users []*user.User, state string) {
 	log.Info(fmt.Sprintf("Start waiting for user states %v", state))
 	wg := sync.WaitGroup{}
-	wg.Add(process.usersCount)
+	wg.Add(len(users))
 	targetStates := []string{state}
-	for _, u := range process.users {
+	for _, u := range users {
 		go func(u *user.User) {
 			process.waitForNodeState(u, targetStates)
 			wg.Done()
@@ -293,8 +336,7 @@ func (process *Process) waitForNodeState(u *user.User, states []string) {
 	log.Info(fmt.Sprintf("%v start waiting for one of the states %v", u.GetInfo(), states))
 	var currentState string
 	for {
-		identity, err := u.Client.GetIdentity(u.Address)
-		process.handleError(err, fmt.Sprintf("%v unable to get identities", u.GetInfo()))
+		identity := process.getIdentity(u)
 		currentState = identity.State
 		log.Debug(fmt.Sprintf("%v state %v", u.GetInfo(), currentState))
 		if in(currentState, states) {
@@ -303,6 +345,12 @@ func (process *Process) waitForNodeState(u *user.User, states []string) {
 		time.Sleep(requestRetryDelay)
 	}
 	log.Info(fmt.Sprintf("%v got target state %v", u.GetInfo(), currentState))
+}
+
+func (process *Process) getIdentity(u *user.User) client.Identity {
+	identity, err := u.Client.GetIdentity(u.Address)
+	process.handleError(err, fmt.Sprintf("%v unable to get identity", u.GetInfo()))
+	return identity
 }
 
 func in(value string, list []string) bool {
@@ -314,254 +362,17 @@ func in(value string, list []string) bool {
 	return false
 }
 
-func (process *Process) test() {
-	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.testCounter))
-	wg := sync.WaitGroup{}
-	wg.Add(len(process.users))
-	for _, u := range process.users {
-		go func(u *user.User) {
-			process.testUser(u, process.godAddress)
-			wg.Done()
-		}(u)
-	}
-	ok := common.WaitWithTimeout(&wg, process.getTestTimeout())
-	if !ok {
-		process.handleError(errors.New("verification sessions timeout"), "")
-	}
-	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%v) **************", process.testCounter))
-}
-
-func (process *Process) getTestTimeout() time.Duration {
-	u := process.firstUser
-	epoch, err := u.Client.GetEpoch()
-	process.handleError(err, fmt.Sprintf("%v unable to get epoch", u.GetInfo()))
-	intervals, err := u.Client.CeremonyIntervals()
-	process.handleError(err, fmt.Sprintf("%v unable to get ceremony intervals", u.GetInfo()))
-	now := time.Now()
-	nextValidation := epoch.NextValidation
-	testTimeout := nextValidation.Sub(now) +
-		time.Second*time.Duration(intervals.FlipLotteryDuration) +
-		time.Second*time.Duration(intervals.ShortSessionDuration) +
-		time.Second*time.Duration(intervals.LongSessionDuration) +
-		time.Second*time.Duration(intervals.AfterLongSessionDuration) +
-		time.Minute*3
-	log.Debug(fmt.Sprintf("Verification session waiting timeout: %v", testTimeout))
-	return testTimeout
-}
-
-func (process *Process) testUser(u *user.User, godAddress string) {
-	process.initTest(u)
-
-	process.passVerification(u, godAddress)
-
-	waitForSessionFinish(u)
-
-	log.Info(fmt.Sprintf("%v passed verification session", u.GetInfo()))
-}
-
-func (process *Process) passVerification(u *user.User, godAddress string) {
-	if !process.submitFlips(u, godAddress) {
-		log.Warn(fmt.Sprintf("%v didn't manage to submit all required flips, verification will be missed", u.GetInfo()))
-		return
-	}
-
-	waitForShortSession(u)
-
-	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
-
-	process.getShortFlipHashes(u)
-
-	process.getShortFlips(u)
-
-	process.submitShortAnswers(u)
-
-	waitForLongSession(u)
-
-	process.getLongFlipHashes(u)
-
-	process.getLongFlips(u)
-
-	process.submitLongAnswers(u)
-
-	process.waitForNodeState(u, []string{newbie, verified})
-}
-
-func (process *Process) initTest(u *user.User) {
-	u.ShortFlipHashes = nil
-	u.ShortFlips = nil
-	u.LongFlipHashes = nil
-	u.LongFlips = nil
-}
-
-func (process *Process) submitFlips(u *user.User, godAddress string) bool {
-	requiredFlipsCount := process.getRequiredFlipsCount(u)
-	if u.Address == godAddress && requiredFlipsCount == 0 {
-		requiredFlipsCount = initialRequiredFlips
-	}
-	log.Info(fmt.Sprintf("%v required flips: %v", u.GetInfo(), requiredFlipsCount))
-	if requiredFlipsCount == 0 {
-		return true
-	}
-	submittedFlipsCount := 0
-	for i := 0; i < requiredFlipsCount; i++ {
-		flipHex, err := randomHex(10)
-		if err != nil {
-			process.handleError(err, "unable to generate hex")
-		}
-		_, err = u.Client.SubmitFlip(flipHex)
-		if err != nil {
-			log.Error(fmt.Sprintf("%v unable to submit flip: %v", u.GetInfo(), err))
-		} else {
-			log.Debug(fmt.Sprintf("%v submitted flip", u.GetInfo()))
-			submittedFlipsCount++
-		}
-	}
-	log.Info(fmt.Sprintf("%v submitted %v flips", u.GetInfo(), submittedFlipsCount))
-	return submittedFlipsCount == requiredFlipsCount
-}
-
-func (process *Process) getRequiredFlipsCount(u *user.User) int {
-	identity, err := u.Client.GetIdentity(u.Address)
-	process.handleError(err, fmt.Sprintf("%v unable to get identities", u.GetInfo()))
-	requiredFlipsCount := identity.RequiredFlips - identity.MadeFlips
-	return requiredFlipsCount
-}
-
-func randomHex(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return "0x" + hex.EncodeToString(bytes), nil
-}
-
-func waitForShortSession(u *user.User) {
-	epoch, _ := u.Client.GetEpoch()
-	log.Info(fmt.Sprintf("%v next validation time: %v", u.GetInfo(), epoch.NextValidation))
-	waitForPeriod(u, periodShortSession)
-}
-
-func waitForPeriod(u *user.User, period string) {
-	log.Info(fmt.Sprintf("%v start waiting for period %v", u.GetInfo(), period))
-	for {
-		epoch, _ := u.Client.GetEpoch()
-		currentPeriod := epoch.CurrentPeriod
-		log.Debug(fmt.Sprintf("%v current period: %v", u.GetInfo(), currentPeriod))
-		if currentPeriod == period {
-			break
-		}
-		time.Sleep(requestRetryDelay)
-	}
-	log.Info(fmt.Sprintf("%v period %v started", u.GetInfo(), period))
-}
-
-func (process *Process) getShortFlipHashes(u *user.User) {
-	deadline := time.Now().Add(flipsWaitingTimeout)
-	for time.Now().Before(deadline) {
-		shortFlipHashes, err := u.Client.GetShortFlipHashes()
-		if err != nil || !process.checkFlipHashes(shortFlipHashes) {
-			time.Sleep(requestRetryDelay)
-			continue
-		}
-		u.ShortFlipHashes = shortFlipHashes
-		log.Info(fmt.Sprintf("%v got %d short flip hashes", u.GetInfo(), len(shortFlipHashes)))
-		return
-	}
-	process.handleError(errors.New(fmt.Sprintf("%v short flip hashes waiting timeout", u.GetInfo())), "")
-}
-
-func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse) bool {
-	if len(flipHashes) == 0 {
-		return false
-	}
-	for _, f := range flipHashes {
-		if !f.Ready {
-			return false
-		}
-	}
-	return true
-}
-
-func (process *Process) getShortFlips(u *user.User) {
-	deadline := time.Now().Add(flipsWaitingTimeout)
-	flipsByHash := make(map[string]*client.FlipResponse)
-	for time.Now().Before(deadline) {
-		for _, h := range u.ShortFlipHashes {
-			if flipsByHash[h.Hash] != nil {
-				continue
-			}
-			flipResponse, err := u.Client.GetFlip(h.Hash)
-			if err != nil {
-				continue
-			}
-			flipsByHash[h.Hash] = &flipResponse
-		}
-		if len(flipsByHash) == len(u.ShortFlipHashes) {
-			var flips []client.FlipResponse
-			for _, f := range flipsByHash {
-				flips = append(flips, *f)
-			}
-			u.ShortFlips = flips
-			log.Info(fmt.Sprintf("%v got %v short flips", u.GetInfo(), len(flips)))
-			return
-		}
-		time.Sleep(requestRetryDelay)
-	}
-	process.handleError(errors.New(fmt.Sprintf("%v short flips waiting timeout", u.GetInfo())), "")
-}
-
-func (process *Process) submitShortAnswers(u *user.User) {
-	var answers []byte
-	for range u.ShortFlips {
-		answers = append(answers, 1)
-	}
-	_, err := u.Client.SubmitShortAnswers(answers)
-	process.handleError(err, fmt.Sprintf("%v unable to submit short answers", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v submitted %d short answers: %v", u.GetInfo(), len(answers), answers))
-}
-
-func waitForLongSession(u *user.User) {
-	waitForPeriod(u, periodLongSession)
-}
-
-func (process *Process) getLongFlipHashes(u *user.User) {
-	var err error
-	u.LongFlipHashes, err = u.Client.GetLongFlipHashes()
-	process.handleError(err, fmt.Sprintf("%v unable to load long flip hashes", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v got %d long flip hashes", u.GetInfo(), len(u.LongFlipHashes)))
-}
-
-func (process *Process) getLongFlips(u *user.User) {
-	u.LongFlips = process.getFlips(u, u.LongFlipHashes)
-	log.Info(fmt.Sprintf("%v got %d long flips", u.GetInfo(), len(u.LongFlips)))
-}
-
-func (process *Process) getFlips(u *user.User, flipHashes []client.FlipHashesResponse) []client.FlipResponse {
-	var result []client.FlipResponse
-	for _, flipHashResponse := range flipHashes {
-		flipResponse, err := u.Client.GetFlip(flipHashResponse.Hash)
-		process.handleError(err, fmt.Sprintf("%v unable to get flip %v", u.GetInfo(), flipHashResponse.Hash))
-		result = append(result, flipResponse)
-	}
-	return result
-}
-
-func (process *Process) submitLongAnswers(u *user.User) {
-	var answers []byte
-	for range u.LongFlips {
-		answers = append(answers, 1)
-	}
-	_, err := u.Client.SubmitLongAnswers(answers)
-	process.handleError(err, fmt.Sprintf("%v unable to submit long answers", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v submitted %d long answers: %v", u.GetInfo(), len(answers), answers))
-}
-
-func waitForSessionFinish(u *user.User) {
-	waitForPeriod(u, periodNone)
-}
-
 func (process *Process) getCeremonyTime() int64 {
-	return time.Now().UTC().Unix() + int64(process.ceremonyMinOffset*60)
+	return time.Now().UTC().Unix() + int64(process.sc.CeremonyMinOffset*60)
+}
+
+func (process *Process) checkActiveUser() bool {
+	for _, u := range process.users {
+		if u.Active {
+			return true
+		}
+	}
+	return false
 }
 
 func (process *Process) handleError(err error, prefix string) {
@@ -577,4 +388,26 @@ func (process *Process) handleError(err error, prefix string) {
 		u.Node.Destroy()
 	}
 	panic(err)
+}
+
+func (process *Process) switchNodes() {
+	epoch := process.getCurrentTestEpoch()
+
+	nodeIndexesToStop := process.sc.EpochNodeStops[epoch]
+	if len(nodeIndexesToStop) > 0 {
+		process.stopNodes(process.getUsers(nodeIndexesToStop))
+	}
+
+	nodeIndexesToStart := process.sc.EpochNodeStarts[epoch]
+	if len(nodeIndexesToStart) > 0 {
+		process.startNodes(process.getUsers(nodeIndexesToStart), node.DeleteNothing)
+	}
+}
+
+func (process *Process) getUsers(indexes []int) []*user.User {
+	var nodes []*user.User
+	for _, index := range indexes {
+		nodes = append(nodes, process.users[index])
+	}
+	return nodes
 }

@@ -4,6 +4,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"idena-test-go/log"
 	"idena-test-go/process"
+	"idena-test-go/scenario"
 	"os"
 	"path/filepath"
 )
@@ -29,11 +30,6 @@ func main() {
 			Usage: "Node max net delay",
 			Value: 500,
 		},
-		cli.IntFlag{
-			Name:  "users",
-			Usage: "Users count",
-			Value: 1,
-		},
 		cli.StringFlag{
 			Name:  "workdir",
 			Value: "workdir",
@@ -44,43 +40,54 @@ func main() {
 			Value: "idena-go",
 			Usage: "Command to run node",
 		},
-		cli.IntFlag{
-			Name:  "ceremonyMinOffset",
-			Usage: "First ceremony time offset in minutes",
-			Value: int(log.LvlInfo),
+		cli.StringFlag{
+			Name:  "scenario",
+			Usage: "Test scenario json file name",
 		},
 	}
 
 	app.Action = func(context *cli.Context) error {
 
 		workDir := context.String("workdir")
+		initApp(workDir, context.Int("verbosity"))
 
-		createWorkDir(workDir)
+		scenarioFileName := context.String("scenario")
 
-		clearDataDir(filepath.Join(workDir, process.DataDir))
-
-		logFileFullName := filepath.Join(workDir, process.DataDir, "bot.log")
-
-		createLogFile(logFileFullName)
-
-		fileHandler, err := log.FileHandler(logFileFullName, log.TerminalFormat(false))
-		if err != nil {
-			panic(err)
+		var sc scenario.Scenario
+		if len(scenarioFileName) > 0 {
+			sc = scenario.Load(filepath.Join(workDir, scenarioFileName))
+		} else {
+			sc = scenario.GetDefaultScenario()
 		}
-		log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(context.Int("verbosity")), log.MultiHandler(log.StreamHandler(os.Stdout, log.LogfmtFormat()), fileHandler)))
 
 		process.NewProcess(
-			context.Int("users"),
+			sc,
 			workDir,
 			context.String("command"),
 			context.Int("nodeverbosity"),
 			context.Int("maxnetdelay"),
-			context.Int("ceremonyMinOffset"),
 		).Start()
 		return nil
 	}
 
 	app.Run(os.Args)
+}
+
+func initApp(workDir string, verbosity int) {
+
+	createWorkDir(workDir)
+
+	clearDataDir(filepath.Join(workDir, process.DataDir))
+
+	logFileFullName := filepath.Join(workDir, process.DataDir, "bot.log")
+
+	createLogFile(logFileFullName)
+
+	fileHandler, err := log.FileHandler(logFileFullName, log.TerminalFormat(false))
+	if err != nil {
+		panic(err)
+	}
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(verbosity), log.MultiHandler(log.StreamHandler(os.Stdout, log.LogfmtFormat()), fileHandler)))
 }
 
 func createWorkDir(workDir string) {

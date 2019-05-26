@@ -51,6 +51,7 @@ type Identity struct {
 	State         string `json:"state"`
 	RequiredFlips int    `json:"requiredFlips"`
 	MadeFlips     int    `json:"madeFlips"`
+	Invites       int    `json:"invites"`
 }
 
 type Invite struct {

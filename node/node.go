@@ -6,6 +6,7 @@ import (
 	"idena-test-go/log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -25,17 +26,20 @@ const (
 	verbosity       = "--verbosity"
 	maxNetDelay     = "--maxnetdelay"
 
-	NodeStartWaitingTime = 5 * time.Second
-	nodeStopWaitingTime  = 2 * time.Second
+	StartWaitingTime = 5 * time.Second
+	StopWaitingTime  = 2 * time.Second
 )
 
+type StartMode int
+
 const (
-	DeleteNothing = iota
+	DeleteNothing StartMode = iota
 	DeleteDataDir
 	DeleteDb
 )
 
 type Node struct {
+	index           int
 	workDir         string
 	execCommandName string
 	dataDir         string
@@ -49,14 +53,15 @@ type Node struct {
 	GodAddress      string
 	CeremonyTime    int64
 	process         *os.Process
-	logFile         *os.File
+	logWriter       *bufio.Writer
 	verbosity       int
 	maxNetDelay     int
 }
 
-func NewNode(workDir string, execCommandName string, dataDir string, nodeDataDir string, port int, autoMine bool, rpcPort int,
+func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int, autoMine bool, rpcPort int,
 	bootNode string, ipfsBootNode string, ipfsPort int, godAddress string, ceremonyTime int64, verbosity int, maxNetDelay int) *Node {
 	return &Node{
+		index:           index,
 		workDir:         workDir,
 		execCommandName: execCommandName,
 		dataDir:         dataDir,
@@ -74,17 +79,8 @@ func NewNode(workDir string, execCommandName string, dataDir string, nodeDataDir
 	}
 }
 
-func (node *Node) Start(deleteMode int) {
+func (node *Node) Start(deleteMode StartMode) {
 	debug := true
-
-	if node.process != nil {
-		node.killProcess()
-		time.Sleep(nodeStopWaitingTime)
-	}
-	if node.logFile != nil {
-		node.logFile.Close()
-		node.logFile = nil
-	}
 
 	if deleteMode == DeleteDataDir {
 		node.deleteDataDir()
@@ -96,30 +92,37 @@ func (node *Node) Start(deleteMode int) {
 	command := exec.Command(node.workDir+string(os.PathSeparator)+node.execCommandName, args...)
 	command.Dir = node.workDir
 	if debug {
-		f, err := os.Create(node.workDir + string(os.PathSeparator) + node.dataDir +
-			string(os.PathSeparator) + fmt.Sprintf("node-%v.log", node.RpcPort))
+
+		filePath := filepath.Join(node.workDir, node.dataDir, fmt.Sprintf("node-%d-%d.log", node.index, node.RpcPort))
+		f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			panic(err)
 		}
+
 		out := bufio.NewWriter(f)
 		command.Stdout = out
-		node.logFile = f
+		node.logWriter = out
 	}
 
 	command.Start()
 	node.process = command.Process
-	time.Sleep(NodeStartWaitingTime)
+	time.Sleep(StartWaitingTime)
 
 	log.Info(fmt.Sprintf("Started node, workDir: %v, parameters: %v", node.workDir, args))
 }
 
+func (node *Node) Stop() {
+	node.Destroy()
+	time.Sleep(StopWaitingTime)
+}
+
 func (node *Node) Destroy() {
+	if node.logWriter != nil {
+		node.logWriter.Flush()
+		node.logWriter = nil
+	}
 	if node.process != nil {
 		node.killProcess()
-	}
-	if node.logFile != nil {
-		node.logFile.Close()
-		node.logFile = nil
 	}
 }
 
