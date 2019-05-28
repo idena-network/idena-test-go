@@ -121,11 +121,11 @@ func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, i
 	}
 
 	if ues.madeFlips != node.MadeFlips {
-		process.assertionError(fmt.Sprintf("Wrong made flips for node %s", u.GetInfo()), ues.madeFlips, identity.MadeFlips, eh)
+		process.assertionError(fmt.Sprintf("Wrong made flips for node %s", u.GetInfo()), node.MadeFlips, ues.madeFlips, eh)
 	}
 
 	if ues.requiredFlips != node.RequiredFlips {
-		process.assertionError(fmt.Sprintf("Wrong required flips for node %s", u.GetInfo()), ues.requiredFlips, identity.RequiredFlips, eh)
+		process.assertionError(fmt.Sprintf("Wrong required flips for node %s", u.GetInfo()), node.RequiredFlips, ues.requiredFlips, eh)
 	}
 
 	if identity.Invites != node.AvailableInvites {

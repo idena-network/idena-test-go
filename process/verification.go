@@ -77,7 +77,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 func (process *Process) collectUserEpochState(u *user.User, state *userEpochState) {
 	identity := process.getIdentity(u)
-	state.madeFlips = identity.MadeFlips
+	state.madeFlips = len(identity.Flips)
 	state.requiredFlips = identity.RequiredFlips
 }
 
@@ -160,7 +160,7 @@ func (process *Process) getScUserCeremony(u *user.User) *scenario.UserCeremony {
 
 func (process *Process) getRequiredFlipsCount(u *user.User) int {
 	identity := process.getIdentity(u)
-	requiredFlipsCount := identity.RequiredFlips - identity.MadeFlips
+	requiredFlipsCount := identity.RequiredFlips - len(identity.Flips)
 	return requiredFlipsCount
 }
 

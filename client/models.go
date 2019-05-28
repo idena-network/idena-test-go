@@ -47,11 +47,11 @@ type Epoch struct {
 }
 
 type Identity struct {
-	Address       string `json:"address"`
-	State         string `json:"state"`
-	RequiredFlips int    `json:"requiredFlips"`
-	MadeFlips     int    `json:"madeFlips"`
-	Invites       int    `json:"invites"`
+	Address       string   `json:"address"`
+	State         string   `json:"state"`
+	RequiredFlips int      `json:"requiredFlips"`
+	Flips         []string `json:"flips"`
+	Invites       int      `json:"invites"`
 }
 
 type Invite struct {
