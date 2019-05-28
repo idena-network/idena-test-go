@@ -1,7 +1,6 @@
 package scenario
 
-const correctAnswer = byte(1) // fixme currently we consider Left answer as correct
-const wrongAnswer = byte(2)   // fixme currently we consider Right answer as wrong
+import "idena-test-go/common"
 
 type Scenario struct {
 	EpochNewUsers     map[int]int   // Epoch -> new users count
@@ -56,10 +55,10 @@ func (answerRates AnswerRates) Get(count int) []byte {
 	correctCount := count - wrongCount - noneCount - inappropriateCount
 	var result []byte
 	for i := 0; i < correctCount; i++ {
-		result = append(result, correctAnswer)
+		result = append(result, common.CorrectAnswer)
 	}
 	for i := 0; i < wrongCount; i++ {
-		result = append(result, wrongAnswer)
+		result = append(result, common.WrongAnswer)
 	}
 	for i := 0; i < inappropriateCount; i++ {
 		result = append(result, 3)
@@ -82,7 +81,7 @@ func (answers Answers) Get(count int) []byte {
 		if answers.Presences[int(i)] {
 			answer = answers.Answers[int(i)]
 		} else {
-			answer = correctAnswer
+			answer = common.CorrectAnswer
 		}
 		result = append(result, answer)
 	}

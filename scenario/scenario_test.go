@@ -18,7 +18,7 @@ func TestAnswerRates_Get(t *testing.T) {
 	require.Equal(t, 10, len(answers))
 
 	for i := 0; i < 4; i++ {
-		require.Equal(t, correctAnswer, answers[i])
+		require.Equal(t, CorrectAnswer, answers[i])
 	}
 	for i := 4; i < 7; i++ {
 		require.Equal(t, wrongAnswer, answers[i])
@@ -32,7 +32,7 @@ func TestAnswerRates_Get(t *testing.T) {
 	answers = ar.Get(9)
 
 	for i := 0; i < 3; i++ {
-		require.Equal(t, correctAnswer, answers[i])
+		require.Equal(t, CorrectAnswer, answers[i])
 	}
 	for i := 3; i < 6; i++ {
 		require.Equal(t, wrongAnswer, answers[i])
@@ -46,7 +46,7 @@ func TestAnswerRates_Get(t *testing.T) {
 	answers = ar.Get(8)
 
 	for i := 0; i < 3; i++ {
-		require.Equal(t, correctAnswer, answers[i])
+		require.Equal(t, CorrectAnswer, answers[i])
 	}
 	for i := 3; i < 5; i++ {
 		require.Equal(t, wrongAnswer, answers[i])

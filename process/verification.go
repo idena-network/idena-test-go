@@ -261,7 +261,7 @@ func (process *Process) getShortAnswers(u *user.User) []byte {
 		answers = userCeremony.ShortAnswers.Get(len(u.TestContext.ShortFlips))
 	} else {
 		for range u.TestContext.ShortFlips {
-			answers = append(answers, 1)
+			answers = append(answers, common.CorrectAnswer)
 		}
 	}
 	return answers
@@ -274,7 +274,7 @@ func (process *Process) getLongAnswers(u *user.User) []byte {
 		answers = userCeremony.LongAnswers.Get(len(u.TestContext.LongFlips))
 	} else {
 		for range u.TestContext.LongFlips {
-			answers = append(answers, 1)
+			answers = append(answers, common.CorrectAnswer)
 		}
 	}
 	return answers
