@@ -12,6 +12,7 @@ func init() {
 		EpochNewUsers: map[int]int{
 			0: 5,
 		},
+		DefaultAnswer:     defaultDefaultAnswer,
 		CeremonyMinOffset: 5,
 	}
 }

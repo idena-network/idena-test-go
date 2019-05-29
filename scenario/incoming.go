@@ -6,6 +6,7 @@ type incomingScenario struct {
 	NewUsers          []newUsers    `json:"newUsers"` // users to create later
 	NodeStarts        []epochsNodes `json:"nodeStarts"`
 	NodeStops         []epochsNodes `json:"nodeStops"`
+	DefaultAnswer     byte          `json:"defaultAnswer"`
 	Ceremonies        []ceremony    `json:"ceremonies"`
 }
 
@@ -35,8 +36,8 @@ type userCeremony struct {
 }
 
 type answerRates struct {
-	Wrong         float32 `json:"wrong"`
-	None          float32 `json:"none"`
+	Left          float32 `json:"left"`
+	Right         float32 `json:"right"`
 	Inappropriate float32 `json:"inappropriate"`
 }
 

@@ -7,6 +7,7 @@ type Scenario struct {
 	EpochNodeStarts   map[int][]int //Epoch -> nodes to start
 	EpochNodeStops    map[int][]int //Epoch -> nodes to stop
 	CeremonyMinOffset int
+	DefaultAnswer     byte
 	Ceremonies        map[int]*Ceremony // Epoch -> Ceremony
 }
 
@@ -43,35 +44,36 @@ type NodeAssertion struct {
 }
 
 type AnswerRates struct {
-	Wrong         float32
-	None          float32
+	Left          float32
+	Right         float32
 	Inappropriate float32
 }
 
 func (answerRates AnswerRates) Get(count int) []byte {
-	wrongCount := int(float32(count)*answerRates.Wrong + 0.5)
-	noneCount := int(float32(count)*answerRates.None + 0.5)
+	leftCount := int(float32(count)*answerRates.Left + 0.5)
+	rightCount := int(float32(count)*answerRates.Right + 0.5)
 	inappropriateCount := int(float32(count)*answerRates.Inappropriate + 0.5)
-	correctCount := count - wrongCount - noneCount - inappropriateCount
+	noneCount := count - leftCount - rightCount - inappropriateCount
 	var result []byte
-	for i := 0; i < correctCount; i++ {
-		result = append(result, common.CorrectAnswer)
+	for i := 0; i < leftCount; i++ {
+		result = append(result, common.Left)
 	}
-	for i := 0; i < wrongCount; i++ {
-		result = append(result, common.WrongAnswer)
+	for i := 0; i < rightCount; i++ {
+		result = append(result, common.Right)
 	}
 	for i := 0; i < inappropriateCount; i++ {
-		result = append(result, 3)
+		result = append(result, common.Inappropriate)
 	}
 	for i := 0; i < noneCount; i++ {
-		result = append(result, 0)
+		result = append(result, common.None)
 	}
 	return result
 }
 
 type Answers struct {
-	Answers   map[int]byte // flip index -> answer
-	Presences map[int]bool // flip index -> answer is present
+	defaultAnswer byte
+	Answers       map[int]byte // flip index -> answer
+	Presences     map[int]bool // flip index -> answer is present
 }
 
 func (answers Answers) Get(count int) []byte {
@@ -81,7 +83,7 @@ func (answers Answers) Get(count int) []byte {
 		if answers.Presences[int(i)] {
 			answer = answers.Answers[int(i)]
 		} else {
-			answer = common.CorrectAnswer
+			answer = answers.defaultAnswer
 		}
 		result = append(result, answer)
 	}

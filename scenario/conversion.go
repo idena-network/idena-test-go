@@ -1,13 +1,25 @@
 package scenario
 
+import "idena-test-go/common"
+
+const defaultDefaultAnswer = common.Left
+
 func convert(incomingSc incomingScenario) Scenario {
 	sc := Scenario{}
 	sc.EpochNewUsers = convertEpochNewUsers(incomingSc.Users, incomingSc.NewUsers)
 	sc.EpochNodeStarts = convertEpochsNodes(incomingSc.NodeStarts)
 	sc.EpochNodeStops = convertEpochsNodes(incomingSc.NodeStops)
 	sc.CeremonyMinOffset = incomingSc.CeremonyMinOffset
-	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies)
+	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
+	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
 	return sc
+}
+
+func convertDefaultAnswer(incomingDefaultAnswer byte) byte {
+	if incomingDefaultAnswer <= 0 {
+		return defaultDefaultAnswer
+	}
+	return incomingDefaultAnswer
 }
 
 func convertEpochNewUsers(incomingUsers int, incomingNewUsers []newUsers) map[int]int {
@@ -36,11 +48,11 @@ func convertEpochsNodes(incomingEpochsNodes []epochsNodes) map[int][]int {
 	return epochsNodes
 }
 
-func convertCeremonies(incomingCeremonies []ceremony) map[int]*Ceremony {
+func convertCeremonies(incomingCeremonies []ceremony, defaultAnswer byte) map[int]*Ceremony {
 	ceremonies := make(map[int]*Ceremony)
 	for _, incomingCeremony := range incomingCeremonies {
 		epochs, _ := parseNums(incomingCeremony.Epochs)
-		ceremony := convertCeremony(incomingCeremony)
+		ceremony := convertCeremony(incomingCeremony, defaultAnswer)
 		for _, epoch := range epochs {
 			ceremonies[epoch] = ceremony
 		}
@@ -48,17 +60,17 @@ func convertCeremonies(incomingCeremonies []ceremony) map[int]*Ceremony {
 	return ceremonies
 }
 
-func convertCeremony(incomingCeremony ceremony) *Ceremony {
+func convertCeremony(incomingCeremony ceremony, defaultAnswer byte) *Ceremony {
 	ceremony := Ceremony{}
-	ceremony.UserCeremonies = convertUserCeremonies(incomingCeremony.UserCeremonies)
+	ceremony.UserCeremonies = convertUserCeremonies(incomingCeremony.UserCeremonies, defaultAnswer)
 	ceremony.Assertion = convertAssertion(incomingCeremony.Assertion)
 	return &ceremony
 }
 
-func convertUserCeremonies(incomingUserCeremonies []userCeremony) map[int]*UserCeremony {
+func convertUserCeremonies(incomingUserCeremonies []userCeremony, defaultAnswer byte) map[int]*UserCeremony {
 	userCeremonies := make(map[int]*UserCeremony)
 	for _, incomingUserCeremony := range incomingUserCeremonies {
-		userCeremony := convertUserCeremony(incomingUserCeremony)
+		userCeremony := convertUserCeremony(incomingUserCeremony, defaultAnswer)
 		users, _ := parseNums(incomingUserCeremony.Users)
 		for _, user := range users {
 			userCeremonies[user] = userCeremony
@@ -67,25 +79,41 @@ func convertUserCeremonies(incomingUserCeremonies []userCeremony) map[int]*UserC
 	return userCeremonies
 }
 
-func convertUserCeremony(incomingUserCeremony userCeremony) *UserCeremony {
+func convertUserCeremony(incomingUserCeremony userCeremony, defaultAnswer byte) *UserCeremony {
 	userCeremony := UserCeremony{}
 	userCeremony.SubmitFlips = incomingUserCeremony.SubmitFlips
-	userCeremony.ShortAnswers = convertAnswers(incomingUserCeremony.ShortAnswerRates, incomingUserCeremony.ShortAnswers)
-	userCeremony.LongAnswers = convertAnswers(incomingUserCeremony.LongAnswerRates, incomingUserCeremony.LongAnswers)
+	userCeremony.ShortAnswers = convertAnswers(incomingUserCeremony.ShortAnswerRates, incomingUserCeremony.ShortAnswers, defaultAnswer)
+	userCeremony.LongAnswers = convertAnswers(incomingUserCeremony.LongAnswerRates, incomingUserCeremony.LongAnswers, defaultAnswer)
 	return &userCeremony
 }
 
-func convertAnswers(incomingAnswerRates *answerRates, incomingAnswers []answer) AnswersHolder {
+func convertAnswers(incomingAnswerRates *answerRates, incomingAnswers []answer, defaultAnswer byte) AnswersHolder {
 	if incomingAnswerRates != nil {
 		answerRates := AnswerRates{}
 		answerRates.Inappropriate = incomingAnswerRates.Inappropriate
-		answerRates.Wrong = incomingAnswerRates.Wrong
-		answerRates.None = incomingAnswerRates.None
+		answerRates.Left = incomingAnswerRates.Left
+		answerRates.Right = incomingAnswerRates.Right
+
+		if answerRates.Inappropriate == 0 && answerRates.Left == 0 && answerRates.Right == 0 {
+			switch defaultAnswer {
+			case common.Left:
+				answerRates.Left = 1.0
+				break
+			case common.Right:
+				answerRates.Right = 1.0
+				break
+			case common.Inappropriate:
+				answerRates.Inappropriate = 1.0
+				break
+			}
+		}
+
 		return answerRates
 	}
 	answers := Answers{
-		Answers:   make(map[int]byte),
-		Presences: make(map[int]bool),
+		defaultAnswer: defaultAnswer,
+		Answers:       make(map[int]byte),
+		Presences:     make(map[int]bool),
 	}
 	for _, incomingAnswer := range incomingAnswers {
 		answers.Answers[incomingAnswer.Index] = incomingAnswer.Answer

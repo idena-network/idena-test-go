@@ -208,16 +208,16 @@ func validateSessionAnswers(rates *answerRates, answers []answer, session string
 }
 
 func validateAnswerRates(rates *answerRates) error {
-	if err := validateNotNegativeFloat(rates.None, "none"); err != nil {
+	if err := validateNotNegativeFloat(rates.Left, "left"); err != nil {
+		return err
+	}
+	if err := validateNotNegativeFloat(rates.Right, "right"); err != nil {
 		return err
 	}
 	if err := validateNotNegativeFloat(rates.Inappropriate, "inappropriate"); err != nil {
 		return err
 	}
-	if err := validateNotNegativeFloat(rates.Wrong, "wrong"); err != nil {
-		return err
-	}
-	amount := rates.None + rates.Wrong + rates.Inappropriate
+	amount := rates.Left + rates.Right + rates.Inappropriate
 	if amount > 1 {
 		return errors.New(fmt.Sprintf("Rates total amount mustn't be greater than 1.0, actual amount: %f", amount))
 	}

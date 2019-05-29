@@ -34,7 +34,7 @@ const (
 	DataDir             = "dataDir"
 	requestRetryDelay   = 8 * time.Second
 
-	initialRequiredFlips = 5
+	initialRequiredFlips = 1
 )
 
 type Process struct {
