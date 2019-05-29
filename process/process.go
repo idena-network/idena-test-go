@@ -75,9 +75,6 @@ func (process *Process) Start() {
 		}
 		process.test()
 		process.testCounter++
-		if process.ceremonyTime > 0 {
-			process.ceremonyTime = 0
-		}
 	}
 }
 
