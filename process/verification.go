@@ -18,6 +18,7 @@ func (process *Process) test() {
 	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.testCounter))
 	wg := sync.WaitGroup{}
 	wg.Add(len(process.users))
+	timeout := process.getTestTimeout()
 	es := epochState{
 		userStates: make(map[int]*userEpochState),
 	}
@@ -32,7 +33,7 @@ func (process *Process) test() {
 			wg.Done()
 		}(u)
 	}
-	ok := common.WaitWithTimeout(&wg, process.getTestTimeout())
+	ok := common.WaitWithTimeout(&wg, timeout)
 	if !ok {
 		process.handleError(errors.New("verification sessions timeout"), "")
 	}
@@ -88,19 +89,19 @@ func (process *Process) passVerification(u *user.User, godAddress string) {
 
 	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
 
-	process.getShortFlipHashes(u)
+	process.getFlipHashes(u, true)
 
-	process.getShortFlips(u)
+	process.getFlips(u, true)
 
-	process.submitShortAnswers(u)
+	process.submitAnswers(u, true)
 
 	waitForLongSession(u)
 
-	process.getLongFlipHashes(u)
+	process.getFlipHashes(u, false)
 
-	process.getLongFlips(u)
+	process.getFlips(u, false)
 
-	process.submitLongAnswers(u)
+	process.submitAnswers(u, false)
 }
 
 func (process *Process) initTest(u *user.User) {
@@ -192,125 +193,8 @@ func waitForPeriod(u *user.User, period string) {
 	log.Info(fmt.Sprintf("%v period %v started", u.GetInfo(), period))
 }
 
-func (process *Process) getShortFlipHashes(u *user.User) {
-	deadline := time.Now().Add(flipsWaitingTimeout)
-	for time.Now().Before(deadline) {
-		shortFlipHashes, err := u.Client.GetShortFlipHashes()
-		if err != nil || !process.checkFlipHashes(shortFlipHashes) {
-			time.Sleep(requestRetryDelay)
-			continue
-		}
-		u.TestContext.ShortFlipHashes = shortFlipHashes
-		log.Info(fmt.Sprintf("%v got %d short flip hashes", u.GetInfo(), len(shortFlipHashes)))
-		return
-	}
-	process.handleError(errors.New(fmt.Sprintf("%v short flip hashes waiting timeout", u.GetInfo())), "")
-}
-
-func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse) bool {
-	if len(flipHashes) == 0 {
-		return false
-	}
-	for _, f := range flipHashes {
-		if !f.Ready {
-			return false
-		}
-	}
-	return true
-}
-
-func (process *Process) getShortFlips(u *user.User) {
-	deadline := time.Now().Add(flipsWaitingTimeout)
-	flipsByHash := make(map[string]*client.FlipResponse)
-	for time.Now().Before(deadline) {
-		for _, h := range u.TestContext.ShortFlipHashes {
-			if flipsByHash[h.Hash] != nil {
-				continue
-			}
-			flipResponse, err := u.Client.GetFlip(h.Hash)
-			if err != nil {
-				continue
-			}
-			flipsByHash[h.Hash] = &flipResponse
-		}
-		if len(flipsByHash) == len(u.TestContext.ShortFlipHashes) {
-			var flips []client.FlipResponse
-			for _, f := range flipsByHash {
-				flips = append(flips, *f)
-			}
-			u.TestContext.ShortFlips = flips
-			log.Info(fmt.Sprintf("%v got %v short flips", u.GetInfo(), len(flips)))
-			return
-		}
-		time.Sleep(requestRetryDelay)
-	}
-	process.handleError(errors.New(fmt.Sprintf("%v short flips waiting timeout", u.GetInfo())), "")
-}
-
-func (process *Process) submitShortAnswers(u *user.User) {
-	answers := process.getShortAnswers(u)
-	_, err := u.Client.SubmitShortAnswers(answers)
-	process.handleError(err, fmt.Sprintf("%v unable to submit short answers", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v submitted %d short answers: %v", u.GetInfo(), len(answers), answers))
-}
-
-func (process *Process) getShortAnswers(u *user.User) []byte {
-	userCeremony := process.getScUserCeremony(u)
-	var answers []byte
-	if userCeremony != nil {
-		answers = userCeremony.ShortAnswers.Get(len(u.TestContext.ShortFlips))
-	} else {
-		for range u.TestContext.ShortFlips {
-			answers = append(answers, process.sc.DefaultAnswer)
-		}
-	}
-	return answers
-}
-
-func (process *Process) getLongAnswers(u *user.User) []byte {
-	userCeremony := process.getScUserCeremony(u)
-	var answers []byte
-	if userCeremony != nil {
-		answers = userCeremony.LongAnswers.Get(len(u.TestContext.LongFlips))
-	} else {
-		for range u.TestContext.LongFlips {
-			answers = append(answers, process.sc.DefaultAnswer)
-		}
-	}
-	return answers
-}
-
 func waitForLongSession(u *user.User) {
 	waitForPeriod(u, periodLongSession)
-}
-
-func (process *Process) getLongFlipHashes(u *user.User) {
-	var err error
-	u.TestContext.LongFlipHashes, err = u.Client.GetLongFlipHashes()
-	process.handleError(err, fmt.Sprintf("%v unable to load long flip hashes", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v got %d long flip hashes", u.GetInfo(), len(u.TestContext.LongFlipHashes)))
-}
-
-func (process *Process) getLongFlips(u *user.User) {
-	u.TestContext.LongFlips = process.getFlips(u, u.TestContext.LongFlipHashes)
-	log.Info(fmt.Sprintf("%v got %d long flips", u.GetInfo(), len(u.TestContext.LongFlips)))
-}
-
-func (process *Process) getFlips(u *user.User, flipHashes []client.FlipHashesResponse) []client.FlipResponse {
-	var result []client.FlipResponse
-	for _, flipHashResponse := range flipHashes {
-		flipResponse, err := u.Client.GetFlip(flipHashResponse.Hash)
-		process.handleError(err, fmt.Sprintf("%v unable to get flip %v", u.GetInfo(), flipHashResponse.Hash))
-		result = append(result, flipResponse)
-	}
-	return result
-}
-
-func (process *Process) submitLongAnswers(u *user.User) {
-	answers := process.getLongAnswers(u)
-	_, err := u.Client.SubmitLongAnswers(answers)
-	process.handleError(err, fmt.Sprintf("%v unable to submit long answers", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v submitted %d long answers: %v", u.GetInfo(), len(answers), answers))
 }
 
 func waitForSessionFinish(u *user.User) {
@@ -319,4 +203,145 @@ func waitForSessionFinish(u *user.User) {
 
 func (process *Process) getCurrentTestEpoch() int {
 	return process.testCounter
+}
+
+func (process *Process) getFlipHashes(u *user.User, isShort bool) {
+	name := getSessionName(isShort)
+	var loadFunc func() ([]client.FlipHashesResponse, error)
+	var setFunc func([]client.FlipHashesResponse)
+	if isShort {
+		loadFunc = u.Client.GetShortFlipHashes
+		setFunc = func(flipHashes []client.FlipHashesResponse) {
+			u.TestContext.ShortFlipHashes = flipHashes
+		}
+	} else {
+		loadFunc = u.Client.GetLongFlipHashes
+		setFunc = func(flipHashes []client.FlipHashesResponse) {
+			u.TestContext.LongFlipHashes = flipHashes
+		}
+	}
+	deadline := time.Now().Add(flipsWaitingTimeout)
+	for time.Now().Before(deadline) {
+		flipHashes, err := loadFunc()
+		if err == nil {
+			err = process.checkFlipHashes(flipHashes)
+		}
+		if err != nil {
+			log.Info(fmt.Sprintf("%v unable to get %s flip hashes: %v", u.GetInfo(), name, err))
+			time.Sleep(requestRetryDelay)
+			continue
+		}
+		setFunc(flipHashes)
+		log.Info(fmt.Sprintf("%v got %d %s flip hashes", u.GetInfo(), len(flipHashes), name))
+		return
+	}
+	process.handleError(errors.New(fmt.Sprintf("%v %s flip hashes waiting timeout", name, u.GetInfo())), "")
+}
+
+func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse) error {
+	if len(flipHashes) == 0 {
+		return errors.New("empty flip hashes")
+	}
+	for _, f := range flipHashes {
+		if !f.Ready {
+			return errors.New(fmt.Sprintf("Not ready flip %v", f.Hash))
+		}
+	}
+	return nil
+}
+
+func (process *Process) getFlips(u *user.User, isShort bool) {
+	name := getSessionName(isShort)
+	var flipHashes []client.FlipHashesResponse
+	var setFunc func([]client.FlipResponse)
+	if isShort {
+		flipHashes = u.TestContext.ShortFlipHashes
+		setFunc = func(flips []client.FlipResponse) {
+			u.TestContext.ShortFlips = flips
+		}
+	} else {
+		flipHashes = u.TestContext.LongFlipHashes
+		setFunc = func(flips []client.FlipResponse) {
+			u.TestContext.LongFlips = flips
+		}
+	}
+
+	var flips []client.FlipResponse
+	for _, h := range flipHashes {
+		if !h.Ready {
+			flips = append(flips, emptyFlip())
+			continue
+		}
+		flipResponse, err := u.Client.GetFlip(h.Hash)
+		if err != nil {
+			process.handleError(err, fmt.Sprintf("%v unable to get flip %s", u.GetInfo(), h.Hash))
+			continue
+		}
+		flips = append(flips, flipResponse)
+	}
+	setFunc(flips)
+	log.Info(fmt.Sprintf("%v got %v %s flips", u.GetInfo(), len(flips), name))
+	return
+}
+
+func emptyFlip() client.FlipResponse {
+	return client.FlipResponse{}
+}
+
+func (process *Process) submitAnswers(u *user.User, isShort bool) {
+	var submitFunc func([]byte) (client.SubmitAnswersResponse, error)
+	name := getSessionName(isShort)
+	if isShort {
+		submitFunc = u.Client.SubmitShortAnswers
+	} else {
+		submitFunc = u.Client.SubmitLongAnswers
+	}
+	answers := process.getAnswers(u, isShort)
+	_, err := submitFunc(answers)
+	process.handleError(err, fmt.Sprintf("%v unable to submit %s answers", u.GetInfo(), name))
+	log.Info(fmt.Sprintf("%v submitted %d %s answers: %v", u.GetInfo(), len(answers), name, answers))
+}
+
+func (process *Process) getAnswers(u *user.User, isShort bool) []byte {
+	var answersHolder scenario.AnswersHolder
+	var flips []client.FlipResponse
+	userCeremony := process.getScUserCeremony(u)
+	if isShort {
+		if userCeremony != nil {
+			answersHolder = userCeremony.ShortAnswers
+		}
+		flips = u.TestContext.ShortFlips
+	} else {
+		if userCeremony != nil {
+			answersHolder = userCeremony.LongAnswers
+		}
+		flips = u.TestContext.LongFlips
+	}
+
+	var answers []byte
+	if answersHolder != nil {
+		answers = answersHolder.Get(len(flips))
+	} else {
+		for range flips {
+			answers = append(answers, process.sc.DefaultAnswer)
+		}
+	}
+	process.setNoneAnswers(flips, answers)
+	return answers
+}
+
+func (process *Process) setNoneAnswers(flips []client.FlipResponse, answers []byte) {
+	emptyFlip := emptyFlip()
+	for i, flip := range flips {
+		if flip == emptyFlip {
+			answers[i] = common.None
+		}
+	}
+}
+
+func getSessionName(isShort bool) string {
+	if isShort {
+		return "short"
+	}
+	return "long"
 }
