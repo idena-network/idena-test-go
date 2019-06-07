@@ -52,6 +52,7 @@ type Identity struct {
 	RequiredFlips int      `json:"requiredFlips"`
 	Flips         []string `json:"flips"`
 	Invites       int      `json:"invites"`
+	Online        bool     `json:"online"`
 }
 
 type Invite struct {

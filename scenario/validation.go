@@ -21,6 +21,12 @@ func (sc *incomingScenario) validate() error {
 	if err := validateEpochsNodes(sc.NodeStops); err != nil {
 		return err
 	}
+	if err := validateEpochsNodes(sc.NodeOnlines); err != nil {
+		return err
+	}
+	if err := validateEpochsNodes(sc.NodeOfflines); err != nil {
+		return err
+	}
 	epochUsersCount := buildEpochUserCounts(sc)
 	if err := validateCeremonies(sc.Ceremonies, epochUsersCount); err != nil {
 		return err

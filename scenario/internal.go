@@ -6,6 +6,8 @@ type Scenario struct {
 	EpochNewUsers     map[int]int   // Epoch -> new users count
 	EpochNodeStarts   map[int][]int //Epoch -> nodes to start
 	EpochNodeStops    map[int][]int //Epoch -> nodes to stop
+	EpochNodeOnlines  map[int][]int //Epoch -> nodes to become online
+	EpochNodeOfflines map[int][]int //Epoch -> nodes to become offline
 	CeremonyMinOffset int
 	DefaultAnswer     byte
 	Ceremonies        map[int]*Ceremony // Epoch -> Ceremony
@@ -41,6 +43,7 @@ type NodeAssertion struct {
 	RequiredFlips    int
 	AvailableInvites int
 	State            string
+	Online           bool
 }
 
 type AnswerRates struct {

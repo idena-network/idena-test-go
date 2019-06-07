@@ -9,6 +9,8 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.EpochNewUsers = convertEpochNewUsers(incomingSc.Users, incomingSc.NewUsers)
 	sc.EpochNodeStarts = convertEpochsNodes(incomingSc.NodeStarts)
 	sc.EpochNodeStops = convertEpochsNodes(incomingSc.NodeStops)
+	sc.EpochNodeOnlines = convertEpochsNodes(incomingSc.NodeOnlines)
+	sc.EpochNodeOfflines = convertEpochsNodes(incomingSc.NodeOfflines)
 	sc.CeremonyMinOffset = incomingSc.CeremonyMinOffset
 	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
 	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
@@ -150,6 +152,7 @@ func convertNodeAssertion(incomingNodeAssertion nodeAssertion) *NodeAssertion {
 	nodeAssertion.RequiredFlips = incomingNodeAssertion.RequiredFlips
 	nodeAssertion.AvailableInvites = incomingNodeAssertion.AvailableInvites
 	nodeAssertion.State = incomingNodeAssertion.State
+	nodeAssertion.Online = incomingNodeAssertion.Online
 	return &nodeAssertion
 }
 

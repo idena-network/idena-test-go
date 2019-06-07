@@ -66,8 +66,8 @@ func (process *Process) logStats(nodeStates map[string]int, identities []client.
 	for i, u := range process.users {
 		identity := identities[i]
 		userEpochState := es.userStates[i]
-		log.Info(fmt.Sprintf("%s state: %s, made flips: %d, required flips: %d, available invites: %d",
-			u.GetInfo(), identity.State, userEpochState.madeFlips, userEpochState.requiredFlips, identity.Invites))
+		log.Info(fmt.Sprintf("%s state: %s, made flips: %d, required flips: %d, available invites: %d, online: %t",
+			u.GetInfo(), identity.State, userEpochState.madeFlips, userEpochState.requiredFlips, identity.Invites, identity.Online))
 	}
 	log.Info("------------------------------------------------------------")
 }
@@ -130,6 +130,10 @@ func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, i
 
 	if identity.Invites != node.AvailableInvites {
 		process.assertionError(fmt.Sprintf("Wrong available invites for node %s", u.GetInfo()), node.AvailableInvites, identity.Invites, eh)
+	}
+
+	if identity.Online != node.Online {
+		process.assertionError(fmt.Sprintf("Wrong online state for node %s", u.GetInfo()), node.Online, identity.Online, eh)
 	}
 }
 

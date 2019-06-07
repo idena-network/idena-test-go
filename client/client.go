@@ -221,6 +221,34 @@ func (client *Client) SubmitLongAnswers(answers []byte) (SubmitAnswersResponse, 
 	return client.submitAnswers(answers, "flip_submitLongAnswers")
 }
 
+func (client *Client) BecomeOnline() (string, error) {
+	return client.becomeOnline(true)
+}
+
+func (client *Client) BecomeOffline() (string, error) {
+	return client.becomeOnline(false)
+}
+
+func (client *Client) becomeOnline(online bool) (string, error) {
+	var method string
+	if online {
+		method = "dna_becomeOnline"
+	} else {
+		method = "dna_becomeOffline"
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  method,
+		Payload: []struct{}{{}},
+	}
+	resp := response{}
+	client.sendRequestAndParseResponse(req, &resp)
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
 func (client *Client) getReqId() int {
 	return client.reqIdHolder.GetNextReqId()
 }

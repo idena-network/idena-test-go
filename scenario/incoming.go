@@ -6,6 +6,8 @@ type incomingScenario struct {
 	NewUsers          []newUsers    `json:"newUsers"` // users to create later
 	NodeStarts        []epochsNodes `json:"nodeStarts"`
 	NodeStops         []epochsNodes `json:"nodeStops"`
+	NodeOnlines       []epochsNodes `json:"nodeOnlines"`
+	NodeOfflines      []epochsNodes `json:"nodeOfflines"`
 	DefaultAnswer     byte          `json:"defaultAnswer"`
 	Ceremonies        []ceremony    `json:"ceremonies"`
 }
@@ -62,4 +64,5 @@ type nodeAssertion struct {
 	RequiredFlips    int    `json:"requiredFlips"`
 	AvailableInvites int    `json:"availableInvites"`
 	State            string `json:"state"`
+	Online           bool   `json:"online"`
 }

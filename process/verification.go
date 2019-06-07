@@ -67,6 +67,12 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 		return
 	}
 
+	process.switchOnlineState(u)
+
+	process.submitFlips(u, godAddress)
+
+	waitForShortSession(u)
+
 	process.passVerification(u, godAddress)
 
 	process.collectUserEpochState(u, state)
@@ -76,6 +82,31 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	log.Info(fmt.Sprintf("%v passed verification session", u.GetInfo()))
 }
 
+func (process *Process) switchOnlineState(u *user.User) {
+	epoch := process.getCurrentTestEpoch()
+	onlines := process.sc.EpochNodeOnlines[epoch]
+	if pos(onlines, u.Index) != -1 {
+		_, err := u.Client.BecomeOnline()
+		process.handleError(err, fmt.Sprintf("%v unable to become online", u.GetInfo()))
+		log.Info(fmt.Sprintf("%v sent request to become online", u.GetInfo()))
+	}
+	offlines := process.sc.EpochNodeOfflines[epoch]
+	if pos(offlines, u.Index) != -1 {
+		_, err := u.Client.BecomeOffline()
+		process.handleError(err, fmt.Sprintf("%v unable to become offline", u.GetInfo()))
+		log.Info(fmt.Sprintf("%v sent request to become offline", u.GetInfo()))
+	}
+}
+
+func pos(slice []int, target int) int {
+	for i, v := range slice {
+		if v == target {
+			return i
+		}
+	}
+	return -1
+}
+
 func (process *Process) collectUserEpochState(u *user.User, state *userEpochState) {
 	identity := process.getIdentity(u)
 	state.madeFlips = len(identity.Flips)
@@ -83,9 +114,6 @@ func (process *Process) collectUserEpochState(u *user.User, state *userEpochStat
 }
 
 func (process *Process) passVerification(u *user.User, godAddress string) {
-	process.submitFlips(u, godAddress)
-
-	waitForShortSession(u)
 
 	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
 
