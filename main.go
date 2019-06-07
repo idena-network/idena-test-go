@@ -15,6 +15,11 @@ func main() {
 	app.Version = "0.0.1"
 
 	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "rpcaddr",
+			Usage: "RPC listening address",
+			Value: "localhost",
+		},
 		cli.IntFlag{
 			Name:  "verbosity",
 			Usage: "Log verbosity",
@@ -44,6 +49,10 @@ func main() {
 			Name:  "scenario",
 			Usage: "Test scenario json file name",
 		},
+		cli.StringFlag{
+			Name:  "nodeсonfig",
+			Usage: "Base node config file name",
+		},
 	}
 
 	app.Action = func(context *cli.Context) error {
@@ -64,6 +73,8 @@ func main() {
 			sc,
 			workDir,
 			context.String("command"),
+			context.String("nodeсonfig"),
+			context.String("rpcaddr"),
 			context.Int("nodeverbosity"),
 			context.Int("maxnetdelay"),
 		).Start()

@@ -9,6 +9,9 @@ import (
 	"idena-test-go/node"
 	"idena-test-go/scenario"
 	"idena-test-go/user"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -38,29 +41,35 @@ const (
 )
 
 type Process struct {
-	sc              scenario.Scenario
-	workDir         string
-	execCommandName string
-	users           []*user.User
-	firstUser       *user.User
-	godAddress      string
-	bootNode        string
-	ipfsBootNode    string
-	ceremonyTime    int64
-	testCounter     int
-	reqIdHolder     *client.ReqIdHolder
-	verbosity       int
-	maxNetDelay     int
+	sc                     scenario.Scenario
+	workDir                string
+	execCommandName        string
+	users                  []*user.User
+	firstUser              *user.User
+	godAddress             string
+	bootNode               string
+	ipfsBootNode           string
+	ceremonyTime           int64
+	testCounter            int
+	reqIdHolder            *client.ReqIdHolder
+	verbosity              int
+	maxNetDelay            int
+	rpcHost                string
+	nodeBaseConfigFileName string
+	nodeBaseConfigData     []byte
 }
 
-func NewProcess(sc scenario.Scenario, workDir string, execCommandName string, verbosity int, maxNetDelay int) *Process {
+func NewProcess(sc scenario.Scenario, workDir string, execCommandName string, nodeBaseConfigFileName string,
+	rpcHost string, verbosity int, maxNetDelay int) *Process {
 	return &Process{
-		sc:              sc,
-		workDir:         workDir,
-		reqIdHolder:     client.NewReqIdHolder(),
-		execCommandName: execCommandName,
-		verbosity:       verbosity,
-		maxNetDelay:     maxNetDelay,
+		sc:                     sc,
+		workDir:                workDir,
+		reqIdHolder:            client.NewReqIdHolder(),
+		execCommandName:        execCommandName,
+		rpcHost:                rpcHost,
+		verbosity:              verbosity,
+		maxNetDelay:            maxNetDelay,
+		nodeBaseConfigFileName: nodeBaseConfigFileName,
 	}
 }
 
@@ -87,6 +96,8 @@ func (process *Process) destroy() {
 func (process *Process) init() {
 	log.Debug("Start initializing")
 
+	process.loadNodeBaseConfigData()
+
 	process.createFirstUser()
 
 	process.startFirstNode()
@@ -104,6 +115,22 @@ func (process *Process) init() {
 	log.Debug("Initialization completed")
 }
 
+func (process *Process) loadNodeBaseConfigData() {
+	if len(process.nodeBaseConfigFileName) == 0 {
+		return
+	}
+	file, err := os.Open(filepath.Join(process.workDir, process.nodeBaseConfigFileName))
+	if err != nil {
+		panic(err)
+	}
+
+	byteValue, err := ioutil.ReadAll(file)
+	if err != nil {
+		panic(err)
+	}
+	process.nodeBaseConfigData = byteValue
+}
+
 func (process *Process) createFirstUser() {
 	index := 0
 	n := node.NewNode(index,
@@ -113,6 +140,7 @@ func (process *Process) createFirstUser() {
 		getNodeDataDir(index, firstRpcPort),
 		firstPort,
 		true,
+		process.rpcHost,
 		firstRpcPort,
 		"",
 		"",
@@ -121,6 +149,7 @@ func (process *Process) createFirstUser() {
 		0,
 		process.verbosity,
 		process.maxNetDelay,
+		process.nodeBaseConfigData,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
 	process.firstUser = u
@@ -226,6 +255,7 @@ func (process *Process) createUser(index int) *user.User {
 		getNodeDataDir(index, rpcPort),
 		firstPort+index,
 		false,
+		process.rpcHost,
 		rpcPort,
 		process.bootNode,
 		process.ipfsBootNode,
@@ -234,6 +264,7 @@ func (process *Process) createUser(index int) *user.User {
 		process.ceremonyTime,
 		process.verbosity,
 		process.maxNetDelay,
+		process.nodeBaseConfigData,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
 	process.users = append(process.users, u)

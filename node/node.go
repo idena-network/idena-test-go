@@ -14,17 +14,8 @@ import (
 const (
 	dbFileName = "idenachain.db"
 
-	argRpcPortName  = "--rpcport"
-	argIpfsBootNode = "--ipfsbootnode"
-	argGodAddress   = "--godaddress"
-	argCeremonyTime = "--ceremonytime"
-	argAutoMine     = "--automine"
-	argBootNode     = "--bootnode"
-	argIpfsPort     = "--ipfsport"
-	argPort         = "--port"
-	argDataDir      = "--datadir"
-	verbosity       = "--verbosity"
-	maxNetDelay     = "--maxnetdelay"
+	argConfigFile = "--config"
+	verbosity     = "--verbosity"
 
 	StartWaitingTime = 5 * time.Second
 	StopWaitingTime  = 2 * time.Second
@@ -46,6 +37,7 @@ type Node struct {
 	nodeDataDir     string
 	port            int
 	autoMine        bool
+	RpcHost         string
 	RpcPort         int
 	BootNode        string
 	IpfsBootNode    string
@@ -56,10 +48,13 @@ type Node struct {
 	logWriter       *bufio.Writer
 	verbosity       int
 	maxNetDelay     int
+	baseConfigData  []byte
 }
 
-func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int, autoMine bool, rpcPort int,
-	bootNode string, ipfsBootNode string, ipfsPort int, godAddress string, ceremonyTime int64, verbosity int, maxNetDelay int) *Node {
+func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int,
+	autoMine bool, rpcHost string, rpcPort int, bootNode string, ipfsBootNode string, ipfsPort int, godAddress string,
+	ceremonyTime int64, verbosity int, maxNetDelay int, baseConfigData []byte) *Node {
+
 	return &Node{
 		index:           index,
 		workDir:         workDir,
@@ -68,6 +63,7 @@ func NewNode(index int, workDir string, execCommandName string, dataDir string, 
 		nodeDataDir:     nodeDataDir,
 		port:            port,
 		autoMine:        autoMine,
+		RpcHost:         rpcHost,
 		RpcPort:         rpcPort,
 		BootNode:        bootNode,
 		IpfsBootNode:    ipfsBootNode,
@@ -76,11 +72,11 @@ func NewNode(index int, workDir string, execCommandName string, dataDir string, 
 		CeremonyTime:    ceremonyTime,
 		verbosity:       verbosity,
 		maxNetDelay:     maxNetDelay,
+		baseConfigData:  baseConfigData,
 	}
 }
 
 func (node *Node) Start(deleteMode StartMode) {
-	debug := true
 
 	if deleteMode == DeleteDataDir {
 		node.deleteDataDir()
@@ -88,21 +84,22 @@ func (node *Node) Start(deleteMode StartMode) {
 		node.deleteDb()
 	}
 
+	node.deleteConfigFile()
+	node.createConfigFile()
+
 	args := node.getArgs()
-	command := exec.Command(node.workDir+string(os.PathSeparator)+node.execCommandName, args...)
+	command := exec.Command(filepath.Join(node.workDir, node.execCommandName), args...)
 	command.Dir = node.workDir
-	if debug {
 
-		filePath := filepath.Join(node.workDir, node.dataDir, fmt.Sprintf("node-%d-%d.log", node.index, node.RpcPort))
-		f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-			panic(err)
-		}
-
-		out := bufio.NewWriter(f)
-		command.Stdout = out
-		node.logWriter = out
+	filePath := filepath.Join(node.workDir, node.dataDir, fmt.Sprintf("node-%d-%d.log", node.index, node.RpcPort))
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
 	}
+
+	out := bufio.NewWriter(f)
+	command.Stdout = out
+	node.logWriter = out
 
 	command.Start()
 	node.process = command.Process
@@ -135,16 +132,41 @@ func (node *Node) killProcess() {
 }
 
 func (node *Node) deleteDataDir() {
-	deleteDir(node.workDir + string(os.PathSeparator) + node.dataDir +
-		string(os.PathSeparator) + node.nodeDataDir)
+	removeFile(filepath.Join(node.workDir, node.dataDir, node.nodeDataDir))
 }
 
 func (node *Node) deleteDb() {
-	deleteDir(node.workDir + string(os.PathSeparator) + node.dataDir +
-		string(os.PathSeparator) + node.nodeDataDir + string(os.PathSeparator) + dbFileName)
+	removeFile(filepath.Join(node.workDir, node.dataDir, node.nodeDataDir, dbFileName))
 }
 
-func deleteDir(path string) {
+func (node *Node) deleteConfigFile() {
+	removeFile(node.getConfigFileFullName())
+}
+
+func (node *Node) createConfigFile() {
+	f, err := os.OpenFile(node.getConfigFileFullName(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+	_, err = w.Write(node.buildNodeConfigFileData())
+	if err != nil {
+		panic(err)
+	}
+	w.Flush()
+}
+
+func (node *Node) getConfigFileFullName() string {
+	return filepath.Join(node.workDir, node.dataDir, node.getConfigFileName())
+}
+
+func (node *Node) getConfigFileName() string {
+	return fmt.Sprintf("config-%d-%d.json", node.index, node.RpcPort)
+}
+
+func removeFile(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return
 	}
@@ -157,55 +179,11 @@ func deleteDir(path string) {
 func (node *Node) getArgs() []string {
 	var args []string
 
-	if len(node.nodeDataDir) > 0 {
-		args = append(args, argDataDir)
-		args = append(args, node.dataDir+string(os.PathSeparator)+node.nodeDataDir)
-	}
-
-	if node.autoMine {
-		args = append(args, argAutoMine)
-	}
-
-	if len(node.GodAddress) > 0 {
-		args = append(args, argGodAddress)
-		args = append(args, node.GodAddress)
-	}
-
-	if node.CeremonyTime > 0 {
-		args = append(args, argCeremonyTime)
-		args = append(args, strconv.FormatInt(node.CeremonyTime, 10))
-	}
-
-	args = append(args, argBootNode)
-	args = append(args, node.BootNode)
-
-	if node.ipfsPort > 0 {
-		args = append(args, argIpfsPort)
-		args = append(args, strconv.Itoa(node.ipfsPort))
-	}
-
-	if node.RpcPort > 0 {
-		args = append(args, argRpcPortName)
-		args = append(args, strconv.Itoa(node.RpcPort))
-	}
-
-	if node.port > 0 {
-		args = append(args, argPort)
-		args = append(args, strconv.Itoa(node.port))
-	}
-
-	if len(node.IpfsBootNode) > 0 {
-		args = append(args, argIpfsBootNode)
-		args = append(args, node.IpfsBootNode)
-	}
+	args = append(args, argConfigFile)
+	args = append(args, filepath.Join(node.dataDir, node.getConfigFileName()))
 
 	args = append(args, verbosity)
 	args = append(args, strconv.Itoa(node.verbosity))
-
-	if node.maxNetDelay > 0 {
-		args = append(args, maxNetDelay)
-		args = append(args, strconv.Itoa(node.maxNetDelay))
-	}
 
 	return args
 }
