@@ -11,6 +11,12 @@ type request struct {
 	Payload interface{} `json:"params,omitempty"`
 }
 
+type sendTxArgs struct {
+	From   string  `json:"from"`
+	To     string  `json:"to"`
+	Amount float32 `json:"amount"`
+}
+
 type sendInviteArgs struct {
 	To string `json:"to"`
 }

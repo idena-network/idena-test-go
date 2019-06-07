@@ -249,6 +249,25 @@ func (client *Client) becomeOnline(online bool) (string, error) {
 	return resp.Result.(string), nil
 }
 
+func (client *Client) SendTransaction(from string, to string, amount float32) (string, error) {
+	params := sendTxArgs{
+		From:   from,
+		To:     to,
+		Amount: amount,
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "dna_sendTransaction",
+		Payload: []sendTxArgs{params},
+	}
+	resp := response{}
+	client.sendRequestAndParseResponse(req, &resp)
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
 func (client *Client) getReqId() int {
 	return client.reqIdHolder.GetNextReqId()
 }

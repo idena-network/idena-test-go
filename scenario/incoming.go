@@ -1,15 +1,16 @@
 package scenario
 
 type incomingScenario struct {
-	Users             int           `json:"users"` // users count
-	CeremonyMinOffset int           `json:"ceremonyMinOffset"`
-	NewUsers          []newUsers    `json:"newUsers"` // users to create later
-	NodeStarts        []epochsNodes `json:"nodeStarts"`
-	NodeStops         []epochsNodes `json:"nodeStops"`
-	NodeOnlines       []epochsNodes `json:"nodeOnlines"`
-	NodeOfflines      []epochsNodes `json:"nodeOfflines"`
-	DefaultAnswer     byte          `json:"defaultAnswer"`
-	Ceremonies        []ceremony    `json:"ceremonies"`
+	Users             int            `json:"users"` // users count
+	CeremonyMinOffset int            `json:"ceremonyMinOffset"`
+	NewUsers          []newUsers     `json:"newUsers"` // users to create later
+	NodeStarts        []epochsNodes  `json:"nodeStarts"`
+	NodeStops         []epochsNodes  `json:"nodeStops"`
+	NodeOnlines       []epochsNodes  `json:"nodeOnlines"`
+	NodeOfflines      []epochsNodes  `json:"nodeOfflines"`
+	Txs               []transactions `json:"txs"`
+	DefaultAnswer     byte           `json:"defaultAnswer"`
+	Ceremonies        []ceremony     `json:"ceremonies"`
 }
 
 type newUsers struct {
@@ -20,6 +21,11 @@ type newUsers struct {
 type epochsNodes struct {
 	Epochs string `json:"epochs"` // "1,3-5,8" means 1,3,4,5,8
 	Nodes  string `json:"nodes"`  // "1,3-5,8" means 1,3,4,5,8
+}
+
+type transactions struct {
+	epochsNodes
+	PeriodMs int64
 }
 
 type ceremony struct {

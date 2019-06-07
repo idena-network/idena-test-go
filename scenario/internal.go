@@ -1,16 +1,25 @@
 package scenario
 
-import "idena-test-go/common"
+import (
+	"idena-test-go/common"
+	"time"
+)
 
 type Scenario struct {
 	EpochNewUsers     map[int]int   // Epoch -> new users count
-	EpochNodeStarts   map[int][]int //Epoch -> nodes to start
-	EpochNodeStops    map[int][]int //Epoch -> nodes to stop
-	EpochNodeOnlines  map[int][]int //Epoch -> nodes to become online
-	EpochNodeOfflines map[int][]int //Epoch -> nodes to become offline
+	EpochNodeStarts   map[int][]int // Epoch -> nodes to start
+	EpochNodeStops    map[int][]int // Epoch -> nodes to stop
+	EpochNodeOnlines  map[int][]int // Epoch -> nodes to become online
+	EpochNodeOfflines map[int][]int // Epoch -> nodes to become offline
+	EpochTxs          map[int]*Txs  // Epoch -> Txs
 	CeremonyMinOffset int
 	DefaultAnswer     byte
 	Ceremonies        map[int]*Ceremony // Epoch -> Ceremony
+}
+
+type Txs struct {
+	Period time.Duration
+	Users  []int
 }
 
 type Ceremony struct {

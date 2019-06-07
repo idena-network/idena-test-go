@@ -6,10 +6,10 @@ import (
 )
 
 func (sc *incomingScenario) validate() error {
-	if err := validatePositiveInt(sc.Users, "UsersCount"); err != nil {
+	if err := validatePositiveInt(int64(sc.Users), "UsersCount"); err != nil {
 		return err
 	}
-	if err := validatePositiveInt(sc.CeremonyMinOffset, "CeremonyMinOffset"); err != nil {
+	if err := validatePositiveInt(int64(sc.CeremonyMinOffset), "CeremonyMinOffset"); err != nil {
 		return err
 	}
 	if err := validateAllNewUsers(sc.NewUsers); err != nil {
@@ -27,6 +27,9 @@ func (sc *incomingScenario) validate() error {
 	if err := validateEpochsNodes(sc.NodeOfflines); err != nil {
 		return err
 	}
+	if err := validateTransactions(sc.Txs); err != nil {
+		return err
+	}
 	epochUsersCount := buildEpochUserCounts(sc)
 	if err := validateCeremonies(sc.Ceremonies, epochUsersCount); err != nil {
 		return err
@@ -34,7 +37,7 @@ func (sc *incomingScenario) validate() error {
 	return nil
 }
 
-func validatePositiveInt(value int, name string) error {
+func validatePositiveInt(value int64, name string) error {
 	if value <= 0 {
 		return errors.New(fmt.Sprintf("Value %s must be positive, actual value %d", name, value))
 	}
@@ -69,7 +72,7 @@ func validateNewUsers(du newUsers, usedEpochs map[int]bool) error {
 	if err := validateEpochs(du.Epochs, usedEpochs); err != nil {
 		return err
 	}
-	if err := validatePositiveInt(du.Count, "count"); err != nil {
+	if err := validatePositiveInt(int64(du.Count), "count"); err != nil {
 		return err
 	}
 	return nil
@@ -93,6 +96,25 @@ func validateEpochsNodes(en []epochsNodes) error {
 		if err := validateEpochsNodesItem(enItem); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func validateTransactions(txs []transactions) error {
+	for _, txsItem := range txs {
+		if err := validateTransactionsItem(txsItem); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateTransactionsItem(tx transactions) error {
+	if err := validateEpochsNodesItem(tx.epochsNodes); err != nil {
+		return err
+	}
+	if err := validatePositiveInt(tx.PeriodMs, "periodMs"); err != nil {
+		return err
 	}
 	return nil
 }

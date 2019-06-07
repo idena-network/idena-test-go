@@ -16,7 +16,7 @@ import (
 
 func (process *Process) test() {
 	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.testCounter))
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	wg.Add(len(process.users))
 	timeout := process.getTestTimeout()
 	es := epochState{
@@ -33,12 +33,15 @@ func (process *Process) test() {
 			wg.Done()
 		}(u)
 	}
-	ok := common.WaitWithTimeout(&wg, timeout)
+
+	process.startEpochBackgroundProcess(wg, timeout)
+
+	ok := common.WaitWithTimeout(wg, timeout)
 	if !ok {
 		process.handleError(errors.New("verification sessions timeout"), "")
 	}
 	process.assert(process.testCounter, es)
-	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%v) **************", process.testCounter))
+	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%d) **************", process.testCounter))
 }
 
 func (process *Process) getTestTimeout() time.Duration {

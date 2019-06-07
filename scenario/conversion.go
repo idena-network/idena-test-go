@@ -1,6 +1,9 @@
 package scenario
 
-import "idena-test-go/common"
+import (
+	"idena-test-go/common"
+	"time"
+)
 
 const defaultDefaultAnswer = common.Left
 
@@ -11,6 +14,7 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.EpochNodeStops = convertEpochsNodes(incomingSc.NodeStops)
 	sc.EpochNodeOnlines = convertEpochsNodes(incomingSc.NodeOnlines)
 	sc.EpochNodeOfflines = convertEpochsNodes(incomingSc.NodeOfflines)
+	sc.EpochTxs = convertEpochTxs(incomingSc.Txs)
 	sc.CeremonyMinOffset = incomingSc.CeremonyMinOffset
 	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
 	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
@@ -48,6 +52,28 @@ func convertEpochsNodes(incomingEpochsNodes []epochsNodes) map[int][]int {
 		}
 	}
 	return epochsNodes
+}
+
+func convertEpochTxs(incomingTxs []transactions) map[int]*Txs {
+	epochTxs := make(map[int]*Txs)
+	for _, incomingTxsItem := range incomingTxs {
+		epochs, _ := parseNums(incomingTxsItem.Epochs)
+		nodes, _ := parseNums(incomingTxsItem.Nodes)
+		for _, epoch := range epochs {
+			for _, node := range nodes {
+				var epochTxsItem *Txs
+				var present bool
+				if epochTxsItem, present = epochTxs[epoch]; !present {
+					epochTxsItem = &Txs{
+						Period: time.Millisecond * time.Duration(incomingTxsItem.PeriodMs),
+					}
+					epochTxs[epoch] = epochTxsItem
+				}
+				epochTxsItem.Users = append(epochTxsItem.Users, node)
+			}
+		}
+	}
+	return epochTxs
 }
 
 func convertCeremonies(incomingCeremonies []ceremony, defaultAnswer byte) map[int]*Ceremony {
