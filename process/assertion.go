@@ -142,7 +142,7 @@ func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, i
 		process.assertionError(fmt.Sprintf("Wrong state for node %s", u.GetInfo()), node.State, identity.State, eh)
 	}
 
-	if ues.madeFlips != node.MadeFlips {
+	if ues.madeFlips != node.MadeFlips && !(process.godMode && u.Index == 0 && process.getCurrentTestEpoch() == 0) {
 		process.assertionError(fmt.Sprintf("Wrong made flips for node %s", u.GetInfo()), node.MadeFlips, ues.madeFlips, eh)
 	}
 

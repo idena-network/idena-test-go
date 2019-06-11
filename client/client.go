@@ -299,9 +299,7 @@ func (client *Client) sendRequest(req request) []byte {
 			time.Sleep(time.Millisecond * 50)
 			continue
 		}
-		if err != nil {
-			panic(err)
-		}
+		panic(err)
 	}
 	defer resp.Body.Close()
 

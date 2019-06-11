@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"gopkg.in/urfave/cli.v1"
+	"idena-test-go/api"
+	"idena-test-go/config"
+	"idena-test-go/initializer"
 	"idena-test-go/log"
 	"idena-test-go/process"
 	"idena-test-go/scenario"
@@ -9,58 +13,38 @@ import (
 	"path/filepath"
 )
 
+const godBotApiPort = 1111
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "idena-test"
 	app.Version = "0.0.1"
 
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "rpcaddr",
-			Usage: "RPC listening address",
-			Value: "localhost",
-		},
-		cli.IntFlag{
-			Name:  "verbosity",
-			Usage: "Log verbosity",
-			Value: int(log.LvlInfo),
-		},
-		cli.IntFlag{
-			Name:  "nodeverbosity",
-			Usage: "Node log verbosity",
-			Value: int(log.LvlTrace),
-		},
-		cli.IntFlag{
-			Name:  "maxnetdelay",
-			Usage: "Node max net delay",
-			Value: 500,
+		cli.BoolFlag{
+			Name:  "init",
+			Usage: "Init multi instance",
 		},
 		cli.StringFlag{
-			Name:  "workdir",
-			Value: "workdir",
-			Usage: "Workdir for nodes",
-		},
-		cli.StringFlag{
-			Name:  "command",
-			Value: "idena-go",
-			Usage: "Command to run node",
-		},
-		cli.StringFlag{
-			Name:  "scenario",
-			Usage: "Test scenario json file name",
-		},
-		cli.StringFlag{
-			Name:  "nodeсonfig",
-			Usage: "Base node config file name",
+			Name:  "config",
+			Usage: "Config file",
+			Value: "config.json",
 		},
 	}
 
 	app.Action = func(context *cli.Context) error {
 
-		workDir := context.String("workdir")
-		initApp(workDir, context.Int("verbosity"))
+		if context.Bool("init") {
+			initializer.InitMultiInsance(context.String("config"))
+			return nil
+		}
 
-		scenarioFileName := context.String("scenario")
+		conf := config.LoadFromFileWithDefaults(context.String("config"))
+
+		workDir := conf.WorkDir
+		initApp(workDir, conf.Verbosity)
+
+		scenarioFileName := conf.Scenario
 
 		var sc scenario.Scenario
 		if len(scenarioFileName) > 0 {
@@ -69,15 +53,26 @@ func main() {
 			sc = scenario.GetDefaultScenario()
 		}
 
-		process.NewProcess(
+		p := process.NewProcess(
 			sc,
+			conf.PortOffset,
 			workDir,
-			context.String("command"),
-			context.String("nodeсonfig"),
-			context.String("rpcaddr"),
-			context.Int("nodeverbosity"),
-			context.Int("maxnetdelay"),
-		).Start()
+			conf.Command,
+			conf.NodeConfig,
+			conf.RpcAddr,
+			conf.NodeVerbosity,
+			conf.MaxNetDelay,
+			conf.GodMode,
+			conf.GodHost,
+		)
+
+		if conf.GodMode {
+			apiPort := godBotApiPort
+			go api.NewApi(p, apiPort)
+			log.Info(fmt.Sprintf("Run http API server, port %d", apiPort))
+		}
+
+		p.Start()
 		return nil
 	}
 

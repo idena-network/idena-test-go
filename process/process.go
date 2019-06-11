@@ -3,15 +3,13 @@ package process
 import (
 	"errors"
 	"fmt"
+	"idena-test-go/apiclient"
 	"idena-test-go/client"
 	"idena-test-go/common"
 	"idena-test-go/log"
 	"idena-test-go/node"
 	"idena-test-go/scenario"
 	"idena-test-go/user"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -57,10 +55,18 @@ type Process struct {
 	rpcHost                string
 	nodeBaseConfigFileName string
 	nodeBaseConfigData     []byte
+	godMode                bool
+	godHost                string
+	apiClient              *apiclient.Client
+	firstPortOffset        int
 }
 
-func NewProcess(sc scenario.Scenario, workDir string, execCommandName string, nodeBaseConfigFileName string,
-	rpcHost string, verbosity int, maxNetDelay int) *Process {
+func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string, nodeBaseConfigFileName string,
+	rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string) *Process {
+	var apiClient *apiclient.Client
+	if !godMode {
+		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
+	}
 	return &Process{
 		sc:                     sc,
 		workDir:                workDir,
@@ -70,6 +76,10 @@ func NewProcess(sc scenario.Scenario, workDir string, execCommandName string, no
 		verbosity:              verbosity,
 		maxNetDelay:            maxNetDelay,
 		nodeBaseConfigFileName: nodeBaseConfigFileName,
+		godMode:                godMode,
+		godHost:                godHost,
+		apiClient:              apiClient,
+		firstPortOffset:        firstPortOffset,
 	}
 }
 
@@ -93,112 +103,8 @@ func (process *Process) destroy() {
 	}
 }
 
-func (process *Process) init() {
-	log.Debug("Start initializing")
-
-	process.loadNodeBaseConfigData()
-
-	process.createFirstUser()
-
-	process.startFirstNode()
-
-	process.initGodAddress()
-
-	process.initBootNode()
-
-	process.initIpfsBootNode()
-
-	process.ceremonyTime = process.getCeremonyTime()
-
-	process.restartFirstNode()
-
-	log.Debug("Initialization completed")
-}
-
-func (process *Process) loadNodeBaseConfigData() {
-	if len(process.nodeBaseConfigFileName) == 0 {
-		return
-	}
-	file, err := os.Open(filepath.Join(process.workDir, process.nodeBaseConfigFileName))
-	if err != nil {
-		panic(err)
-	}
-
-	byteValue, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic(err)
-	}
-	process.nodeBaseConfigData = byteValue
-}
-
-func (process *Process) createFirstUser() {
-	index := 0
-	n := node.NewNode(index,
-		process.workDir,
-		process.execCommandName,
-		DataDir,
-		getNodeDataDir(index, firstRpcPort),
-		firstPort,
-		true,
-		process.rpcHost,
-		firstRpcPort,
-		"",
-		"",
-		firstIpfsPort,
-		"",
-		0,
-		process.verbosity,
-		process.maxNetDelay,
-		process.nodeBaseConfigData,
-	)
-	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
-	process.firstUser = u
-	process.users = append(process.users, u)
-	log.Info("Created first user")
-}
-
 func getNodeDataDir(index int, port int) string {
 	return fmt.Sprintf("datadir-%d-%d", index, port)
-}
-
-func (process *Process) startFirstNode() {
-	process.firstUser.Start(node.DeleteDataDir)
-	log.Info("Started first node")
-}
-
-func (process *Process) initGodAddress() {
-	var err error
-	u := process.firstUser
-	process.godAddress, err = u.Client.GetCoinbaseAddr()
-	process.handleError(err, fmt.Sprintf("%v unable to get address", u.GetInfo()))
-	log.Info(fmt.Sprintf("Got god address: %v", process.godAddress))
-}
-
-func (process *Process) initBootNode() {
-	var err error
-	u := process.firstUser
-	process.bootNode, err = u.Client.GetEnode()
-	process.handleError(err, fmt.Sprintf("%v unable to get enode", u.GetInfo()))
-	log.Info(fmt.Sprintf("Got boot node enode: %v", process.bootNode))
-}
-
-func (process *Process) initIpfsBootNode() {
-	var err error
-	u := process.firstUser
-	process.ipfsBootNode, err = u.Client.GetIpfsAddress()
-	process.handleError(err, fmt.Sprintf("%v unable to get ipfs boot node", u.GetInfo()))
-	log.Info(fmt.Sprintf("Got ipfs boot node: %v", process.ipfsBootNode))
-}
-
-func (process *Process) restartFirstNode() {
-	u := process.firstUser
-	u.Stop()
-	u.Node.BootNode = process.bootNode
-	u.Node.GodAddress = process.godAddress
-	u.Node.IpfsBootNode = process.ipfsBootNode
-	u.Node.CeremonyTime = process.ceremonyTime
-	u.Start(node.DeleteDb)
-	log.Info("Restarted first node")
 }
 
 func (process *Process) createNewUsers() {
@@ -208,7 +114,8 @@ func (process *Process) createNewUsers() {
 	if newUsers == 0 {
 		return
 	}
-	if epoch == 0 {
+	excludeGodNode := epoch == 0 && process.godMode
+	if excludeGodNode {
 		newUsers--
 	}
 	if newUsers > 0 {
@@ -217,7 +124,7 @@ func (process *Process) createNewUsers() {
 
 	var users []*user.User
 	usersToStart := process.users[currentUsers : currentUsers+newUsers]
-	if epoch == 0 {
+	if excludeGodNode {
 		users = process.users[currentUsers-1 : currentUsers+newUsers]
 	} else {
 		users = usersToStart
@@ -247,19 +154,19 @@ func (process *Process) createUsers(count int) {
 }
 
 func (process *Process) createUser(index int) *user.User {
-	rpcPort := firstRpcPort + index
+	rpcPort := firstRpcPort + process.firstPortOffset + index
 	n := node.NewNode(index,
 		process.workDir,
 		process.execCommandName,
 		DataDir,
 		getNodeDataDir(index, rpcPort),
-		firstPort+index,
+		firstPort+process.firstPortOffset+index,
 		false,
 		process.rpcHost,
 		rpcPort,
 		process.bootNode,
 		process.ipfsBootNode,
-		firstIpfsPort+index,
+		firstIpfsPort+process.firstPortOffset+index,
 		process.godAddress,
 		process.ceremonyTime,
 		process.verbosity,
@@ -320,13 +227,27 @@ func (process *Process) stopNode(u *user.User) {
 }
 
 func (process *Process) sendInvites(users []*user.User) {
+	if process.godMode {
+		invitesCount := 0
+		for _, u := range users {
+			sender := process.firstUser
+			invite, err := sender.Client.SendInvite(u.Address)
+			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.Address))
+			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))
+			invitesCount++
+		}
+		log.Info(fmt.Sprintf("Sent %v invites", invitesCount))
+		return
+	}
+
 	invitesCount := 0
 	for _, u := range users {
-		_, err := process.firstUser.Client.SendInvite(u.Address)
-		process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", u.GetInfo(), u.Address))
+		err := process.apiClient.CreateInvite(u.Address)
+		process.handleError(err, fmt.Sprintf("%v unable to request invite", u.GetInfo()))
 		invitesCount++
 	}
-	log.Info(fmt.Sprintf("Sent %v invites", invitesCount))
+	log.Info(fmt.Sprintf("Requested %v invites", invitesCount))
+	return
 }
 
 func (process *Process) waitForInvites(users []*user.User) {
@@ -335,8 +256,9 @@ func (process *Process) waitForInvites(users []*user.User) {
 
 func (process *Process) activateInvites(users []*user.User) {
 	for _, u := range users {
-		_, err := u.Client.ActivateInvite(u.Address)
+		hash, err := u.Client.ActivateInvite(u.Address)
 		process.handleError(err, fmt.Sprintf("%v unable to activate invite for %v", u.GetInfo(), u.Address))
+		log.Info(fmt.Sprintf("%s sent invite activation %s", u.GetInfo(), hash))
 	}
 	log.Info("Activated invites")
 }
@@ -391,10 +313,6 @@ func in(value string, list []string) bool {
 		}
 	}
 	return false
-}
-
-func (process *Process) getCeremonyTime() int64 {
-	return time.Now().UTC().Unix() + int64(process.sc.CeremonyMinOffset*60)
 }
 
 func (process *Process) checkActiveUser() bool {

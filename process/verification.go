@@ -45,7 +45,7 @@ func (process *Process) test() {
 }
 
 func (process *Process) getTestTimeout() time.Duration {
-	u := process.firstUser
+	u := process.getActiveUsers()[0]
 	epoch, err := u.Client.GetEpoch()
 	process.handleError(err, fmt.Sprintf("%v unable to get epoch", u.GetInfo()))
 	intervals, err := u.Client.CeremonyIntervals()
@@ -70,6 +70,8 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 		return
 	}
 
+	process.syncAllBotsNewEpoch()
+
 	process.switchOnlineState(u)
 
 	process.submitFlips(u, godAddress)
@@ -85,19 +87,26 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	log.Info(fmt.Sprintf("%v passed verification session", u.GetInfo()))
 }
 
+func (process *Process) syncAllBotsNewEpoch() {
+	if process.getCurrentTestEpoch() == 0 {
+		return
+	}
+	time.Sleep(time.Minute * 2)
+}
+
 func (process *Process) switchOnlineState(u *user.User) {
 	epoch := process.getCurrentTestEpoch()
 	onlines := process.sc.EpochNodeOnlines[epoch]
 	if pos(onlines, u.Index) != -1 {
-		_, err := u.Client.BecomeOnline()
+		hash, err := u.Client.BecomeOnline()
 		process.handleError(err, fmt.Sprintf("%v unable to become online", u.GetInfo()))
-		log.Info(fmt.Sprintf("%v sent request to become online", u.GetInfo()))
+		log.Info(fmt.Sprintf("%v sent request to become online, tx: %s", u.GetInfo(), hash))
 	}
 	offlines := process.sc.EpochNodeOfflines[epoch]
 	if pos(offlines, u.Index) != -1 {
-		_, err := u.Client.BecomeOffline()
+		hash, err := u.Client.BecomeOffline()
 		process.handleError(err, fmt.Sprintf("%v unable to become offline", u.GetInfo()))
-		log.Info(fmt.Sprintf("%v sent request to become offline", u.GetInfo()))
+		log.Info(fmt.Sprintf("%v sent request to become offline, tx: %s", u.GetInfo(), hash))
 	}
 }
 
@@ -149,21 +158,23 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 	if flipsToSubmit == 0 {
 		return
 	}
-	submittedFlipsCount := 0
+	var submittedFlipHashes []string
+	var submittedFlipTxs []string
 	for i := 0; i < flipsToSubmit; i++ {
 		flipHex, err := randomHex(10)
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
-		_, err = u.Client.SubmitFlip(flipHex)
+		resp, err := u.Client.SubmitFlip(flipHex)
 		if err != nil {
 			log.Error(fmt.Sprintf("%v unable to submit flip: %v", u.GetInfo(), err))
 		} else {
 			log.Debug(fmt.Sprintf("%v submitted flip", u.GetInfo()))
-			submittedFlipsCount++
+			submittedFlipHashes = append(submittedFlipHashes, resp.Hash)
+			submittedFlipTxs = append(submittedFlipTxs, resp.TxHash)
 		}
 	}
-	log.Info(fmt.Sprintf("%v submitted %v flips", u.GetInfo(), submittedFlipsCount))
+	log.Info(fmt.Sprintf("%v submitted %v flips: %v, txs: %v", u.GetInfo(), len(submittedFlipHashes), submittedFlipHashes, submittedFlipTxs))
 }
 
 func (process *Process) getFlipsCountToSubmit(u *user.User, godAddress string) int {
@@ -328,9 +339,9 @@ func (process *Process) submitAnswers(u *user.User, isShort bool) {
 		submitFunc = u.Client.SubmitLongAnswers
 	}
 	answers := process.getAnswers(u, isShort)
-	_, err := submitFunc(answers)
+	resp, err := submitFunc(answers)
 	process.handleError(err, fmt.Sprintf("%v unable to submit %s answers", u.GetInfo(), name))
-	log.Info(fmt.Sprintf("%v submitted %d %s answers: %v", u.GetInfo(), len(answers), name, answers))
+	log.Info(fmt.Sprintf("%v submitted %d %s answers: %v, tx: %s", u.GetInfo(), len(answers), name, answers, resp.TxHash))
 }
 
 func (process *Process) getAnswers(u *user.User, isShort bool) []byte {

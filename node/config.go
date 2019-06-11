@@ -87,7 +87,7 @@ func buildDefaultConfig() *config.Config {
 			BootNodes: config.DefaultIpfsBootstrapNodes,
 			SwarmKey:  config.DefaultSwarmKey,
 		},
-		Validation: config.GetDefaultValidationConfig(),
+		Validation: &config.ValidationConfig{},
 	}
 }
 
