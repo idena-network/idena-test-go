@@ -31,11 +31,14 @@ const (
 	periodNone             = "None"
 
 	stateWaitingTimeout = 180 * time.Second
-	flipsWaitingTimeout = time.Minute
 	DataDir             = "dataDir"
 	requestRetryDelay   = 8 * time.Second
 
 	initialRequiredFlips = 1
+
+	shortSessionFlipKeyDeadline = time.Second * 30
+	flipsWaitingMinTimeout      = requestRetryDelay*2 + time.Second*5
+	flipsWaitingMaxTimeout      = time.Minute
 )
 
 type Process struct {
@@ -43,7 +46,7 @@ type Process struct {
 	workDir                string
 	execCommandName        string
 	users                  []*user.User
-	firstUser              *user.User
+	godUser                *user.User
 	godAddress             string
 	bootNode               string
 	ipfsBootNode           string
@@ -230,7 +233,7 @@ func (process *Process) sendInvites(users []*user.User) {
 	if process.godMode {
 		invitesCount := 0
 		for _, u := range users {
-			sender := process.firstUser
+			sender := process.godUser
 			invite, err := sender.Client.SendInvite(u.Address)
 			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.Address))
 			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))

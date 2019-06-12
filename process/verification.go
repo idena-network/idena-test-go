@@ -7,6 +7,7 @@ import (
 	"idena-test-go/client"
 	"idena-test-go/common"
 	"idena-test-go/log"
+	"idena-test-go/node"
 	"idena-test-go/scenario"
 	"idena-test-go/user"
 	"math/rand"
@@ -46,8 +47,7 @@ func (process *Process) test() {
 
 func (process *Process) getTestTimeout() time.Duration {
 	u := process.getActiveUsers()[0]
-	epoch, err := u.Client.GetEpoch()
-	process.handleError(err, fmt.Sprintf("%v unable to get epoch", u.GetInfo()))
+	epoch := process.getEpoch(u)
 	intervals, err := u.Client.CeremonyIntervals()
 	process.handleError(err, fmt.Sprintf("%v unable to get ceremony intervals", u.GetInfo()))
 	now := time.Now()
@@ -70,11 +70,16 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 		return
 	}
 
+	epoch := process.getEpoch(u)
+	log.Info(fmt.Sprintf("%v next validation time: %v", u.GetInfo(), epoch.NextValidation))
+
 	process.syncAllBotsNewEpoch()
 
 	process.switchOnlineState(u)
 
 	process.submitFlips(u, godAddress)
+
+	process.provideDelayedFlipKeyIfNeeded(u)
 
 	waitForShortSession(u)
 
@@ -91,7 +96,8 @@ func (process *Process) syncAllBotsNewEpoch() {
 	if process.getCurrentTestEpoch() == 0 {
 		return
 	}
-	time.Sleep(time.Minute * 2)
+	d := time.Second * 90
+	time.Sleep(d)
 }
 
 func (process *Process) switchOnlineState(u *user.User) {
@@ -216,8 +222,6 @@ func randomHex(n int) (string, error) {
 }
 
 func waitForShortSession(u *user.User) {
-	epoch, _ := u.Client.GetEpoch()
-	log.Info(fmt.Sprintf("%v next validation time: %v", u.GetInfo(), epoch.NextValidation))
 	waitForPeriod(u, periodShortSession)
 }
 
@@ -262,22 +266,30 @@ func (process *Process) getFlipHashes(u *user.User, isShort bool) {
 			u.TestContext.LongFlipHashes = flipHashes
 		}
 	}
-	deadline := time.Now().Add(flipsWaitingTimeout)
-	for time.Now().Before(deadline) {
-		flipHashes, err := loadFunc()
-		if err == nil {
-			err = process.checkFlipHashes(flipHashes)
-		}
+	// Random deadline to have some users with None answers in case of delayed flip keys
+	deadlineOffset := flipsWaitingMinTimeout +
+		time.Duration(rand.Int63n(int64(flipsWaitingMaxTimeout-flipsWaitingMinTimeout)))
+	deadline := time.Now().Add(deadlineOffset)
+	var flipHashes []client.FlipHashesResponse
+	for {
+		var err error
+		flipHashes, err = loadFunc()
 		if err != nil {
-			log.Info(fmt.Sprintf("%v unable to get %s flip hashes: %v", u.GetInfo(), name, err))
-			time.Sleep(requestRetryDelay)
-			continue
+			process.handleError(err, fmt.Sprintf("%v unable to get %s flip hashes", u.GetInfo(), name))
+			return
 		}
-		setFunc(flipHashes)
-		log.Info(fmt.Sprintf("%v got %d %s flip hashes", u.GetInfo(), len(flipHashes), name))
-		return
+		err = process.checkFlipHashes(flipHashes)
+		if err == nil {
+			break
+		}
+		log.Info(fmt.Sprintf("%v unable to get %s flip hashes: %v", u.GetInfo(), name, err))
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(requestRetryDelay)
 	}
-	process.handleError(errors.New(fmt.Sprintf("%v %s flip hashes waiting timeout", name, u.GetInfo())), "")
+	setFunc(flipHashes)
+	log.Info(fmt.Sprintf("%v got %d %s flip hashes", u.GetInfo(), len(flipHashes), name))
 }
 
 func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse) error {
@@ -386,4 +398,24 @@ func getSessionName(isShort bool) string {
 		return "short"
 	}
 	return "long"
+}
+
+func (process *Process) provideDelayedFlipKeyIfNeeded(u *user.User) {
+	users, present := process.sc.EpochDelayedFlipKeys[process.getCurrentTestEpoch()]
+	if !present || pos(users, u.Index) == -1 {
+		return
+	}
+	log.Info(fmt.Sprintf("%v providing delayed flip key", u.GetInfo()))
+	epoch := process.getEpoch(u)
+	sleepTime := epoch.NextValidation.Sub(time.Now()) + shortSessionFlipKeyDeadline + time.Second*5
+	time.Sleep(time.Second * 20) // Time for mining submitted flips
+	go process.stopNode(u)
+	time.Sleep(sleepTime)
+	process.startNode(u, node.DeleteNothing)
+}
+
+func (process *Process) getEpoch(u *user.User) client.Epoch {
+	epoch, err := u.Client.GetEpoch()
+	process.handleError(err, fmt.Sprintf("%v unable to get epoch", u.GetInfo()))
+	return epoch
 }

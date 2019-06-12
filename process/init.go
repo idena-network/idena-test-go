@@ -18,8 +18,8 @@ func (process *Process) init() {
 	process.loadNodeBaseConfigData()
 
 	if process.godMode {
-		process.createFirstUser()
-		process.startFirstNode()
+		process.createGodUser()
+		process.startGodNode()
 	}
 
 	process.initGodAddress()
@@ -29,7 +29,7 @@ func (process *Process) init() {
 	process.ceremonyTime = process.getCeremonyTime()
 
 	if process.godMode {
-		process.restartFirstNode()
+		process.restartGodNode()
 	}
 
 	log.Debug("Initialization completed")
@@ -51,7 +51,7 @@ func (process *Process) loadNodeBaseConfigData() {
 	process.nodeBaseConfigData = byteValue
 }
 
-func (process *Process) createFirstUser() {
+func (process *Process) createGodUser() {
 	index := 0
 	n := node.NewNode(index,
 		process.workDir,
@@ -72,14 +72,14 @@ func (process *Process) createFirstUser() {
 		process.nodeBaseConfigData,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
-	process.firstUser = u
+	process.godUser = u
 	process.users = append(process.users, u)
-	log.Info("Created first user")
+	log.Info("Created god user")
 }
 
-func (process *Process) startFirstNode() {
-	process.firstUser.Start(node.DeleteDataDir)
-	log.Info("Started first node")
+func (process *Process) startGodNode() {
+	process.godUser.Start(node.DeleteDataDir)
+	log.Info("Started god node")
 }
 
 func (process *Process) initGodAddress() {
@@ -89,7 +89,7 @@ func (process *Process) initGodAddress() {
 
 func (process *Process) getGodAddress() string {
 	if process.godMode {
-		u := process.firstUser
+		u := process.godUser
 		godAddress, err := u.Client.GetCoinbaseAddr()
 		process.handleError(err, fmt.Sprintf("%v unable to get address", u.GetInfo()))
 		return godAddress
@@ -107,7 +107,7 @@ func (process *Process) initBootNode() {
 
 func (process *Process) getBootNode() string {
 	if process.godMode {
-		u := process.firstUser
+		u := process.godUser
 		bootNode, err := u.Client.GetEnode()
 		process.handleError(err, fmt.Sprintf("%v unable to get enode", u.GetInfo()))
 		return bootNode
@@ -125,7 +125,7 @@ func (process *Process) initIpfsBootNode() {
 
 func (process *Process) getIpfsBootNode() string {
 	if process.godMode {
-		u := process.firstUser
+		u := process.godUser
 		ipfsBootNode, err := u.Client.GetIpfsAddress()
 		process.handleError(err, fmt.Sprintf("%v unable to get ipfs boot node", u.GetInfo()))
 		return ipfsBootNode
@@ -147,13 +147,13 @@ func (process *Process) getCeremonyTime() int64 {
 	return ceremonyTime
 }
 
-func (process *Process) restartFirstNode() {
-	u := process.firstUser
+func (process *Process) restartGodNode() {
+	u := process.godUser
 	u.Stop()
 	u.Node.BootNode = process.bootNode
 	u.Node.GodAddress = process.godAddress
 	u.Node.IpfsBootNode = process.ipfsBootNode
 	u.Node.CeremonyTime = process.ceremonyTime
 	u.Start(node.DeleteDb)
-	log.Info("Restarted first node")
+	log.Info("Restarted god node")
 }

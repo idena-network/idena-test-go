@@ -32,14 +32,14 @@ func (process *Process) RequestInvite(address string) error {
 	if !process.godMode {
 		return errors.New("unable to send invite as there is no god node")
 	}
-	if process.firstUser == nil {
+	if process.godUser == nil {
 		return errors.New("god node has not been initialized yet")
 	}
-	invite, err := process.firstUser.Client.SendInvite(address)
+	invite, err := process.godUser.Client.SendInvite(address)
 	if err != nil {
 		return err
 	}
-	log.Info(fmt.Sprintf("%s sent invite %s to %s by request", process.firstUser.GetInfo(), invite.Hash, address))
+	log.Info(fmt.Sprintf("%s sent invite %s to %s by request", process.godUser.GetInfo(), invite.Hash, address))
 	return nil
 }
 

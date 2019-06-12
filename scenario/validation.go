@@ -27,6 +27,9 @@ func (sc *incomingScenario) validate() error {
 	if err := validateEpochsNodes(sc.NodeOfflines); err != nil {
 		return err
 	}
+	if err := validateEpochsNodes(sc.DelayedKeys); err != nil {
+		return err
+	}
 	if err := validateTransactions(sc.Txs); err != nil {
 		return err
 	}

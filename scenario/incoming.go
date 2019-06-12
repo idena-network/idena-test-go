@@ -8,6 +8,7 @@ type incomingScenario struct {
 	NodeStops         []epochsNodes  `json:"nodeStops"`
 	NodeOnlines       []epochsNodes  `json:"nodeOnlines"`
 	NodeOfflines      []epochsNodes  `json:"nodeOfflines"`
+	DelayedKeys       []epochsNodes  `json:"delayedKeys"`
 	Txs               []transactions `json:"txs"`
 	DefaultAnswer     byte           `json:"defaultAnswer"`
 	Ceremonies        []ceremony     `json:"ceremonies"`

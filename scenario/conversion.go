@@ -14,6 +14,7 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.EpochNodeStops = convertEpochsNodes(incomingSc.NodeStops)
 	sc.EpochNodeOnlines = convertEpochsNodes(incomingSc.NodeOnlines)
 	sc.EpochNodeOfflines = convertEpochsNodes(incomingSc.NodeOfflines)
+	sc.EpochDelayedFlipKeys = convertEpochsNodes(incomingSc.DelayedKeys)
 	sc.EpochTxs = convertEpochTxs(incomingSc.Txs)
 	sc.CeremonyMinOffset = incomingSc.CeremonyMinOffset
 	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
