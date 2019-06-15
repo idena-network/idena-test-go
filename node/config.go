@@ -3,12 +3,8 @@ package node
 import (
 	"encoding/json"
 	"fmt"
-	"idena-go/common"
 	"idena-go/config"
-	"idena-go/p2p"
 	"idena-go/p2p/enode"
-	"idena-go/p2p/nat"
-	"idena-go/rpc"
 	"path/filepath"
 )
 
@@ -19,6 +15,7 @@ type specConfig struct {
 	GenesisConf genesisConf
 	Consensus   consensusConf
 	IpfsConf    ipfsConfig
+	Validation  *config.ValidationConfig
 }
 
 type p2pConfig struct {
@@ -48,14 +45,12 @@ type ipfsConfig struct {
 }
 
 func buildConfig(node *Node) interface{} {
-	specConfig := node.buildSpecificConfig()
+	conf := node.buildSpecificConfig()
 	if node.baseConfigData == nil {
-		return specConfig
+		return conf
 	}
-	totalConfig := buildDefaultConfig()
-	addConfig(totalConfig, node.baseConfigData)
-	addSpecificConfig(totalConfig, specConfig)
-	return totalConfig
+	addConfig(conf, node.baseConfigData)
+	return conf
 }
 
 func (node *Node) buildNodeConfigFileData() []byte {
@@ -69,29 +64,7 @@ func (node *Node) buildNodeConfigFileData() []byte {
 	return bytes
 }
 
-func buildDefaultConfig() *config.Config {
-	return &config.Config{
-		P2P: &p2p.Config{
-			MaxPeers: 25,
-			NAT:      nat.Any(),
-		},
-		Consensus: config.GetDefaultConsensusConfig(),
-		RPC:       rpc.GetDefaultRPCConfig(config.DefaultRpcHost, config.DefaultRpcPort),
-		GenesisConf: &config.GenesisConf{
-			FirstCeremonyTime: config.DefaultCeremonyTime,
-			GodAddress:        common.HexToAddress(config.DefaultGodAddress),
-		},
-		IpfsConf: &config.IpfsConfig{
-			DataDir:   filepath.Join(config.DefaultDataDir, config.DefaultIpfsDataDir),
-			IpfsPort:  config.DefaultIpfsPort,
-			BootNodes: config.DefaultIpfsBootstrapNodes,
-			SwarmKey:  config.DefaultSwarmKey,
-		},
-		Validation: &config.ValidationConfig{},
-	}
-}
-
-func addConfig(c *config.Config, configData []byte) {
+func addConfig(c *specConfig, configData []byte) {
 	if configData == nil {
 		return
 	}
@@ -142,12 +115,4 @@ func (node *Node) buildSpecificConfig() *specConfig {
 			BootNodes: []string{node.IpfsBootNode},
 		},
 	}
-}
-
-func addSpecificConfig(totalConfig *config.Config, specConfig *specConfig) {
-	specBytes, err := json.Marshal(specConfig)
-	if err != nil {
-		panic(err)
-	}
-	addConfig(totalConfig, specBytes)
 }
