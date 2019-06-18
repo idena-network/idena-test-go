@@ -333,3 +333,31 @@ func (client *Client) CeremonyIntervals() (CeremonyIntervals, error) {
 	}
 	return ceremonyIntervals, nil
 }
+
+func (client *Client) GetPeers() ([]Peer, error) {
+	req := request{
+		Id:     client.getReqId(),
+		Method: "net_peers",
+	}
+	var peers []Peer
+	resp := response{Result: &peers}
+	client.sendRequestAndParseResponse(req, &resp)
+	if resp.Error != nil {
+		return nil, errors.New(resp.Error.Message)
+	}
+	return peers, nil
+}
+
+func (client *Client) AddPeer(url string) error {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "net_addPeer",
+		Payload: []string{url},
+	}
+	resp := response{}
+	client.sendRequestAndParseResponse(req, &resp)
+	if resp.Error != nil {
+		return errors.New(resp.Error.Message)
+	}
+	return nil
+}

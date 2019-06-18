@@ -10,6 +10,7 @@ import (
 	"idena-test-go/node"
 	"idena-test-go/scenario"
 	"idena-test-go/user"
+	"strings"
 	"sync"
 	"time"
 )
@@ -95,6 +96,7 @@ func (process *Process) Start() {
 		if !process.checkActiveUser() {
 			process.handleError(errors.New("there are no active users"), "")
 		}
+		process.addPeers()
 		process.test()
 		process.testCounter++
 	}
@@ -136,6 +138,8 @@ func (process *Process) createNewUsers() {
 	process.startNodes(usersToStart, node.DeleteDataDir)
 
 	process.getNodeAddresses(users)
+
+	process.getEnodes(users)
 
 	process.sendInvites(users)
 
@@ -202,6 +206,15 @@ func (process *Process) getNodeAddresses(users []*user.User) {
 		u.Address, err = u.Client.GetCoinbaseAddr()
 		process.handleError(err, fmt.Sprintf("%v unable to get node address", u.GetInfo()))
 		log.Info(fmt.Sprintf("%v got coinbase address %v", u.GetInfo(), u.Address))
+	}
+}
+
+func (process *Process) getEnodes(users []*user.User) {
+	for _, u := range users {
+		var err error
+		u.Enode, err = u.Client.GetEnode()
+		process.handleError(err, fmt.Sprintf("%v unable to get enode", u.GetInfo()))
+		log.Info(fmt.Sprintf("%v got enode %v", u.GetInfo(), u.Enode))
 	}
 }
 
@@ -362,4 +375,41 @@ func (process *Process) getUsers(indexes []int) []*user.User {
 		nodes = append(nodes, process.users[index])
 	}
 	return nodes
+}
+
+func (process *Process) addPeers() {
+	users := process.getActiveUsers()
+	for i := 0; i < len(users)-1; i++ {
+		for j := i + 1; j < len(users); j++ {
+			process.addPeer(users[i], users[j])
+			process.addPeer(users[j], users[i])
+		}
+	}
+}
+
+func (process *Process) getPeers(u *user.User) []client.Peer {
+	peers, err := u.Client.GetPeers()
+	process.handleError(err, fmt.Sprintf("%s unable to get peers", u.GetInfo()))
+	return peers
+}
+
+func containsPeer(peers []client.Peer, u *user.User) bool {
+	url := strings.SplitN(u.Enode, "@", 2)[1]
+	for _, peer := range peers {
+		if peer.RemoteAddr == url {
+			return true
+		}
+	}
+	return false
+}
+
+func (process *Process) addPeer(peer *user.User, to *user.User) {
+	if containsPeer(process.getPeers(to), peer) {
+		return
+	}
+
+	if err := to.Client.AddPeer(peer.Enode); err != nil {
+		process.handleError(err, fmt.Sprintf("%s unable to add peer %s", to.GetInfo(), peer.Enode))
+	}
+	log.Info(fmt.Sprintf("%s added peer %s", to.GetInfo(), peer.Enode))
 }

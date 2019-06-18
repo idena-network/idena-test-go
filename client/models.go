@@ -92,3 +92,9 @@ type CeremonyIntervals struct {
 	LongSessionDuration      float64
 	AfterLongSessionDuration float64
 }
+
+type Peer struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	RemoteAddr string `json:"addr"`
+}

@@ -10,6 +10,7 @@ type User struct {
 	Client      *client.Client
 	Node        *node.Node
 	Address     string
+	Enode       string
 	TestContext *TestContext
 	Index       int
 	Active      bool
