@@ -7,13 +7,14 @@ import (
 )
 
 type User struct {
-	Client      *client.Client
-	Node        *node.Node
-	Address     string
-	Enode       string
-	TestContext *TestContext
-	Index       int
-	Active      bool
+	Client         *client.Client
+	Node           *node.Node
+	Address        string
+	Enode          string
+	TestContext    *TestContext
+	Index          int
+	Active         bool
+	SentAutoOnline bool
 }
 
 type TestContext struct {

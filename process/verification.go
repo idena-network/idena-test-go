@@ -103,17 +103,36 @@ func (process *Process) syncAllBotsNewEpoch() {
 func (process *Process) switchOnlineState(u *user.User) {
 	epoch := process.getCurrentTestEpoch()
 	onlines := process.sc.EpochNodeOnlines[epoch]
-	if pos(onlines, u.Index) != -1 {
-		hash, err := u.Client.BecomeOnline()
-		process.handleError(err, fmt.Sprintf("%v unable to become online", u.GetInfo()))
-		log.Info(fmt.Sprintf("%v sent request to become online, tx: %s", u.GetInfo(), hash))
+	becomeOnline := pos(onlines, u.Index) != -1
+	if becomeOnline {
+		process.becomeOnline(u)
 	}
 	offlines := process.sc.EpochNodeOfflines[epoch]
-	if pos(offlines, u.Index) != -1 {
-		hash, err := u.Client.BecomeOffline()
-		process.handleError(err, fmt.Sprintf("%v unable to become offline", u.GetInfo()))
-		log.Info(fmt.Sprintf("%v sent request to become offline, tx: %s", u.GetInfo(), hash))
+	becomeOffline := pos(offlines, u.Index) != -1
+	if becomeOffline {
+		process.becomeOffline(u)
 	}
+
+	// Become online by default if state is newbie
+	if !becomeOnline && !becomeOffline && !u.SentAutoOnline {
+		identity := process.getIdentity(u)
+		if identity.State == newbie {
+			process.becomeOnline(u)
+			u.SentAutoOnline = true
+		}
+	}
+}
+
+func (process *Process) becomeOnline(u *user.User) {
+	hash, err := u.Client.BecomeOnline()
+	process.handleError(err, fmt.Sprintf("%v unable to become online", u.GetInfo()))
+	log.Info(fmt.Sprintf("%v sent request to become online, tx: %s", u.GetInfo(), hash))
+}
+
+func (process *Process) becomeOffline(u *user.User) {
+	hash, err := u.Client.BecomeOffline()
+	process.handleError(err, fmt.Sprintf("%v unable to become offline", u.GetInfo()))
+	log.Info(fmt.Sprintf("%v sent request to become offline, tx: %s", u.GetInfo(), hash))
 }
 
 func pos(slice []int, target int) int {
