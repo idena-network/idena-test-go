@@ -75,11 +75,11 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	process.syncAllBotsNewEpoch()
 
-	process.switchOnlineState(u)
+	process.switchOnlineState(u, epoch.NextValidation)
 
 	process.submitFlips(u, godAddress)
 
-	process.provideDelayedFlipKeyIfNeeded(u)
+	process.provideDelayedFlipKeyIfNeeded(u, epoch.NextValidation)
 
 	waitForShortSession(u)
 
@@ -100,39 +100,55 @@ func (process *Process) syncAllBotsNewEpoch() {
 	time.Sleep(d)
 }
 
-func (process *Process) switchOnlineState(u *user.User) {
+func (process *Process) switchOnlineState(u *user.User, nextValidationTime time.Time) {
 	epoch := process.getCurrentTestEpoch()
 	onlines := process.sc.EpochNodeOnlines[epoch]
 	becomeOnline := pos(onlines, u.Index) != -1
 	if becomeOnline {
-		process.becomeOnline(u)
+		process.tryToSwitchOnlineState(u, nextValidationTime, true)
 	}
 	offlines := process.sc.EpochNodeOfflines[epoch]
 	becomeOffline := pos(offlines, u.Index) != -1
 	if becomeOffline {
-		process.becomeOffline(u)
+		process.tryToSwitchOnlineState(u, nextValidationTime, false)
 	}
 
 	// Become online by default if state is newbie
 	if !becomeOnline && !becomeOffline && !u.SentAutoOnline {
 		identity := process.getIdentity(u)
 		if identity.State == newbie {
-			process.becomeOnline(u)
+			process.tryToSwitchOnlineState(u, nextValidationTime, true)
 			u.SentAutoOnline = true
 		}
 	}
 }
 
-func (process *Process) becomeOnline(u *user.User) {
-	hash, err := u.Client.BecomeOnline()
-	process.handleError(err, fmt.Sprintf("%v unable to become online", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v sent request to become online, tx: %s", u.GetInfo(), hash))
-}
-
-func (process *Process) becomeOffline(u *user.User) {
-	hash, err := u.Client.BecomeOffline()
-	process.handleError(err, fmt.Sprintf("%v unable to become offline", u.GetInfo()))
-	log.Info(fmt.Sprintf("%v sent request to become offline, tx: %s", u.GetInfo(), hash))
+func (process *Process) tryToSwitchOnlineState(u *user.User, nextValidationTime time.Time, online bool) {
+	var switchOnline func() (string, error)
+	var stateName string
+	if online {
+		switchOnline = u.Client.BecomeOnline
+		stateName = "online"
+	} else {
+		switchOnline = u.Client.BecomeOffline
+		stateName = "offline"
+	}
+	// Try to switch online state till (nextValidationTime - 1 minute) to leave time for submitting flips
+	deadline := nextValidationTime.Add(-time.Minute)
+	attempts := 0
+	for {
+		hash, err := switchOnline()
+		attempts++
+		if err == nil {
+			log.Info(fmt.Sprintf("%v sent request to become %s, tx: %s, attempts: %d", u.GetInfo(), stateName, hash, attempts))
+			return
+		}
+		if time.Now().After(deadline) {
+			process.handleError(err, fmt.Sprintf("%v unable to become %s, attempts: %d", u.GetInfo(), stateName, attempts))
+			return
+		}
+		time.Sleep(requestRetryDelay)
+	}
 }
 
 func pos(slice []int, target int) int {
@@ -419,15 +435,14 @@ func getSessionName(isShort bool) string {
 	return "long"
 }
 
-func (process *Process) provideDelayedFlipKeyIfNeeded(u *user.User) {
+func (process *Process) provideDelayedFlipKeyIfNeeded(u *user.User, nextValidationTime time.Time) {
 	users, present := process.sc.EpochDelayedFlipKeys[process.getCurrentTestEpoch()]
 	if !present || pos(users, u.Index) == -1 {
 		return
 	}
 	log.Info(fmt.Sprintf("%v providing delayed flip key", u.GetInfo()))
-	epoch := process.getEpoch(u)
-	sleepTime := epoch.NextValidation.Sub(time.Now()) + shortSessionFlipKeyDeadline + time.Second*5
-	time.Sleep(time.Second * 20) // Time for mining submitted flips
+	sleepTime := nextValidationTime.Sub(time.Now()) + shortSessionFlipKeyDeadline + time.Second*5
+	time.Sleep(time.Second * 20) // Time for mining last operations
 	go process.stopNode(u)
 	time.Sleep(sleepTime)
 	process.startNode(u, node.DeleteNothing)
