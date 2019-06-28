@@ -16,7 +16,7 @@ import (
 )
 
 func (process *Process) test() {
-	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.testCounter))
+	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.getCurrentTestIndex()))
 	wg := &sync.WaitGroup{}
 	wg.Add(len(process.users))
 	timeout := process.getTestTimeout()
@@ -41,8 +41,8 @@ func (process *Process) test() {
 	if !ok {
 		process.handleError(errors.New("verification sessions timeout"), "")
 	}
-	process.assert(process.testCounter, es)
-	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%d) **************", process.testCounter))
+	process.assert(process.getCurrentTestIndex(), es)
+	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%d) **************", process.getCurrentTestIndex()))
 }
 
 func (process *Process) getTestTimeout() time.Duration {
@@ -71,7 +71,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	}
 
 	epoch := process.getEpoch(u)
-	log.Info(fmt.Sprintf("%v next validation time: %v", u.GetInfo(), epoch.NextValidation))
+	log.Info(fmt.Sprintf("%s epoch: %d, next validation time: %v", u.GetInfo(), epoch.Epoch, epoch.NextValidation))
 
 	process.syncAllBotsNewEpoch()
 
@@ -93,7 +93,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 }
 
 func (process *Process) syncAllBotsNewEpoch() {
-	if process.getCurrentTestEpoch() == 0 {
+	if process.godMode && process.getCurrentTestIndex() == 0 {
 		return
 	}
 	d := time.Second * 90
@@ -101,13 +101,13 @@ func (process *Process) syncAllBotsNewEpoch() {
 }
 
 func (process *Process) switchOnlineState(u *user.User, nextValidationTime time.Time) {
-	epoch := process.getCurrentTestEpoch()
-	onlines := process.sc.EpochNodeOnlines[epoch]
+	testIndex := process.getCurrentTestIndex()
+	onlines := process.sc.EpochNodeOnlines[testIndex]
 	becomeOnline := pos(onlines, u.Index) != -1
 	if becomeOnline {
 		process.tryToSwitchOnlineState(u, nextValidationTime, true)
 	}
-	offlines := process.sc.EpochNodeOfflines[epoch]
+	offlines := process.sc.EpochNodeOfflines[testIndex]
 	becomeOffline := pos(offlines, u.Index) != -1
 	if becomeOffline {
 		process.tryToSwitchOnlineState(u, nextValidationTime, false)
@@ -235,7 +235,7 @@ func (process *Process) getFlipsCountToSubmit(u *user.User, godAddress string) i
 }
 
 func (process *Process) getScUserCeremony(u *user.User) *scenario.UserCeremony {
-	ceremony := process.sc.Ceremonies[process.testCounter]
+	ceremony := process.sc.Ceremonies[process.getCurrentTestIndex()]
 	if ceremony == nil {
 		return nil
 	}
@@ -282,7 +282,7 @@ func waitForSessionFinish(u *user.User) {
 	waitForPeriod(u, periodNone)
 }
 
-func (process *Process) getCurrentTestEpoch() int {
+func (process *Process) getCurrentTestIndex() int {
 	return process.testCounter
 }
 
@@ -436,7 +436,7 @@ func getSessionName(isShort bool) string {
 }
 
 func (process *Process) provideDelayedFlipKeyIfNeeded(u *user.User, nextValidationTime time.Time) {
-	users, present := process.sc.EpochDelayedFlipKeys[process.getCurrentTestEpoch()]
+	users, present := process.sc.EpochDelayedFlipKeys[process.getCurrentTestIndex()]
 	if !present || pos(users, u.Index) == -1 {
 		return
 	}

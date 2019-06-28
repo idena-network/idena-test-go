@@ -31,8 +31,8 @@ func (process *Process) startEpochBackgroundProcess(wg *sync.WaitGroup, timeout 
 }
 
 func (process *Process) generateTxs(flag *EpochCompletionFlag) {
-	epoch := process.getCurrentTestEpoch()
-	txs, ok := process.sc.EpochTxs[epoch]
+	testIndex := process.getCurrentTestIndex()
+	txs, ok := process.sc.EpochTxs[testIndex]
 	if !ok {
 		return
 	}
@@ -41,7 +41,7 @@ func (process *Process) generateTxs(flag *EpochCompletionFlag) {
 		log.Warn(fmt.Sprintf("Not enough active users for generating transactions: %d", len(activeUsers)))
 		return
 	}
-	log.Info(fmt.Sprintf("Start generating txs (test #%d)", epoch))
+	log.Info(fmt.Sprintf("Start generating txs (test #%d)", testIndex))
 	senderIdx := -1
 	for !flag.completed {
 		senderIdx++
@@ -64,7 +64,7 @@ func (process *Process) generateTxs(flag *EpochCompletionFlag) {
 
 		time.Sleep(txs.Period)
 	}
-	log.Info(fmt.Sprintf("Stop generating txs (test #%d)", epoch))
+	log.Info(fmt.Sprintf("Stop generating txs (test #%d)", testIndex))
 }
 
 func (process *Process) filterActiveUsers(users []int) []*user.User {

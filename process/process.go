@@ -113,13 +113,13 @@ func getNodeDataDir(index int, port int) string {
 }
 
 func (process *Process) createNewUsers() {
-	epoch := process.getCurrentTestEpoch()
+	testIndex := process.getCurrentTestIndex()
 	currentUsers := len(process.users)
-	newUsers := process.sc.EpochNewUsers[epoch]
+	newUsers := process.sc.EpochNewUsers[testIndex]
 	if newUsers == 0 {
 		return
 	}
-	excludeGodNode := epoch == 0 && process.godMode
+	excludeGodNode := process.godMode && testIndex == 0
 	if excludeGodNode {
 		newUsers--
 	}
@@ -356,14 +356,14 @@ func (process *Process) handleError(err error, prefix string) {
 }
 
 func (process *Process) switchNodes() {
-	epoch := process.getCurrentTestEpoch()
+	testIndex := process.getCurrentTestIndex()
 
-	nodeIndexesToStop := process.sc.EpochNodeStops[epoch]
+	nodeIndexesToStop := process.sc.EpochNodeStops[testIndex]
 	if len(nodeIndexesToStop) > 0 {
 		process.stopNodes(process.getUsers(nodeIndexesToStop))
 	}
 
-	nodeIndexesToStart := process.sc.EpochNodeStarts[epoch]
+	nodeIndexesToStart := process.sc.EpochNodeStarts[testIndex]
 	if len(nodeIndexesToStart) > 0 {
 		process.startNodes(process.getUsers(nodeIndexesToStart), node.DeleteNothing)
 	}
