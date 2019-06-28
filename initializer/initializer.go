@@ -68,7 +68,7 @@ func (in *initializer) initInstance(index int) {
 	if index == 0 {
 		botConfig.GodMode = true
 	} else {
-		botConfig.PortOffset = 100
+		botConfig.PortOffset = in.conf.PortOffset * index
 	}
 	botConfig.GodHost = in.conf.GodHost
 

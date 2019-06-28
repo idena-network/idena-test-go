@@ -13,6 +13,7 @@ type config struct {
 	Scenario       string
 	NodeApp        string
 	BotApp         string
+	PortOffset     int
 }
 
 func loadFromFile(path string) config {
