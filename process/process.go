@@ -411,5 +411,5 @@ func (process *Process) addPeer(peer *user.User, to *user.User) {
 	if err := to.Client.AddPeer(peer.Enode); err != nil {
 		process.handleError(err, fmt.Sprintf("%s unable to add peer %s", to.GetInfo(), peer.Enode))
 	}
-	log.Info(fmt.Sprintf("%s added peer %s", to.GetInfo(), peer.Enode))
+	log.Debug(fmt.Sprintf("%s added peer %s", to.GetInfo(), peer.Enode))
 }
