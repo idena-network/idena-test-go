@@ -105,25 +105,32 @@ func (process *Process) switchOnlineState(u *user.User, nextValidationTime time.
 	onlines := process.sc.EpochNodeOnlines[testIndex]
 	becomeOnline := pos(onlines, u.Index) != -1
 	if becomeOnline {
-		process.tryToSwitchOnlineState(u, nextValidationTime, true)
+		if attempts, err := process.tryToSwitchOnlineState(u, nextValidationTime, true); err != nil {
+			process.handleError(err, fmt.Sprintf("%v unable to become online, attempts: %d", u.GetInfo(), attempts))
+		}
 	}
 	offlines := process.sc.EpochNodeOfflines[testIndex]
 	becomeOffline := pos(offlines, u.Index) != -1
 	if becomeOffline {
-		process.tryToSwitchOnlineState(u, nextValidationTime, false)
+		if attempts, err := process.tryToSwitchOnlineState(u, nextValidationTime, false); err != nil {
+			process.handleError(err, fmt.Sprintf("%v unable to become offline, attempts: %d", u.GetInfo(), attempts))
+		}
 	}
 
 	// Become online by default if state is newbie
 	if !becomeOnline && !becomeOffline && !u.SentAutoOnline {
 		identity := process.getIdentity(u)
-		if identity.State == newbie {
-			process.tryToSwitchOnlineState(u, nextValidationTime, true)
-			u.SentAutoOnline = true
+		if identity.State == newbie || identity.State == verified {
+			if attempts, err := process.tryToSwitchOnlineState(u, nextValidationTime, true); err != nil {
+				log.Warn(fmt.Sprintf("%v unable to become online, attempts: %d, error: %v", u.GetInfo(), attempts, err))
+			} else {
+				u.SentAutoOnline = true
+			}
 		}
 	}
 }
 
-func (process *Process) tryToSwitchOnlineState(u *user.User, nextValidationTime time.Time, online bool) {
+func (process *Process) tryToSwitchOnlineState(u *user.User, nextValidationTime time.Time, online bool) (int, error) {
 	var switchOnline func() (string, error)
 	var stateName string
 	if online {
@@ -133,19 +140,18 @@ func (process *Process) tryToSwitchOnlineState(u *user.User, nextValidationTime 
 		switchOnline = u.Client.BecomeOffline
 		stateName = "offline"
 	}
-	// Try to switch online state till (nextValidationTime - 1 minute) to leave time for submitting flips
-	deadline := nextValidationTime.Add(-time.Minute)
+	// Try to switch online state till (nextValidationTime - 3 minutes) to leave time for submitting flips
+	deadline := nextValidationTime.Add(-time.Minute * 3)
 	attempts := 0
 	for {
 		hash, err := switchOnline()
 		attempts++
 		if err == nil {
 			log.Info(fmt.Sprintf("%v sent request to become %s, tx: %s, attempts: %d", u.GetInfo(), stateName, hash, attempts))
-			return
+			return attempts, nil
 		}
 		if time.Now().After(deadline) {
-			process.handleError(err, fmt.Sprintf("%v unable to become %s, attempts: %d", u.GetInfo(), stateName, attempts))
-			return
+			return attempts, err
 		}
 		time.Sleep(requestRetryDelay)
 	}
