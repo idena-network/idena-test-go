@@ -1,0 +1,11 @@
+{
+  "Verbosity": 3,
+  "NodeVerbosity": 5,
+  "MaxNetDelay": 500,
+  "WorkDir": "",
+  "Command": "idena-go",
+  "Scenario": "scenario.json",
+  "NodeConfig": "nodeConfig.json",
+  "RpcAddr": "localhost",
+  "GodMode": true
+}
