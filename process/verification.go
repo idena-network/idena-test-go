@@ -88,8 +88,6 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	process.collectUserEpochState(u, state)
 
 	waitForSessionFinish(u)
-
-	log.Info(fmt.Sprintf("%v passed verification session", u.GetInfo()))
 }
 
 func (process *Process) syncAllBotsNewEpoch() {
@@ -200,28 +198,37 @@ func (process *Process) initTest(u *user.User) {
 	u.TestContext = &ctx
 }
 
+type submittedFlip struct {
+	hash        string
+	wordPairIdx uint8
+	txHash      string
+}
+
 func (process *Process) submitFlips(u *user.User, godAddress string) {
 	flipsToSubmit := process.getFlipsCountToSubmit(u, godAddress)
 	if flipsToSubmit == 0 {
 		return
 	}
-	var submittedFlipHashes []string
-	var submittedFlipTxs []string
+	var submittedFlips []submittedFlip
 	for i := 0; i < flipsToSubmit; i++ {
 		flipHex, err := randomHex(10)
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
-		resp, err := u.Client.SubmitFlip(flipHex)
+		wordPairIdx := uint8(i)
+		resp, err := u.Client.SubmitFlip(flipHex, wordPairIdx)
 		if err != nil {
 			log.Error(fmt.Sprintf("%v unable to submit flip: %v", u.GetInfo(), err))
 		} else {
 			log.Debug(fmt.Sprintf("%v submitted flip", u.GetInfo()))
-			submittedFlipHashes = append(submittedFlipHashes, resp.Hash)
-			submittedFlipTxs = append(submittedFlipTxs, resp.TxHash)
+			submittedFlips = append(submittedFlips, submittedFlip{
+				hash:        resp.Hash,
+				wordPairIdx: wordPairIdx,
+				txHash:      resp.TxHash,
+			})
 		}
 	}
-	log.Info(fmt.Sprintf("%v submitted %v flips: %v, txs: %v", u.GetInfo(), len(submittedFlipHashes), submittedFlipHashes, submittedFlipTxs))
+	log.Info(fmt.Sprintf("%v submitted %v flips: %v", u.GetInfo(), len(submittedFlips), submittedFlips))
 }
 
 func (process *Process) getFlipsCountToSubmit(u *user.User, godAddress string) int {

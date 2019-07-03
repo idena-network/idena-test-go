@@ -142,11 +142,15 @@ func (client *Client) ActivateInvite(to string) (string, error) {
 	return resp.Result.(string), nil
 }
 
-func (client *Client) SubmitFlip(hex string) (FlipSubmitResponse, error) {
+func (client *Client) SubmitFlip(hex string, wordPairIdx uint8) (FlipSubmitResponse, error) {
+	params := flipSubmitArgs{
+		Hex:  hex,
+		Pair: wordPairIdx,
+	}
 	req := request{
 		Id:      client.getReqId(),
 		Method:  "flip_submit",
-		Payload: []string{hex},
+		Payload: []flipSubmitArgs{params},
 	}
 	submitResp := FlipSubmitResponse{}
 	resp := response{Result: &submitResp}

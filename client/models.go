@@ -29,6 +29,11 @@ type submitAnswersArgs struct {
 	Answers []FlipAnswer `json:"answers"`
 }
 
+type flipSubmitArgs struct {
+	Hex  string `json:"hex"`
+	Pair uint8  `json:"pair"`
+}
+
 type FlipAnswer struct {
 	Easy   bool `json:"easy"`
 	Answer byte `json:"answer"`
