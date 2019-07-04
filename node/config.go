@@ -3,8 +3,8 @@ package node
 import (
 	"encoding/json"
 	"fmt"
-	"idena-go/config"
-	"idena-go/p2p/enode"
+	"github.com/idena-network/idena-go/config"
+	"github.com/idena-network/idena-go/p2p/enode"
 	"path/filepath"
 )
 
