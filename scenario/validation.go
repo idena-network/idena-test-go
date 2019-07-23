@@ -15,10 +15,10 @@ func (sc *incomingScenario) validate() error {
 	if err := validateAllNewUsers(sc.NewUsers); err != nil {
 		return err
 	}
-	if err := validateEpochsNodes(sc.NodeStarts); err != nil {
+	if err := validateDelayedEpochsNodes(sc.NodeStarts); err != nil {
 		return err
 	}
-	if err := validateEpochsNodes(sc.NodeStops); err != nil {
+	if err := validateDelayedEpochsNodes(sc.NodeStops); err != nil {
 		return err
 	}
 	if err := validateEpochsNodes(sc.NodeOnlines); err != nil {
@@ -99,6 +99,25 @@ func validateEpochsNodes(en []epochsNodes) error {
 		if err := validateEpochsNodesItem(enItem); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func validateDelayedEpochsNodes(den []delayedEpochsNodes) error {
+	for _, denItem := range den {
+		if err := validateDelayedEpochsNodesItem(denItem); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateDelayedEpochsNodesItem(den delayedEpochsNodes) error {
+	if err := validateEpochsNodesItem(den.epochsNodes); err != nil {
+		return err
+	}
+	if err := validatePositiveInt(den.DelaySec, "delaySec"); err != nil {
+		return err
 	}
 	return nil
 }

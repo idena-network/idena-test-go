@@ -6,13 +6,12 @@ import (
 )
 
 type Scenario struct {
-	EpochNewUsers        map[int]int   // Epoch -> new users count
-	EpochNodeStarts      map[int][]int // Epoch -> nodes to start
-	EpochNodeStops       map[int][]int // Epoch -> nodes to stop
-	EpochNodeOnlines     map[int][]int // Epoch -> nodes to become online
-	EpochNodeOfflines    map[int][]int // Epoch -> nodes to become offline
-	EpochTxs             map[int]*Txs  // Epoch -> Txs
-	EpochDelayedFlipKeys map[int][]int // Epoch -> nodes to provide delayed flip key
+	EpochNewUsers        map[int]int                   // Epoch -> new users count
+	EpochNodeSwitches    map[int]map[int][]*NodeSwitch // Epoch -> node -> sorted switches (stop/start) with delays
+	EpochNodeOnlines     map[int][]int                 // Epoch -> nodes to become online
+	EpochNodeOfflines    map[int][]int                 // Epoch -> nodes to become offline
+	EpochTxs             map[int]*Txs                  // Epoch -> Txs
+	EpochDelayedFlipKeys map[int][]int                 // Epoch -> nodes to provide delayed flip key
 	CeremonyMinOffset    int
 	DefaultAnswer        byte
 	Ceremonies           map[int]*Ceremony // Epoch -> Ceremony
@@ -21,6 +20,11 @@ type Scenario struct {
 type Txs struct {
 	Period time.Duration
 	Users  []int
+}
+
+type NodeSwitch struct {
+	IsStart bool
+	Delay   time.Duration
 }
 
 type Ceremony struct {

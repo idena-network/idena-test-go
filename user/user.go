@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"idena-test-go/client"
 	"idena-test-go/node"
+	"time"
 )
 
 type User struct {
@@ -22,6 +23,7 @@ type TestContext struct {
 	ShortFlips      []client.FlipResponse
 	LongFlipHashes  []client.FlipHashesResponse
 	LongFlips       []client.FlipResponse
+	TestStartTime   time.Time
 }
 
 func NewUser(client *client.Client, node *node.Node, index int) *User {

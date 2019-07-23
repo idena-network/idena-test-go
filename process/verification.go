@@ -65,6 +65,8 @@ func (process *Process) getTestTimeout() time.Duration {
 func (process *Process) testUser(u *user.User, godAddress string, state *userEpochState) {
 	process.initTest(u)
 
+	process.switchNodeIfNeeded(u)
+
 	if !u.Active {
 		log.Info(fmt.Sprintf("%v skipped verification session due to stopped node", u.GetInfo()))
 		return
@@ -73,7 +75,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	epoch := process.getEpoch(u)
 	log.Info(fmt.Sprintf("%s epoch: %d, next validation time: %v", u.GetInfo(), epoch.Epoch, epoch.NextValidation))
 
-	process.syncAllBotsNewEpoch()
+	process.syncAllBotsNewEpoch(u)
 
 	process.switchOnlineState(u, epoch.NextValidation)
 
@@ -90,12 +92,11 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	waitForSessionFinish(u)
 }
 
-func (process *Process) syncAllBotsNewEpoch() {
+func (process *Process) syncAllBotsNewEpoch(u *user.User) {
 	if process.godMode && process.getCurrentTestIndex() == 0 {
 		return
 	}
-	d := time.Second * 90
-	time.Sleep(d)
+	time.Sleep(time.Second*90 - time.Now().Sub(u.TestContext.TestStartTime))
 }
 
 func (process *Process) switchOnlineState(u *user.User, nextValidationTime time.Time) {
@@ -195,6 +196,7 @@ func (process *Process) initTest(u *user.User) {
 	ctx.ShortFlips = nil
 	ctx.LongFlipHashes = nil
 	ctx.LongFlips = nil
+	ctx.TestStartTime = time.Now()
 	u.TestContext = &ctx
 }
 

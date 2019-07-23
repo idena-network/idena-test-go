@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"idena-test-go/common"
+	"sort"
 	"time"
 )
 
@@ -10,8 +11,7 @@ const defaultDefaultAnswer = common.Left
 func convert(incomingSc incomingScenario) Scenario {
 	sc := Scenario{}
 	sc.EpochNewUsers = convertEpochNewUsers(incomingSc.Users, incomingSc.NewUsers)
-	sc.EpochNodeStarts = convertEpochsNodes(incomingSc.NodeStarts)
-	sc.EpochNodeStops = convertEpochsNodes(incomingSc.NodeStops)
+	sc.EpochNodeSwitches = convertNodeSwitches(incomingSc.NodeStarts, incomingSc.NodeStops)
 	sc.EpochNodeOnlines = convertEpochsNodes(incomingSc.NodeOnlines)
 	sc.EpochNodeOfflines = convertEpochsNodes(incomingSc.NodeOfflines)
 	sc.EpochDelayedFlipKeys = convertEpochsNodes(incomingSc.DelayedKeys)
@@ -53,6 +53,46 @@ func convertEpochsNodes(incomingEpochsNodes []epochsNodes) map[int][]int {
 		}
 	}
 	return epochsNodes
+}
+
+func convertNodeSwitches(starts []delayedEpochsNodes, stops []delayedEpochsNodes) map[int]map[int][]*NodeSwitch {
+	switchesPerEpochAndNode := make(map[int]map[int][]*NodeSwitch)
+	type data struct {
+		isStart  bool
+		switches []delayedEpochsNodes
+	}
+	dataList := []data{
+		{
+			true, starts,
+		},
+		{
+			false, stops,
+		},
+	}
+	for _, ctx := range dataList {
+		for _, switchItem := range ctx.switches {
+			epochs, _ := parseNums(switchItem.Epochs)
+			nodes, _ := parseNums(switchItem.Nodes)
+			for _, epoch := range epochs {
+				for _, node := range nodes {
+					epochSwitches, present := switchesPerEpochAndNode[epoch]
+					if !present {
+						switchesPerEpochAndNode[epoch] = make(map[int][]*NodeSwitch)
+					}
+					switchesPerEpochAndNode[epoch][node] = append(switchesPerEpochAndNode[epoch][node],
+						&NodeSwitch{
+							IsStart: ctx.isStart,
+							Delay:   time.Second * time.Duration(switchItem.DelaySec),
+						})
+
+					sort.SliceStable(epochSwitches[node], func(i, j int) bool {
+						return epochSwitches[node][i].Delay < epochSwitches[node][j].Delay
+					})
+				}
+			}
+		}
+	}
+	return switchesPerEpochAndNode
 }
 
 func convertEpochTxs(incomingTxs []transactions) map[int]*Txs {

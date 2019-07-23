@@ -92,7 +92,6 @@ func (process *Process) Start() {
 	process.init()
 	for {
 		process.createNewUsers()
-		process.switchNodes()
 		if !process.checkActiveUser() {
 			process.handleError(errors.New("there are no active users"), "")
 		}
@@ -223,20 +222,6 @@ func (process *Process) startNode(u *user.User, mode node.StartMode) {
 	log.Info(fmt.Sprintf("Started node %v", u.GetInfo()))
 }
 
-func (process *Process) stopNodes(users []*user.User) {
-	n := len(users)
-	wg := sync.WaitGroup{}
-	wg.Add(n)
-	for _, u := range users {
-		go func(u *user.User) {
-			process.stopNode(u)
-			wg.Done()
-		}(u)
-	}
-	wg.Wait()
-	log.Info(fmt.Sprintf("Stopped %v nodes", n))
-}
-
 func (process *Process) stopNode(u *user.User) {
 	u.Stop()
 	log.Info(fmt.Sprintf("Stopped node %v", u.GetInfo()))
@@ -355,26 +340,24 @@ func (process *Process) handleError(err error, prefix string) {
 	panic(err)
 }
 
-func (process *Process) switchNodes() {
+func (process *Process) switchNodeIfNeeded(u *user.User) {
 	testIndex := process.getCurrentTestIndex()
 
-	nodeIndexesToStop := process.sc.EpochNodeStops[testIndex]
-	if len(nodeIndexesToStop) > 0 {
-		process.stopNodes(process.getUsers(nodeIndexesToStop))
+	if _, present := process.sc.EpochNodeSwitches[testIndex]; !present {
+		return
+	}
+	if _, present := process.sc.EpochNodeSwitches[testIndex][u.Index]; !present {
+		return
 	}
 
-	nodeIndexesToStart := process.sc.EpochNodeStarts[testIndex]
-	if len(nodeIndexesToStart) > 0 {
-		process.startNodes(process.getUsers(nodeIndexesToStart), node.DeleteNothing)
+	for _, nodeSwitch := range process.sc.EpochNodeSwitches[testIndex][u.Index] {
+		time.Sleep(nodeSwitch.Delay - time.Now().Sub(u.TestContext.TestStartTime))
+		if nodeSwitch.IsStart {
+			process.startNode(u, node.DeleteNothing)
+		} else {
+			process.stopNode(u)
+		}
 	}
-}
-
-func (process *Process) getUsers(indexes []int) []*user.User {
-	var nodes []*user.User
-	for _, index := range indexes {
-		nodes = append(nodes, process.users[index])
-	}
-	return nodes
 }
 
 func (process *Process) addPeers() {
