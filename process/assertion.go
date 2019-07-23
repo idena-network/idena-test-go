@@ -138,24 +138,24 @@ func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, i
 		return
 	}
 
-	if identity.State != node.State {
-		process.assertionError(fmt.Sprintf("Wrong state for node %s", u.GetInfo()), node.State, identity.State, eh)
+	if node.State != nil && identity.State != *node.State {
+		process.assertionError(fmt.Sprintf("Wrong state for node %s", u.GetInfo()), *node.State, identity.State, eh)
 	}
 
-	if ues.madeFlips != node.MadeFlips && !(process.godMode && u.Index == process.godUser.Index && process.getCurrentTestIndex() == 0) {
-		process.assertionError(fmt.Sprintf("Wrong made flips for node %s", u.GetInfo()), node.MadeFlips, ues.madeFlips, eh)
+	if node.MadeFlips != nil && ues.madeFlips != *node.MadeFlips && !(process.godMode && u.Index == process.godUser.Index && process.getCurrentTestIndex() == 0) {
+		process.assertionError(fmt.Sprintf("Wrong made flips for node %s", u.GetInfo()), *node.MadeFlips, ues.madeFlips, eh)
 	}
 
-	if ues.requiredFlips != node.RequiredFlips {
-		process.assertionError(fmt.Sprintf("Wrong required flips for node %s", u.GetInfo()), node.RequiredFlips, ues.requiredFlips, eh)
+	if node.RequiredFlips != nil && ues.requiredFlips != *node.RequiredFlips {
+		process.assertionError(fmt.Sprintf("Wrong required flips for node %s", u.GetInfo()), *node.RequiredFlips, ues.requiredFlips, eh)
 	}
 
-	if identity.Invites != node.AvailableInvites {
-		process.assertionError(fmt.Sprintf("Wrong available invites for node %s", u.GetInfo()), node.AvailableInvites, identity.Invites, eh)
+	if node.AvailableInvites != nil && identity.Invites != *node.AvailableInvites {
+		process.assertionError(fmt.Sprintf("Wrong available invites for node %s", u.GetInfo()), *node.AvailableInvites, identity.Invites, eh)
 	}
 
-	if identity.Online != node.Online {
-		process.assertionError(fmt.Sprintf("Wrong online state for node %s", u.GetInfo()), node.Online, identity.Online, eh)
+	if node.Online != nil && identity.Online != *node.Online {
+		process.assertionError(fmt.Sprintf("Wrong online state for node %s", u.GetInfo()), *node.Online, identity.Online, eh)
 	}
 }
 

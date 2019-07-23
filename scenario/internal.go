@@ -49,11 +49,11 @@ type StateAssertion struct {
 }
 
 type NodeAssertion struct {
-	MadeFlips        int
-	RequiredFlips    int
-	AvailableInvites int
-	State            string
-	Online           bool
+	MadeFlips        *int
+	RequiredFlips    *int
+	AvailableInvites *int
+	State            *string
+	Online           *bool
 }
 
 type AnswerRates struct {

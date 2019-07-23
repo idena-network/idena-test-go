@@ -66,10 +66,10 @@ type stateAssertion struct {
 }
 
 type nodeAssertion struct {
-	Users            string `json:"users"` // "1,3-5,8" means 1,3,4,5,8
-	MadeFlips        int    `json:"madeFlips"`
-	RequiredFlips    int    `json:"requiredFlips"`
-	AvailableInvites int    `json:"availableInvites"`
-	State            string `json:"state"`
-	Online           bool   `json:"online"`
+	Users            string  `json:"users"` // "1,3-5,8" means 1,3,4,5,8
+	MadeFlips        *int    `json:"madeFlips"`
+	RequiredFlips    *int    `json:"requiredFlips"`
+	AvailableInvites *int    `json:"availableInvites"`
+	State            *string `json:"state"`
+	Online           *bool   `json:"online"`
 }
