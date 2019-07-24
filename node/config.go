@@ -3,8 +3,10 @@ package node
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/idena-network/idena-go/common"
 	"github.com/idena-network/idena-go/config"
 	"github.com/idena-network/idena-go/p2p/enode"
+	"math/big"
 	"path/filepath"
 )
 
@@ -30,8 +32,14 @@ type rpcConfig struct {
 }
 
 type genesisConf struct {
+	Alloc             map[string]genesisAllocation
 	FirstCeremonyTime int64
 	GodAddress        string
+}
+
+type genesisAllocation struct {
+	Balance *big.Int
+	Stake   *big.Int
 }
 
 type consensusConf struct {
@@ -102,6 +110,12 @@ func (node *Node) buildSpecificConfig() *specConfig {
 			HTTPPort: node.RpcPort,
 		},
 		GenesisConf: genesisConf{
+			Alloc: map[string]genesisAllocation{
+				godAddress: {
+					Balance: big.NewInt(0).Mul(common.DnaBase, big.NewInt(99999)),
+					Stake:   big.NewInt(0).Mul(common.DnaBase, big.NewInt(9999)),
+				},
+			},
 			GodAddress:        godAddress,
 			FirstCeremonyTime: node.CeremonyTime,
 		},

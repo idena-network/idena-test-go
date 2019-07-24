@@ -233,9 +233,14 @@ func (process *Process) sendInvites(users []*user.User) {
 		for _, u := range users {
 			sender := process.godUser
 			invite, err := sender.Client.SendInvite(u.Address)
-			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.Address))
+			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.GetInfo()))
 			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))
 			invitesCount++
+
+			amount := float32(1.0)
+			tx, err := sender.Client.SendTransaction(sender.Address, u.Address, amount)
+			process.handleError(err, fmt.Sprintf("%v unable to send transaction to %v", sender.GetInfo(), u.GetInfo()))
+			log.Info(fmt.Sprintf("%s sent transaction %s to %s", sender.GetInfo(), tx, u.GetInfo()))
 		}
 		log.Info(fmt.Sprintf("Sent %v invites", invitesCount))
 		return
