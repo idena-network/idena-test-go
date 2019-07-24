@@ -116,7 +116,7 @@ func validateDelayedEpochsNodesItem(den delayedEpochsNodes) error {
 	if err := validateEpochsNodesItem(den.epochsNodes); err != nil {
 		return err
 	}
-	if err := validatePositiveInt(den.DelaySec, "delaySec"); err != nil {
+	if err := validateNotNegativeInt(int(den.DelaySec), "delaySec"); err != nil {
 		return err
 	}
 	return nil
