@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+const (
+	SKIP_SESSION_MESSAGE_FORMAT = "%v skipped verification session due to stopped node"
+)
+
 func (process *Process) test() {
 	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.getCurrentTestIndex()))
 	wg := &sync.WaitGroup{}
@@ -65,19 +69,30 @@ func (process *Process) getTestTimeout() time.Duration {
 func (process *Process) testUser(u *user.User, godAddress string, state *userEpochState) {
 	process.initTest(u)
 
-	process.switchNodeIfNeeded(u)
+	wasActive := u.Active
+
+	if !wasActive {
+		process.switchNodeIfNeeded(u)
+	}
 
 	if !u.Active {
-		log.Info(fmt.Sprintf("%v skipped verification session due to stopped node", u.GetInfo()))
+		log.Info(fmt.Sprintf(SKIP_SESSION_MESSAGE_FORMAT, u.GetInfo()))
 		return
 	}
 
 	epoch := process.getEpoch(u)
 	log.Info(fmt.Sprintf("%s epoch: %d, next validation time: %v", u.GetInfo(), epoch.Epoch, epoch.NextValidation))
 
-	process.syncAllBotsNewEpoch(u)
-
 	process.switchOnlineState(u, epoch.NextValidation)
+
+	if wasActive {
+		process.switchNodeIfNeeded(u)
+	}
+
+	if !u.Active {
+		log.Info(fmt.Sprintf(SKIP_SESSION_MESSAGE_FORMAT, u.GetInfo()))
+		return
+	}
 
 	process.submitFlips(u, godAddress)
 
@@ -90,13 +105,6 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	process.collectUserEpochState(u, state)
 
 	waitForSessionFinish(u)
-}
-
-func (process *Process) syncAllBotsNewEpoch(u *user.User) {
-	if process.godMode && process.getCurrentTestIndex() == 0 {
-		return
-	}
-	time.Sleep(time.Second*90 - time.Now().Sub(u.TestContext.TestStartTime))
 }
 
 func (process *Process) switchOnlineState(u *user.User, nextValidationTime time.Time) {
