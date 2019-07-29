@@ -3,13 +3,13 @@ package process
 import (
 	"errors"
 	"fmt"
-	"idena-test-go/apiclient"
-	"idena-test-go/client"
-	"idena-test-go/common"
-	"idena-test-go/log"
-	"idena-test-go/node"
-	"idena-test-go/scenario"
-	"idena-test-go/user"
+	"github.com/idena-network/idena-test-go/apiclient"
+	"github.com/idena-network/idena-test-go/client"
+	"github.com/idena-network/idena-test-go/common"
+	"github.com/idena-network/idena-test-go/log"
+	"github.com/idena-network/idena-test-go/node"
+	"github.com/idena-network/idena-test-go/scenario"
+	"github.com/idena-network/idena-test-go/user"
 	"strings"
 	"sync"
 	"time"
@@ -237,7 +237,7 @@ func (process *Process) sendInvites(users []*user.User) {
 			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))
 			invitesCount++
 
-			amount := float32(1.0)
+			amount := float32(100.0)
 			tx, err := sender.Client.SendTransaction(sender.Address, u.Address, amount)
 			process.handleError(err, fmt.Sprintf("%v unable to send transaction to %v", sender.GetInfo(), u.GetInfo()))
 			log.Info(fmt.Sprintf("%s sent transaction %s to %s", sender.GetInfo(), tx, u.GetInfo()))

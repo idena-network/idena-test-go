@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	botconfig "idena-test-go/config"
+	botconfig "github.com/idena-network/idena-test-go/config"
 	"io"
 	"os"
 	"path/filepath"

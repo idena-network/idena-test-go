@@ -3,7 +3,7 @@ package node
 import (
 	"bufio"
 	"fmt"
-	"idena-test-go/log"
+	"github.com/idena-network/idena-test-go/log"
 	"os"
 	"os/exec"
 	"path/filepath"

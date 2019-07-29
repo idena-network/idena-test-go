@@ -2,7 +2,7 @@ package api
 
 import (
 	"errors"
-	"idena-test-go/process"
+	"github.com/idena-network/idena-test-go/process"
 	"net/http"
 	"strconv"
 )

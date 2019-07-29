@@ -2,8 +2,8 @@ package user
 
 import (
 	"fmt"
-	"idena-test-go/client"
-	"idena-test-go/node"
+	"github.com/idena-network/idena-test-go/client"
+	"github.com/idena-network/idena-test-go/node"
 	"time"
 )
 

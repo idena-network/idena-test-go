@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/idena-network/idena-test-go/api"
+	"github.com/idena-network/idena-test-go/config"
+	"github.com/idena-network/idena-test-go/initializer"
+	"github.com/idena-network/idena-test-go/log"
+	"github.com/idena-network/idena-test-go/process"
+	"github.com/idena-network/idena-test-go/scenario"
 	"gopkg.in/urfave/cli.v1"
-	"idena-test-go/api"
-	"idena-test-go/config"
-	"idena-test-go/initializer"
-	"idena-test-go/log"
-	"idena-test-go/process"
-	"idena-test-go/scenario"
 	"os"
 	"path/filepath"
 )

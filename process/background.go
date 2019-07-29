@@ -3,9 +3,9 @@ package process
 import (
 	"errors"
 	"fmt"
-	"idena-test-go/common"
-	"idena-test-go/log"
-	"idena-test-go/user"
+	"github.com/idena-network/idena-test-go/common"
+	"github.com/idena-network/idena-test-go/log"
+	"github.com/idena-network/idena-test-go/user"
 	"sync"
 	"time"
 )

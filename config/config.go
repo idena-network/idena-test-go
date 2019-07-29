@@ -2,7 +2,7 @@ package config
 
 import (
 	"encoding/json"
-	"idena-test-go/log"
+	"github.com/idena-network/idena-test-go/log"
 	"io/ioutil"
 	"os"
 )

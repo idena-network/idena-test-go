@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestAnswerRates_Get(t *testing.T) {
+/*func TestAnswerRates_Get(t *testing.T) {
 	ar := AnswerRates{
 		Wrong:         0.3,
 		Inappropriate: 0.2,
@@ -55,7 +55,7 @@ func TestAnswerRates_Get(t *testing.T) {
 		require.Equal(t, byte(3), answers[i])
 	}
 	require.Equal(t, byte(0), answers[7])
-}
+}*/
 
 func TestParseNums(t *testing.T) {
 	s := "1"

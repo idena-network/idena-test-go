@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"idena-test-go/log"
+	"github.com/idena-network/idena-test-go/log"
 	"net/http"
 )
 

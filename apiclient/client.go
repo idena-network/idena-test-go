@@ -2,7 +2,7 @@ package apiclient
 
 import (
 	"fmt"
-	"idena-test-go/log"
+	"github.com/idena-network/idena-test-go/log"
 	"io/ioutil"
 	"net/http"
 	"strconv"

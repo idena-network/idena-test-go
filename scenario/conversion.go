@@ -1,7 +1,7 @@
 package scenario
 
 import (
-	"idena-test-go/common"
+	"github.com/idena-network/idena-test-go/common"
 	"sort"
 	"time"
 )

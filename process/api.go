@@ -3,7 +3,7 @@ package process
 import (
 	"errors"
 	"fmt"
-	"idena-test-go/log"
+	"github.com/idena-network/idena-test-go/log"
 	"strings"
 )
 

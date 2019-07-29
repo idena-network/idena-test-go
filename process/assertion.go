@@ -3,10 +3,10 @@ package process
 import (
 	"errors"
 	"fmt"
-	"idena-test-go/client"
-	"idena-test-go/log"
-	"idena-test-go/scenario"
-	"idena-test-go/user"
+	"github.com/idena-network/idena-test-go/client"
+	"github.com/idena-network/idena-test-go/log"
+	"github.com/idena-network/idena-test-go/scenario"
+	"github.com/idena-network/idena-test-go/user"
 	"sync"
 )
 

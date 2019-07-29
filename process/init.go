@@ -2,10 +2,10 @@ package process
 
 import (
 	"fmt"
-	"idena-test-go/client"
-	"idena-test-go/log"
-	"idena-test-go/node"
-	"idena-test-go/user"
+	"github.com/idena-network/idena-test-go/client"
+	"github.com/idena-network/idena-test-go/log"
+	"github.com/idena-network/idena-test-go/node"
+	"github.com/idena-network/idena-test-go/user"
 	"io/ioutil"
 	"os"
 	"path/filepath"
