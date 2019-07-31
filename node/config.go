@@ -11,13 +11,16 @@ import (
 )
 
 type specConfig struct {
-	DataDir     string
-	P2P         p2pConfig
-	RPC         rpcConfig
-	GenesisConf genesisConf
-	Consensus   consensusConf
-	IpfsConf    ipfsConfig
-	Validation  *config.ValidationConfig
+	DataDir          string
+	P2P              p2pConfig
+	RPC              rpcConfig
+	GenesisConf      genesisConf
+	Consensus        consensusConf
+	IpfsConf         ipfsConfig
+	Validation       *config.ValidationConfig
+	Sync             *config.SyncConfig             `json:"Sync,omitempty"`
+	OfflineDetection *config.OfflineDetectionConfig `json:"OfflineDetection,omitempty"`
+	Blockchain       *config.BlockchainConfig       `json:"Blockchain,omitempty"`
 }
 
 type p2pConfig struct {
@@ -43,7 +46,8 @@ type genesisAllocation struct {
 }
 
 type consensusConf struct {
-	Automine bool
+	Automine      bool
+	SnapshotRange *uint64 `json:"SnapshotRange,omitempty"`
 }
 
 type ipfsConfig struct {
