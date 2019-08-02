@@ -99,6 +99,7 @@ func (node *Node) Start(deleteMode StartMode) {
 
 	out := bufio.NewWriter(f)
 	command.Stdout = out
+	command.Stderr = out
 	node.logWriter = out
 
 	command.Start()
