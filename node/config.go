@@ -102,6 +102,12 @@ func (node *Node) buildSpecificConfig() *specConfig {
 	}
 
 	dataDir := filepath.Join(node.dataDir, node.nodeDataDir)
+
+	var bootNodes []string
+	if len(node.IpfsBootNode) > 0 {
+		bootNodes = []string{node.IpfsBootNode}
+	}
+
 	return &specConfig{
 		DataDir: dataDir,
 		P2P: p2pConfig{
@@ -130,7 +136,7 @@ func (node *Node) buildSpecificConfig() *specConfig {
 		IpfsConf: ipfsConfig{
 			DataDir:   filepath.Join(dataDir, config.DefaultIpfsDataDir),
 			IpfsPort:  node.ipfsPort,
-			BootNodes: []string{node.IpfsBootNode},
+			BootNodes: bootNodes,
 		},
 	}
 }
