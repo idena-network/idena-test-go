@@ -35,8 +35,9 @@ type flipSubmitArgs struct {
 }
 
 type FlipAnswer struct {
-	Easy   bool `json:"easy"`
-	Answer byte `json:"answer"`
+	Easy   bool   `json:"easy"`
+	Answer byte   `json:"answer"`
+	Hash   string `json:"hash"`
 }
 
 type response struct {
@@ -80,6 +81,7 @@ type FlipSubmitResponse struct {
 type FlipHashesResponse struct {
 	Hash  string `json:"hash"`
 	Ready bool   `json:"ready"`
+	Extra bool   `json:"extra"`
 }
 
 type FlipResponse struct {

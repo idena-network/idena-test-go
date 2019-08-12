@@ -401,14 +401,31 @@ func emptyFlip() client.FlipResponse {
 }
 
 func (process *Process) submitAnswers(u *user.User, isShort bool) {
-	var submitFunc func([]byte) (client.SubmitAnswersResponse, error)
+	var submitFunc func([]client.FlipAnswer) (client.SubmitAnswersResponse, error)
 	name := getSessionName(isShort)
+	var flipHashes []client.FlipHashesResponse
 	if isShort {
 		submitFunc = u.Client.SubmitShortAnswers
+		flipHashes = u.TestContext.ShortFlipHashes
 	} else {
 		submitFunc = u.Client.SubmitLongAnswers
+		flipHashes = u.TestContext.LongFlipHashes
 	}
-	answers := process.getAnswers(u, isShort)
+	answerNums := process.getAnswers(u, isShort)
+	var answers []client.FlipAnswer
+	for i, answerNum := range answerNums {
+		if i >= len(flipHashes) {
+			break
+		}
+		if flipHashes[i].Extra {
+			continue
+		}
+		answers = append(answers, client.FlipAnswer{
+			Easy:   false,
+			Answer: answerNum,
+			Hash:   flipHashes[i].Hash,
+		})
+	}
 	resp, err := submitFunc(answers)
 	process.handleError(err, fmt.Sprintf("%v unable to submit %s answers", u.GetInfo(), name))
 	log.Info(fmt.Sprintf("%v submitted %d %s answers: %v, tx: %s", u.GetInfo(), len(answers), name, answers, resp.TxHash))

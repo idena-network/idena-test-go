@@ -194,14 +194,14 @@ func (client *Client) GetFlip(hash string) (FlipResponse, error) {
 	return flipResponse, nil
 }
 
-func (client *Client) SubmitShortAnswers(answers []byte) (SubmitAnswersResponse, error) {
+func (client *Client) SubmitShortAnswers(answers []FlipAnswer) (SubmitAnswersResponse, error) {
 	return client.submitAnswers(answers, "flip_submitShortAnswers")
 }
 
-func (client *Client) submitAnswers(answers []byte, method string) (SubmitAnswersResponse, error) {
+func (client *Client) submitAnswers(answers []FlipAnswer, method string) (SubmitAnswersResponse, error) {
 	params := submitAnswersArgs{}
 	for _, a := range answers {
-		params.Answers = append(params.Answers, FlipAnswer{false, a})
+		params.Answers = append(params.Answers, a)
 	}
 	req := request{
 		Id:      client.getReqId(),
@@ -221,7 +221,7 @@ func (client *Client) GetLongFlipHashes() ([]FlipHashesResponse, error) {
 	return client.getFlipHashes("flip_longHashes")
 }
 
-func (client *Client) SubmitLongAnswers(answers []byte) (SubmitAnswersResponse, error) {
+func (client *Client) SubmitLongAnswers(answers []FlipAnswer) (SubmitAnswersResponse, error) {
 	return client.submitAnswers(answers, "flip_submitLongAnswers")
 }
 
