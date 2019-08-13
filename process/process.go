@@ -382,6 +382,9 @@ func (process *Process) getPeers(u *user.User) []client.Peer {
 }
 
 func containsPeer(peers []client.Peer, u *user.User) bool {
+	if !strings.Contains(u.Enode, "@") {
+		return false
+	}
 	url := strings.SplitN(u.Enode, "@", 2)[1]
 	for _, peer := range peers {
 		if peer.RemoteAddr == url {
