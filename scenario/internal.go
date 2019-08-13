@@ -13,8 +13,9 @@ type Scenario struct {
 	EpochTxs             map[int]*Txs                  // Epoch -> Txs
 	EpochDelayedFlipKeys map[int][]int                 // Epoch -> nodes to provide delayed flip key
 	CeremonyMinOffset    int
-	DefaultAnswer        byte
-	Ceremonies           map[int]*Ceremony // Epoch -> Ceremony
+	// todo remove deprecated field
+	DefaultAnswer byte              // deprecated
+	Ceremonies    map[int]*Ceremony // Epoch -> Ceremony
 }
 
 type Txs struct {

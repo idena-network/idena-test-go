@@ -63,6 +63,11 @@ type Process struct {
 	godHost                string
 	apiClient              *apiclient.Client
 	firstPortOffset        int
+	ctx                    *epochContext
+}
+
+type epochContext struct {
+	flipAnswers sync.Map // todo spread values to child bots
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string, nodeBaseConfigFileName string,
@@ -91,6 +96,7 @@ func (process *Process) Start() {
 	defer process.destroy()
 	process.init()
 	for {
+		process.initEpochContext()
 		process.createNewUsers()
 		if !process.checkActiveUser() {
 			process.handleError(errors.New("there are no active users"), "")
@@ -105,6 +111,10 @@ func (process *Process) destroy() {
 	for _, u := range process.users {
 		u.Node.Destroy()
 	}
+}
+
+func (process *Process) initEpochContext() {
+	process.ctx = &epochContext{}
 }
 
 func getNodeDataDir(index int, port int) string {

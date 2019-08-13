@@ -212,6 +212,7 @@ type submittedFlip struct {
 	hash        string
 	wordPairIdx uint8
 	txHash      string
+	answer      byte
 }
 
 func (process *Process) submitFlips(u *user.User, godAddress string) {
@@ -231,14 +232,21 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			log.Error(fmt.Sprintf("%v unable to submit flip: %v", u.GetInfo(), err))
 		} else {
 			log.Debug(fmt.Sprintf("%v submitted flip", u.GetInfo()))
+			answer := randomAnswer()
 			submittedFlips = append(submittedFlips, submittedFlip{
 				hash:        resp.Hash,
 				wordPairIdx: wordPairIdx,
 				txHash:      resp.TxHash,
+				answer:      answer,
 			})
+			process.ctx.flipAnswers.Store(resp.Hash, answer)
 		}
 	}
 	log.Info(fmt.Sprintf("%v submitted %v flips: %v", u.GetInfo(), len(submittedFlips), submittedFlips))
+}
+
+func randomAnswer() byte {
+	return byte(rand.Int31n(3) + 1)
 }
 
 func (process *Process) getFlipsCountToSubmit(u *user.User, godAddress string) int {
@@ -411,51 +419,38 @@ func (process *Process) submitAnswers(u *user.User, isShort bool) {
 		submitFunc = u.Client.SubmitLongAnswers
 		flipHashes = u.TestContext.LongFlipHashes
 	}
-	answerNums := process.getAnswers(u, isShort)
+	allAnswers := process.getAnswers(u, isShort)
 	var answers []client.FlipAnswer
-	for i, answerNum := range answerNums {
+	for i, answer := range allAnswers {
 		if i >= len(flipHashes) {
 			break
 		}
 		if flipHashes[i].Extra {
 			continue
 		}
-		answers = append(answers, client.FlipAnswer{
-			Easy:   false,
-			Answer: answerNum,
-			Hash:   flipHashes[i].Hash,
-		})
+		answers = append(answers, answer)
 	}
 	resp, err := submitFunc(answers)
 	process.handleError(err, fmt.Sprintf("%v unable to submit %s answers", u.GetInfo(), name))
 	log.Info(fmt.Sprintf("%v submitted %d %s answers: %v, tx: %s", u.GetInfo(), len(answers), name, answers, resp.TxHash))
 }
 
-func (process *Process) getAnswers(u *user.User, isShort bool) []byte {
-	var answersHolder scenario.AnswersHolder
-	var flips []client.FlipResponse
-	userCeremony := process.getScUserCeremony(u)
+func (process *Process) getAnswers(u *user.User, isShort bool) []client.FlipAnswer {
+	var flipHashes []client.FlipHashesResponse
 	if isShort {
-		if userCeremony != nil {
-			answersHolder = userCeremony.ShortAnswers
-		}
-		flips = u.TestContext.ShortFlips
+		flipHashes = u.TestContext.ShortFlipHashes
 	} else {
-		if userCeremony != nil {
-			answersHolder = userCeremony.LongAnswers
-		}
-		flips = u.TestContext.LongFlips
+		flipHashes = u.TestContext.LongFlipHashes
 	}
-
-	var answers []byte
-	if answersHolder != nil {
-		answers = answersHolder.Get(len(flips))
-	} else {
-		for range flips {
-			answers = append(answers, process.sc.DefaultAnswer)
-		}
+	var answers []client.FlipAnswer
+	for _, flipHash := range flipHashes {
+		answer, _ := process.ctx.flipAnswers.Load(flipHash.Hash)
+		answers = append(answers, client.FlipAnswer{
+			Easy:   false,
+			Answer: answer.(byte),
+			Hash:   flipHash.Hash,
+		})
 	}
-	process.setNoneAnswers(flips, answers)
 	return answers
 }
 

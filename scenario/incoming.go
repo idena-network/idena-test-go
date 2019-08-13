@@ -41,12 +41,13 @@ type ceremony struct {
 }
 
 type userCeremony struct {
-	Users            string       `json:"users"` // "1,3-5,8" means 1,3,4,5,8
-	SubmitFlips      int          `json:"submitFlips"`
-	ShortAnswers     []answer     `json:"shortAnswers"`
-	ShortAnswerRates *answerRates `json:"shortAnswerRates"`
-	LongAnswers      []answer     `json:"longAnswers"`
-	LongAnswerRates  *answerRates `json:"longAnswerRates"`
+	Users       string `json:"users"` // "1,3-5,8" means 1,3,4,5,8
+	SubmitFlips int    `json:"submitFlips"`
+	// todo remove deprecated fields
+	ShortAnswers     []answer     `json:"shortAnswers"`     // deprecated
+	ShortAnswerRates *answerRates `json:"shortAnswerRates"` // deprecated
+	LongAnswers      []answer     `json:"longAnswers"`      // deprecated
+	LongAnswerRates  *answerRates `json:"longAnswerRates"`  // deprecated
 }
 
 type answerRates struct {
