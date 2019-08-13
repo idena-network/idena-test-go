@@ -10,7 +10,10 @@ import (
 	"path/filepath"
 )
 
+const network = 2
+
 type specConfig struct {
+	Network          *uint32 `json:"Network,omitempty"`
 	DataDir          string
 	P2P              p2pConfig
 	RPC              rpcConfig
@@ -108,7 +111,9 @@ func (node *Node) buildSpecificConfig() *specConfig {
 		bootNodes = []string{node.IpfsBootNode}
 	}
 
+	nw := uint32(network)
 	return &specConfig{
+		Network: &nw,
 		DataDir: dataDir,
 		P2P: p2pConfig{
 			ListenAddr:     fmt.Sprintf(":%d", node.port),
