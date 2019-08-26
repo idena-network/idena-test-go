@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	SKIP_SESSION_MESSAGE_FORMAT = "%v skipped verification session due to stopped node"
+	skipSessionMessageFormat = "%v skipped verification session due to stopped node"
 )
 
 func (process *Process) test() {
@@ -76,7 +76,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	}
 
 	if !u.Active {
-		log.Info(fmt.Sprintf(SKIP_SESSION_MESSAGE_FORMAT, u.GetInfo()))
+		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
 		return
 	}
 
@@ -90,7 +90,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	}
 
 	if !u.Active {
-		log.Info(fmt.Sprintf(SKIP_SESSION_MESSAGE_FORMAT, u.GetInfo()))
+		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
 		return
 	}
 
@@ -222,7 +222,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 	}
 	var submittedFlips []submittedFlip
 	for i := 0; i < flipsToSubmit; i++ {
-		flipHex, err := randomHex(10)
+		flipHex, err := randomHex(rand.Int()%600000 + 50)
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
