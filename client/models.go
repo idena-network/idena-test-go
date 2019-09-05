@@ -15,6 +15,7 @@ type sendTxArgs struct {
 	From   string  `json:"from"`
 	To     string  `json:"to"`
 	Amount float32 `json:"amount"`
+	Type   uint16  `json:"type"`
 }
 
 type sendInviteArgs struct {
