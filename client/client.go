@@ -253,12 +253,14 @@ func (client *Client) becomeOnline(online bool) (string, error) {
 	return resp.Result.(string), nil
 }
 
-func (client *Client) SendTransaction(txType uint16, from string, to string, amount float32) (string, error) {
+func (client *Client) SendTransaction(txType uint16, from, to string, amount, maxFee float32, payloadHex *string) (string, error) {
 	params := sendTxArgs{
-		From:   from,
-		To:     to,
-		Amount: amount,
-		Type:   txType,
+		From:       from,
+		To:         to,
+		Amount:     amount,
+		MaxFee:     maxFee,
+		Type:       txType,
+		PayloadHex: payloadHex,
 	}
 	req := request{
 		Id:      client.getReqId(),

@@ -57,7 +57,7 @@ func (process *Process) generateTxs(flag *EpochCompletionFlag) {
 		sender := activeUsers[senderIdx]
 		recipient := activeUsers[recipientIdx]
 		amount := float32(0.01)
-		hash, err := sender.Client.SendTransaction(types.SendTx, sender.Address, recipient.Address, amount)
+		hash, err := sender.Client.SendTransaction(types.SendTx, sender.Address, recipient.Address, amount, 1.0, nil)
 		if err != nil {
 			log.Error(fmt.Sprintf("Unable to send transaction (amount=%f) from %s to %s: %v", amount, sender.GetInfo(), recipient.GetInfo(), err))
 		}

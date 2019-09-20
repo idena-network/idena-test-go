@@ -12,10 +12,12 @@ type request struct {
 }
 
 type sendTxArgs struct {
-	From   string  `json:"from"`
-	To     string  `json:"to"`
-	Amount float32 `json:"amount"`
-	Type   uint16  `json:"type"`
+	From       string  `json:"from"`
+	To         string  `json:"to"`
+	Amount     float32 `json:"amount"`
+	MaxFee     float32 `json:"maxFee"`
+	Type       uint16  `json:"type"`
+	PayloadHex *string `json:"payload"`
 }
 
 type sendInviteArgs struct {
