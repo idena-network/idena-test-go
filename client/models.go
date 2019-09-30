@@ -34,7 +34,7 @@ type submitAnswersArgs struct {
 
 type flipSubmitArgs struct {
 	Hex  string `json:"hex"`
-	Pair uint8  `json:"pair"`
+	Pair uint8  `json:"pairId"`
 }
 
 type FlipAnswer struct {
