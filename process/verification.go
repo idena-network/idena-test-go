@@ -446,9 +446,9 @@ func (process *Process) getAnswers(u *user.User, isShort bool) []client.FlipAnsw
 	for _, flipHash := range flipHashes {
 		answer, _ := process.ctx.flipAnswers.Load(flipHash.Hash)
 		answers = append(answers, client.FlipAnswer{
-			Easy:   false,
-			Answer: answer.(byte),
-			Hash:   flipHash.Hash,
+			WrongWords: false,
+			Answer:     answer.(byte),
+			Hash:       flipHash.Hash,
 		})
 	}
 	return answers

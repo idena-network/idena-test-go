@@ -38,9 +38,9 @@ type flipSubmitArgs struct {
 }
 
 type FlipAnswer struct {
-	Easy   bool   `json:"easy"`
-	Answer byte   `json:"answer"`
-	Hash   string `json:"hash"`
+	Answer     byte   `json:"answer"`
+	Hash       string `json:"hash"`
+	WrongWords bool   `json:"wrongWords"`
 }
 
 type response struct {
