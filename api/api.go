@@ -1,10 +1,10 @@
 package api
 
 import (
-	"errors"
 	"github.com/idena-network/idena-test-go/process"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Api struct {
@@ -30,6 +30,11 @@ func (api *Api) createServer() server {
 	return NewHttpServer(api)
 }
 
+type reqCtx struct {
+	id        string
+	timestamp time.Time
+}
+
 func (api *Api) getGodAddress(r *http.Request) (string, error) {
 	return api.process.GetGodAddress()
 }
@@ -43,11 +48,7 @@ func (api *Api) getIpfsBootNode(r *http.Request) (string, error) {
 }
 
 func (api *Api) createInvite(r *http.Request) (string, error) {
-	addrs := r.Form["address"]
-	if len(addrs) == 0 {
-		return "", errors.New("parameter 'address' is absent")
-	}
-	addr := addrs[0]
+	addr := r.FormValue("address")
 	err := api.process.RequestInvite(addr)
 	if err != nil {
 		return "", err
@@ -61,4 +62,18 @@ func (api *Api) getCeremonyTime(r *http.Request) (string, error) {
 		return "", err
 	}
 	return strconv.FormatInt(ceremonyTime, 10), nil
+}
+
+func (api *Api) getEpoch(r *http.Request) (string, error) {
+	epoch, err := api.process.GetEpoch()
+	if err != nil {
+		return "", err
+	}
+	return strconv.Itoa(int(epoch)), nil
+}
+
+func (api *Api) sendFailNotification(r *http.Request) (string, error) {
+	message := r.FormValue("message")
+	api.process.SendFailNotification(message, r.RemoteAddr)
+	return "OK", nil
 }

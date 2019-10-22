@@ -1,7 +1,6 @@
 package process
 
 import (
-	"errors"
 	"fmt"
 	"github.com/idena-network/idena-go/blockchain/types"
 	"github.com/idena-network/idena-test-go/apiclient"
@@ -11,6 +10,9 @@ import (
 	"github.com/idena-network/idena-test-go/node"
 	"github.com/idena-network/idena-test-go/scenario"
 	"github.com/idena-network/idena-test-go/user"
+	"github.com/pkg/errors"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,15 +28,12 @@ const (
 	newbie    = "Newbie"
 	verified  = "Verified"
 
-	periodFlipLottery      = "FlipLottery"
-	periodShortSession     = "ShortSession"
-	periodLongSession      = "LongSession"
-	periodAfterLongSession = "AfterLongSession"
-	periodNone             = "None"
+	periodShortSession = "ShortSession"
+	periodLongSession  = "LongSession"
+	periodNone         = "None"
 
-	stateWaitingTimeout = 180 * time.Second
-	DataDir             = "dataDir"
-	requestRetryDelay   = 8 * time.Second
+	DataDir           = "datadir"
+	requestRetryDelay = 8 * time.Second
 
 	initialRequiredFlips = 1
 
@@ -64,11 +63,7 @@ type Process struct {
 	godHost                string
 	apiClient              *apiclient.Client
 	firstPortOffset        int
-	ctx                    *epochContext
-}
-
-type epochContext struct {
-	flipAnswers sync.Map // todo spread values to child bots
+	mutex                  sync.Mutex
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string, nodeBaseConfigFileName string,
@@ -97,7 +92,6 @@ func (process *Process) Start() {
 	defer process.destroy()
 	process.init()
 	for {
-		process.initEpochContext()
 		process.createNewUsers()
 		if !process.checkActiveUser() {
 			process.handleError(errors.New("there are no active users"), "")
@@ -110,12 +104,10 @@ func (process *Process) Start() {
 
 func (process *Process) destroy() {
 	for _, u := range process.users {
-		u.Node.Destroy()
+		if err := u.Node.Destroy(); err != nil {
+			log.Warn(err.Error())
+		}
 	}
-}
-
-func (process *Process) initEpochContext() {
-	process.ctx = &epochContext{}
 }
 
 func getNodeDataDir(index int, port int) string {
@@ -150,6 +142,8 @@ func (process *Process) createNewUsers() {
 	process.getNodeAddresses(users)
 
 	process.getEnodes(users)
+
+	process.addPeers()
 
 	process.sendInvites(users)
 
@@ -229,12 +223,12 @@ func (process *Process) getEnodes(users []*user.User) {
 }
 
 func (process *Process) startNode(u *user.User, mode node.StartMode) {
-	u.Start(mode)
+	process.handleError(u.Start(mode), "Unable to start node")
 	log.Info(fmt.Sprintf("Started node %v", u.GetInfo()))
 }
 
 func (process *Process) stopNode(u *user.User) {
-	u.Stop()
+	process.handleError(u.Stop(), "Unable to stop node")
 	log.Info(fmt.Sprintf("Stopped node %v", u.GetInfo()))
 }
 
@@ -257,10 +251,12 @@ func (process *Process) sendInvites(users []*user.User) {
 		return
 	}
 
+	log.Info("Start requesting invites")
 	invitesCount := 0
 	for _, u := range users {
 		err := process.apiClient.CreateInvite(u.Address)
 		process.handleError(err, fmt.Sprintf("%v unable to request invite", u.GetInfo()))
+		log.Info(fmt.Sprintf("%s requested invite", u.GetInfo()))
 		invitesCount++
 	}
 	log.Info(fmt.Sprintf("Requested %v invites", invitesCount))
@@ -295,7 +291,7 @@ func (process *Process) waitForNodesState(users []*user.User, state string) {
 			wg.Done()
 		}(u)
 	}
-	ok := common.WaitWithTimeout(&wg, stateWaitingTimeout)
+	ok := common.WaitWithTimeout(&wg, time.Minute*time.Duration((process.sc.CeremonyMinOffset+1)/2))
 	if !ok {
 		process.handleError(errors.New(fmt.Sprintf("State %v waiting timeout", state)), "")
 	}
@@ -349,11 +345,19 @@ func (process *Process) handleError(err error, prefix string) {
 	if len(prefix) > 0 {
 		fullPrefix = fmt.Sprintf("%v: ", prefix)
 	}
-	log.Error(fmt.Sprintf("%v%v", fullPrefix, err))
+	fullMessage := fmt.Sprintf("%v%v", fullPrefix, err)
+	log.Error(fullMessage)
 	for _, u := range process.users {
-		u.Node.Destroy()
+		if derr := u.Node.Destroy(); derr != nil {
+			log.Warn(derr.Error())
+		}
 	}
-	panic(err)
+	if !process.godMode {
+		if err := process.apiClient.SendFailNotification(fullMessage); err != nil {
+			log.Error(errors.Wrap(err, "Unable to send fail notification to god bot").Error())
+		}
+	}
+	os.Exit(1)
 }
 
 func (process *Process) switchNodeIfNeeded(u *user.User) {
@@ -377,41 +381,40 @@ func (process *Process) switchNodeIfNeeded(u *user.User) {
 }
 
 func (process *Process) addPeers() {
+	log.Info("Start adding peers")
+	defer log.Info("Completed adding peers")
 	users := process.getActiveUsers()
 	for i := 0; i < len(users)-1; i++ {
 		for j := i + 1; j < len(users); j++ {
 			process.addPeer(users[i], users[j])
-			process.addPeer(users[j], users[i])
+		}
+	}
+	process.addGodBotPeersTo(users)
+}
+
+func (process *Process) addGodBotPeersTo(users []*user.User) {
+	if process.godMode {
+		return
+	}
+	n := 10
+	for port := firstPort + 1; port < firstPort+1+n; port++ {
+		peer := getEnodeForPort(process.bootNode, port)
+		for _, u := range users {
+			if err := u.Client.AddPeer(peer); err != nil {
+				log.Warn(fmt.Sprintf("%s unable to add god bot peer %s: %v", u.GetInfo(), peer, err))
+			}
+			log.Debug(fmt.Sprintf("%s added god bot peer %s", u.GetInfo(), peer))
 		}
 	}
 }
 
-func (process *Process) getPeers(u *user.User) []client.Peer {
-	peers, err := u.Client.GetPeers()
-	process.handleError(err, fmt.Sprintf("%s unable to get peers", u.GetInfo()))
-	return peers
-}
-
-func containsPeer(peers []client.Peer, u *user.User) bool {
-	if !strings.Contains(u.Enode, "@") {
-		return false
-	}
-	url := strings.SplitN(u.Enode, "@", 2)[1]
-	for _, peer := range peers {
-		if peer.RemoteAddr == url {
-			return true
-		}
-	}
-	return false
+func getEnodeForPort(baseEnode string, port int) string {
+	return strings.TrimSuffix(baseEnode, strconv.Itoa(firstPort)) + strconv.Itoa(port)
 }
 
 func (process *Process) addPeer(peer *user.User, to *user.User) {
-	if containsPeer(process.getPeers(to), peer) {
-		return
-	}
-
 	if err := to.Client.AddPeer(peer.Enode); err != nil {
-		process.handleError(err, fmt.Sprintf("%s unable to add peer %s", to.GetInfo(), peer.Enode))
+		log.Warn(fmt.Sprintf("%s unable to add peer %s: %v", to.GetInfo(), peer.Enode, err))
 	}
 	log.Debug(fmt.Sprintf("%s added peer %s", to.GetInfo(), peer.Enode))
 }

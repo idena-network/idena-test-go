@@ -10,7 +10,7 @@ import (
 type Config struct {
 	Verbosity     int
 	NodeVerbosity int
-	MaxNetDelay   int
+	MaxNetDelay   *int
 	WorkDir       string
 	Command       string
 	Scenario      string
@@ -21,7 +21,7 @@ type Config struct {
 	PortOffset    int
 }
 
-func LoadFromFileWithDefaults(path string) Config {
+func LoadFromFileWithDefaults(path string, godBotHost string, godBotMode bool) Config {
 	configResult := defaultConfig()
 	if len(path) == 0 {
 		return configResult
@@ -35,6 +35,12 @@ func LoadFromFileWithDefaults(path string) Config {
 		panic(err)
 	}
 	merge(&c, &configResult)
+	if len(godBotHost) > 0 {
+		configResult.GodHost = godBotHost
+	}
+	if godBotMode {
+		configResult.GodMode = godBotMode
+	}
 	return configResult
 }
 
@@ -43,10 +49,11 @@ func defaultConfig() Config {
 	if err != nil {
 		panic(err)
 	}
+	defaultMaxNetDelay := 500
 	return Config{
 		Verbosity:     int(log.LvlInfo),
 		NodeVerbosity: int(log.LvlTrace),
-		MaxNetDelay:   500,
+		MaxNetDelay:   &defaultMaxNetDelay,
 		WorkDir:       defaultWorkDir,
 		Command:       "idena-go",
 		RpcAddr:       "localhost",
@@ -60,7 +67,7 @@ func merge(from *Config, to *Config) {
 	if from.NodeVerbosity > 0 {
 		to.NodeVerbosity = from.NodeVerbosity
 	}
-	if from.MaxNetDelay > 0 {
+	if from.MaxNetDelay != nil {
 		to.MaxNetDelay = from.MaxNetDelay
 	}
 	if len(from.WorkDir) > 0 {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/idena-network/idena-test-go/log"
 	"net/http"
+	"time"
 )
 
 type httpServer struct {
@@ -17,6 +18,8 @@ func NewHttpServer(api *Api) *httpServer {
 	handlers["/api/GetIpfsBootNode"] = api.getIpfsBootNode
 	handlers["/api/CreateInvite"] = api.createInvite
 	handlers["/api/GetCeremonyTime"] = api.getCeremonyTime
+	handlers["/api/GetEpoch"] = api.getEpoch
+	handlers["/api/SendFailNotification"] = api.sendFailNotification
 	return &httpServer{handlers: handlers}
 }
 
@@ -37,6 +40,8 @@ func (server *httpServer) handleRequest(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(500)
 		return
 	}
+	ctx := fixGotRequest(r)
+	defer fixProcessedRequest(ctx)
 	path := r.URL.Path
 	if path == "/favicon.ico" {
 		return
@@ -63,4 +68,22 @@ func (server *httpServer) handleRequest(w http.ResponseWriter, r *http.Request) 
 		log.Error(fmt.Sprintf("Unable to write API response: %v", err))
 		return
 	}
+}
+
+func fixGotRequest(r *http.Request) *reqCtx {
+	reqId := r.FormValue("reqId")
+	if len(reqId) == 0 {
+		reqId = "<no req id>"
+	}
+	ctx := &reqCtx{
+		id:        reqId,
+		timestamp: time.Now(),
+	}
+	log.Trace(fmt.Sprintf("Got api request %s", ctx.id))
+	return ctx
+}
+
+func fixProcessedRequest(ctx *reqCtx) {
+	timestamp := time.Now()
+	log.Trace(fmt.Sprintf("Processed api request %s, duration %v", ctx.id, timestamp.Sub(ctx.timestamp)))
 }

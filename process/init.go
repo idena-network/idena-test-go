@@ -78,7 +78,7 @@ func (process *Process) createGodUser() {
 }
 
 func (process *Process) startGodNode() {
-	process.godUser.Start(node.DeleteDataDir)
+	process.handleError(process.godUser.Start(node.DeleteDataDir), "Unable to start god node")
 	log.Info("Started god node")
 }
 
@@ -149,11 +149,11 @@ func (process *Process) getCeremonyTime() int64 {
 
 func (process *Process) restartGodNode() {
 	u := process.godUser
-	u.Stop()
+	process.handleError(u.Stop(), "Unable to stop node")
 	u.Node.BootNode = process.bootNode
 	u.Node.GodAddress = process.godAddress
 	u.Node.IpfsBootNode = process.ipfsBootNode
 	u.Node.CeremonyTime = process.ceremonyTime
-	u.Start(node.DeleteDb)
+	process.handleError(u.Start(node.DeleteDb), "Unable to start node")
 	log.Info("Restarted god node")
 }

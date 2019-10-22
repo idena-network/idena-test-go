@@ -3,8 +3,11 @@ package apiclient
 import (
 	"fmt"
 	"github.com/idena-network/idena-test-go/log"
+	"github.com/pkg/errors"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -20,29 +23,41 @@ func NewClient(url string) *Client {
 }
 
 func (c *Client) GetGodAddress() (string, error) {
-	resp := c.sendRequest("/api/GetGodAddress", nil)
+	resp, err := c.sendRequest("/api/GetGodAddress", nil)
+	if err != nil {
+		return "", err
+	}
 	return string(resp), nil
 }
 
 func (c *Client) GetBootNode() (string, error) {
-	resp := c.sendRequest("/api/GetBootNode", nil)
+	resp, err := c.sendRequest("/api/GetBootNode", nil)
+	if err != nil {
+		return "", err
+	}
 	return string(resp), nil
 }
 
 func (c *Client) GetIpfsBootNode() (string, error) {
-	resp := c.sendRequest("/api/GetIpfsBootNode", nil)
+	resp, err := c.sendRequest("/api/GetIpfsBootNode", nil)
+	if err != nil {
+		return "", err
+	}
 	return string(resp), nil
 }
 
 func (c *Client) CreateInvite(address string) error {
-	c.sendRequest("/api/CreateInvite", map[string]string{
+	_, err := c.sendRequest("/api/CreateInvite", map[string]string{
 		"address": address,
 	})
-	return nil
+	return err
 }
 
 func (c *Client) GetCeremonyTime() (int64, error) {
-	resp := c.sendRequest("/api/GetCeremonyTime", nil)
+	resp, err := c.sendRequest("/api/GetCeremonyTime", nil)
+	if err != nil {
+		return 0, err
+	}
 	ceremonyTime, err := strconv.ParseInt(string(resp), 10, 64)
 	if err != nil {
 		return 0, err
@@ -50,44 +65,76 @@ func (c *Client) GetCeremonyTime() (int64, error) {
 	return ceremonyTime, nil
 }
 
-func (c *Client) sendRequest(path string, params map[string]string) []byte {
-	strParams := ""
-	if len(params) > 0 {
-		strParams += "?"
-		for k, v := range params {
-			strParams += fmt.Sprintf("%s=%s&", k, v)
-		}
-		strParams = strParams[0 : len(strParams)-1]
-	}
-	url := c.url + path + strParams
-
-	log.Trace(fmt.Sprintf("Send request to API: %s", url))
-
-	httpReq, err := http.NewRequest("GET", url, nil)
+func (c *Client) GetEpoch() (uint16, error) {
+	resp, err := c.sendRequest("/api/GetEpoch", nil)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
+	epoch, err := strconv.Atoi(string(resp))
+	if err != nil {
+		return 0, err
+	}
+	return uint16(epoch), nil
+}
 
+func (c *Client) SendFailNotification(message string) error {
+	_, err := c.sendRequest("/api/SendFailNotification", map[string]string{
+		"message": message,
+	})
+	return err
+}
+
+func (c *Client) sendRequest(path string, params map[string]string) ([]byte, error) {
+	if params == nil {
+		params = make(map[string]string)
+	}
+	params["reqId"] = strconv.Itoa(rand.Int())
+	urlValues := url.Values{}
+	if len(params) > 0 {
+		for k, v := range params {
+			urlValues.Add(k, v)
+		}
+	}
+	fullUrl := c.url + path + "?" + urlValues.Encode()
+
+	log.Trace(fmt.Sprintf("Sending request %s to API: %s", params["reqId"], fullUrl))
+	defer log.Trace(fmt.Sprintf("Sent request %s to API", params["reqId"]))
+
+	httpReq, err := http.NewRequest("GET", fullUrl, nil)
+	if err != nil {
+		return nil, err
+	}
 	var resp *http.Response
+	defer func() {
+		if resp == nil || resp.Body == nil {
+			return
+		}
+		resp.Body.Close()
+	}()
 	counter := 10
 	for {
 		counter--
-		httpClient := &http.Client{}
+		httpClient := &http.Client{
+			Timeout: time.Second * 15,
+		}
 		resp, err = httpClient.Do(httpReq)
-		if err == nil && resp.StatusCode == http.StatusOK {
+		if err == nil && resp.StatusCode != http.StatusOK {
+			err = errors.New(fmt.Sprintf("resp code %v", resp.StatusCode))
+		}
+		if err == nil {
 			break
 		}
 		if counter > 0 {
+			log.Warn(fmt.Sprintf("Retrying to send request %v due to error %v", params["reqId"], err))
 			time.Sleep(time.Second)
 			continue
 		}
-		panic(err)
+		return nil, err
 	}
-	defer resp.Body.Close()
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return respBody
+	return respBody, nil
 }

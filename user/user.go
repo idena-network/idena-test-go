@@ -16,6 +16,7 @@ type User struct {
 	Index          int
 	Active         bool
 	SentAutoOnline bool
+	IsTestRun      bool
 }
 
 type TestContext struct {
@@ -38,12 +39,18 @@ func (u *User) GetInfo() string {
 	return fmt.Sprintf("[User %d-%d]", u.Index, u.Node.RpcPort)
 }
 
-func (u *User) Start(mode node.StartMode) {
-	u.Node.Start(mode)
+func (u *User) Start(mode node.StartMode) error {
+	if err := u.Node.Start(mode); err != nil {
+		return err
+	}
 	u.Active = true
+	return nil
 }
 
-func (u *User) Stop() {
-	u.Node.Stop()
+func (u *User) Stop() error {
+	if err := u.Node.Stop(); err != nil {
+		return err
+	}
 	u.Active = false
+	return nil
 }

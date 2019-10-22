@@ -9,13 +9,17 @@ import (
 	"github.com/idena-network/idena-test-go/process"
 	"github.com/idena-network/idena-test-go/scenario"
 	"gopkg.in/urfave/cli.v1"
+	"math/rand"
 	"os"
+	"path"
 	"path/filepath"
+	"time"
 )
 
 const godBotApiPort = 1111
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	app := cli.NewApp()
 	app.Name = "idena-test"
 	app.Version = "0.0.1"
@@ -30,6 +34,15 @@ func main() {
 			Usage: "Config file",
 			Value: "config.json",
 		},
+		cli.StringFlag{
+			Name:  "godBotHost",
+			Usage: "God bot host",
+			Value: "",
+		},
+		cli.BoolFlag{
+			Name:  "godBotMode",
+			Usage: "God bot mode",
+		},
 	}
 
 	app.Action = func(context *cli.Context) error {
@@ -39,7 +52,8 @@ func main() {
 			return nil
 		}
 
-		conf := config.LoadFromFileWithDefaults(context.String("config"))
+		conf := config.LoadFromFileWithDefaults(context.String("config"), context.String("godBotHost"),
+			context.Bool("godBotMode"))
 
 		workDir := conf.WorkDir
 		initApp(workDir, conf.Verbosity)
@@ -61,7 +75,7 @@ func main() {
 			conf.NodeConfig,
 			conf.RpcAddr,
 			conf.NodeVerbosity,
-			conf.MaxNetDelay,
+			*conf.MaxNetDelay,
 			conf.GodMode,
 			conf.GodHost,
 		)
@@ -106,11 +120,28 @@ func createWorkDir(workDir string) {
 }
 
 func clearDataDir(dataDir string) {
-	if err := os.RemoveAll(dataDir); err != nil {
+	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
+		if err := os.Mkdir(dataDir, os.ModePerm); err != nil {
+			panic(err)
+		}
+		return
+	}
+	dirRead, err := os.Open(dataDir)
+	if err != nil {
 		panic(err)
 	}
-	if err := os.Mkdir(dataDir, os.ModePerm); err != nil {
+	dirFiles, err := dirRead.Readdir(0)
+	if err != nil {
 		panic(err)
+	}
+
+	for index := range dirFiles {
+		filename := dirFiles[index].Name()
+		fullPath := path.Join(dataDir, filename)
+		err := os.RemoveAll(fullPath)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

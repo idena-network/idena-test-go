@@ -2,15 +2,17 @@ package process
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
 	"github.com/idena-network/idena-test-go/scenario"
 	"github.com/idena-network/idena-test-go/user"
+	"github.com/pkg/errors"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -21,6 +23,12 @@ const (
 
 func (process *Process) test() {
 	log.Info(fmt.Sprintf("************** Start waiting for verification sessions (test #%v) **************", process.getCurrentTestIndex()))
+
+	process.waitForGodBotNewEpoch()
+
+	flipsWg := &sync.WaitGroup{}
+	flipsWg.Add(len(process.users))
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(process.users))
 	timeout := process.getTestTimeout()
@@ -31,7 +39,7 @@ func (process *Process) test() {
 	for _, u := range process.users {
 		go func(u *user.User) {
 			ues := &userEpochState{}
-			process.testUser(u, process.godAddress, ues)
+			process.testUser(u, process.godAddress, ues, flipsWg)
 			mutex.Lock()
 			es.userStates[u.Index] = ues
 			mutex.Unlock()
@@ -43,7 +51,13 @@ func (process *Process) test() {
 
 	ok := common.WaitWithTimeout(wg, timeout)
 	if !ok {
-		process.handleError(errors.New("verification sessions timeout"), "")
+		var nodeNames []string
+		for _, u := range process.users {
+			if u.IsTestRun {
+				nodeNames = append(nodeNames, u.GetInfo())
+			}
+		}
+		process.handleError(errors.New("verification sessions timeout"), strings.Join(nodeNames, ","))
 	}
 	process.assert(process.getCurrentTestIndex(), es)
 	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%d) **************", process.getCurrentTestIndex()))
@@ -66,7 +80,11 @@ func (process *Process) getTestTimeout() time.Duration {
 	return testTimeout
 }
 
-func (process *Process) testUser(u *user.User, godAddress string, state *userEpochState) {
+func (process *Process) testUser(u *user.User, godAddress string, state *userEpochState, flipsWg *sync.WaitGroup) {
+	u.IsTestRun = true
+	defer func() {
+		u.IsTestRun = false
+	}()
 	process.initTest(u)
 
 	wasActive := u.Active
@@ -77,6 +95,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	if !u.Active {
 		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
+		flipsWg.Done()
 		return
 	}
 
@@ -91,10 +110,13 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	if !u.Active {
 		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
+		flipsWg.Done()
 		return
 	}
 
 	process.submitFlips(u, godAddress)
+
+	flipsWg.Done()
 
 	process.provideDelayedFlipKeyIfNeeded(u, epoch.NextValidation)
 
@@ -105,6 +127,26 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	process.collectUserEpochState(u, state)
 
 	waitForSessionFinish(u)
+}
+
+func (process *Process) waitForGodBotNewEpoch() {
+	if process.godMode {
+		return
+	}
+	u := process.getActiveUsers()[0]
+	epoch := process.getEpoch(u).Epoch
+	log.Info(fmt.Sprintf("Start waithig for god bot epoch %d", epoch))
+	for {
+		godBotEpoch, err := process.apiClient.GetEpoch()
+		if err == nil && godBotEpoch == epoch {
+			log.Info(fmt.Sprintf("God bot epoch %d started", epoch))
+			return
+		}
+		if err != nil {
+			log.Error(fmt.Sprintf("Unable to get god node epoch to sync: %v", err))
+		}
+		time.Sleep(requestRetryDelay)
+	}
 }
 
 func (process *Process) switchOnlineState(u *user.User, nextValidationTime time.Time) {
@@ -212,7 +254,6 @@ type submittedFlip struct {
 	hash        string
 	wordPairIdx uint8
 	txHash      string
-	answer      byte
 }
 
 func (process *Process) submitFlips(u *user.User, godAddress string) {
@@ -222,31 +263,57 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 	}
 	var submittedFlips []submittedFlip
 	for i := 0; i < flipsToSubmit; i++ {
-		flipHex, err := randomHex(rand.Int()%600000 + 50)
+		flipHex, err := randomHex(rand.Int()%80000 + 80000)
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
 		wordPairIdx := uint8(i)
-		resp, err := u.Client.SubmitFlip(flipHex, wordPairIdx)
-		if err != nil {
-			log.Error(fmt.Sprintf("%v unable to submit flip: %v", u.GetInfo(), err))
-		} else {
-			log.Debug(fmt.Sprintf("%v submitted flip", u.GetInfo()))
-			answer := randomAnswer()
-			submittedFlips = append(submittedFlips, submittedFlip{
-				hash:        resp.Hash,
-				wordPairIdx: wordPairIdx,
-				txHash:      resp.TxHash,
-				answer:      answer,
-			})
-			process.ctx.flipAnswers.Store(resp.Hash, answer)
+		flipCid, txHash := process.submitFlip(u, flipHex, wordPairIdx)
+		flip := submittedFlip{
+			hash:        flipCid,
+			wordPairIdx: wordPairIdx,
+			txHash:      txHash,
 		}
+		log.Info(fmt.Sprintf("%v submitted flip %v", u.GetInfo(), flip))
+		submittedFlips = append(submittedFlips, flip)
+		time.Sleep(time.Second * time.Duration(10+rand.Int()%10))
 	}
 	log.Info(fmt.Sprintf("%v submitted %v flips: %v", u.GetInfo(), len(submittedFlips), submittedFlips))
 }
 
-func randomAnswer() byte {
-	return byte(rand.Int31n(3) + 1)
+func (process *Process) submitFlip(u *user.User, hex string, wordPairIdx uint8) (flipCid, txHash string) {
+	submittedFlips := process.getIdentity(u).Flips
+	resp, err := u.Client.SubmitFlip(hex, wordPairIdx)
+	if err != nil {
+		log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
+	}
+	log.Info(fmt.Sprintf("%v start waiting for mined flip (resp: %v)", u.GetInfo(), resp))
+	for {
+		time.Sleep(requestRetryDelay)
+		newSubmittedFlips := process.getIdentity(u).Flips
+		if len(newSubmittedFlips) == len(submittedFlips)+1 {
+			prevSubmittedFlips := mapset.NewSet()
+			for _, flipCid := range submittedFlips {
+				prevSubmittedFlips.Add(flipCid)
+			}
+			for _, flipCid := range newSubmittedFlips {
+				if !prevSubmittedFlips.Contains(flipCid) {
+					return flipCid, resp.TxHash
+				}
+			}
+		}
+	}
+}
+
+func determineFlipAnswer(hash string) byte {
+	var answer byte
+	bytes := []byte(hash)
+	if bytes[len(bytes)-2]%2 == 0 {
+		answer = common.Left
+	} else {
+		answer = common.Right
+	}
+	return answer
 }
 
 func (process *Process) getFlipsCountToSubmit(u *user.User, godAddress string) int {
@@ -254,13 +321,14 @@ func (process *Process) getFlipsCountToSubmit(u *user.User, godAddress string) i
 	if u.Address == godAddress && requiredFlipsCount == 0 {
 		requiredFlipsCount = initialRequiredFlips
 	}
-	log.Info(fmt.Sprintf("%v required flips: %v", u.GetInfo(), requiredFlipsCount))
 
 	flipsCountToSubmit := requiredFlipsCount
 	userCeremony := process.getScUserCeremony(u)
 	if userCeremony != nil {
 		flipsCountToSubmit = userCeremony.SubmitFlips
 	}
+
+	log.Info(fmt.Sprintf("%v required flips: %d, flips to submit: %d", u.GetInfo(), requiredFlipsCount, flipsCountToSubmit))
 
 	return flipsCountToSubmit
 }
@@ -411,6 +479,7 @@ func emptyFlip() client.FlipResponse {
 func (process *Process) submitAnswers(u *user.User, isShort bool) {
 	var submitFunc func([]client.FlipAnswer) (client.SubmitAnswersResponse, error)
 	name := getSessionName(isShort)
+	log.Trace(fmt.Sprintf("%v start submitting %s answers", u.GetInfo(), name))
 	var flipHashes []client.FlipHashesResponse
 	if isShort {
 		submitFunc = u.Client.SubmitShortAnswers
@@ -431,8 +500,11 @@ func (process *Process) submitAnswers(u *user.User, isShort bool) {
 		answers = append(answers, answer)
 	}
 	resp, err := submitFunc(answers)
-	process.handleError(err, fmt.Sprintf("%v unable to submit %s answers", u.GetInfo(), name))
-	log.Info(fmt.Sprintf("%v submitted %d %s answers: %v, tx: %s", u.GetInfo(), len(answers), name, answers, resp.TxHash))
+	if err != nil {
+		log.Warn(fmt.Sprintf("%v unable to submit %s answers: %v", u.GetInfo(), name, err))
+	} else {
+		log.Info(fmt.Sprintf("%v submitted %d %s answers: %v, tx: %s", u.GetInfo(), len(answers), name, answers, resp.TxHash))
+	}
 }
 
 func (process *Process) getAnswers(u *user.User, isShort bool) []client.FlipAnswer {
@@ -444,10 +516,9 @@ func (process *Process) getAnswers(u *user.User, isShort bool) []client.FlipAnsw
 	}
 	var answers []client.FlipAnswer
 	for _, flipHash := range flipHashes {
-		answer, _ := process.ctx.flipAnswers.Load(flipHash.Hash)
 		answers = append(answers, client.FlipAnswer{
 			WrongWords: false,
-			Answer:     answer.(byte),
+			Answer:     determineFlipAnswer(flipHash.Hash),
 			Hash:       flipHash.Hash,
 		})
 	}

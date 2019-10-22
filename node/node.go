@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/idena-network/idena-test-go/log"
+	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,8 +18,8 @@ const (
 	argConfigFile = "--config"
 	verbosity     = "--verbosity"
 
-	StartWaitingTime = 5 * time.Second
-	StopWaitingTime  = 2 * time.Second
+	StartWaitingTime = 10 * time.Second
+	StopWaitingTime  = 4 * time.Second
 )
 
 type StartMode int
@@ -76,16 +77,23 @@ func NewNode(index int, workDir string, execCommandName string, dataDir string, 
 	}
 }
 
-func (node *Node) Start(deleteMode StartMode) {
-
+func (node *Node) Start(deleteMode StartMode) error {
 	if deleteMode == DeleteDataDir {
-		node.deleteDataDir()
+		if err := node.deleteDataDir(); err != nil {
+			return err
+		}
 	} else if deleteMode == DeleteDb {
-		node.deleteDb()
+		if err := node.deleteDb(); err != nil {
+			return err
+		}
 	}
 
-	node.deleteConfigFile()
-	node.createConfigFile()
+	if err := node.deleteConfigFile(); err != nil {
+		return err
+	}
+	if err := node.createConfigFile(); err != nil {
+		return err
+	}
 
 	args := node.getArgs()
 	command := exec.Command(filepath.Join(node.workDir, node.execCommandName), args...)
@@ -94,7 +102,7 @@ func (node *Node) Start(deleteMode StartMode) {
 	filePath := filepath.Join(node.workDir, node.dataDir, fmt.Sprintf("node-%d-%d.log", node.index, node.RpcPort))
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		panic(err)
+		return errors.Wrapf(err, "unable to init node log file")
 	}
 
 	out := bufio.NewWriter(f)
@@ -102,61 +110,71 @@ func (node *Node) Start(deleteMode StartMode) {
 	command.Stderr = out
 	node.logWriter = out
 
-	command.Start()
+	if err = command.Start(); err != nil {
+		return errors.Wrapf(err, "unable to start node process")
+	}
 	node.process = command.Process
 	time.Sleep(StartWaitingTime)
 
 	log.Info(fmt.Sprintf("Started node, workDir: %v, parameters: %v", node.workDir, args))
+	return nil
 }
 
-func (node *Node) Stop() {
-	node.Destroy()
+func (node *Node) Stop() error {
+	if err := node.Destroy(); err != nil {
+		return err
+	}
 	time.Sleep(StopWaitingTime)
+	return nil
 }
 
-func (node *Node) Destroy() {
+func (node *Node) Destroy() error {
 	if node.logWriter != nil {
 		node.logWriter.Flush()
 		node.logWriter = nil
 	}
 	if node.process != nil {
-		node.killProcess()
+		return node.killProcess()
 	}
+	return nil
 }
 
-func (node *Node) killProcess() {
+func (node *Node) killProcess() error {
 	err := node.process.Kill()
 	if err != nil {
-		panic(err)
+		return errors.Wrapf(err, "unable to kill node process")
 	}
 	node.process = nil
+	log.Info("Killed node process")
+	return nil
 }
 
-func (node *Node) deleteDataDir() {
-	removeFile(filepath.Join(node.workDir, node.dataDir, node.nodeDataDir))
+func (node *Node) deleteDataDir() error {
+	return removeFile(filepath.Join(node.workDir, node.dataDir, node.nodeDataDir))
 }
 
-func (node *Node) deleteDb() {
-	removeFile(filepath.Join(node.workDir, node.dataDir, node.nodeDataDir, dbFileName))
+func (node *Node) deleteDb() error {
+	return removeFile(filepath.Join(node.workDir, node.dataDir, node.nodeDataDir, dbFileName))
 }
 
-func (node *Node) deleteConfigFile() {
-	removeFile(node.getConfigFileFullName())
+func (node *Node) deleteConfigFile() error {
+	return removeFile(node.getConfigFileFullName())
 }
 
-func (node *Node) createConfigFile() {
+func (node *Node) createConfigFile() error {
 	f, err := os.OpenFile(node.getConfigFileFullName(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		panic(err)
+		return errors.Wrapf(err, "unable to init node config file")
 	}
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
 	_, err = w.Write(node.buildNodeConfigFileData())
 	if err != nil {
-		panic(err)
+		return errors.Wrapf(err, "unable to fill node config file")
 	}
 	w.Flush()
+	return nil
 }
 
 func (node *Node) getConfigFileFullName() string {
@@ -167,14 +185,11 @@ func (node *Node) getConfigFileName() string {
 	return fmt.Sprintf("config-%d-%d.json", node.index, node.RpcPort)
 }
 
-func removeFile(path string) {
+func removeFile(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return
+		return nil
 	}
-	err := os.RemoveAll(path)
-	if err != nil {
-		panic(err)
-	}
+	return errors.Wrapf(os.RemoveAll(path), "unable to remove file")
 }
 
 func (node *Node) getArgs() []string {

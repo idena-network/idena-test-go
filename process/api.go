@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/idena-network/idena-test-go/log"
 	"strings"
+	"time"
 )
 
 func (process *Process) GetGodAddress() (string, error) {
@@ -48,6 +49,17 @@ func (process *Process) GetCeremonyTime() (int64, error) {
 		return 0, errors.New("ceremony time has not been initialized yet")
 	}
 	return process.ceremonyTime, nil
+}
+
+func (process *Process) GetEpoch() (uint16, error) {
+	return uint16(process.getCurrentTestIndex()), nil
+}
+
+func (process *Process) SendFailNotification(message string, sender string) {
+	go func() {
+		time.Sleep(time.Second * 2)
+		process.handleError(errors.New(message), fmt.Sprintf("Got fail notification from %s", sender))
+	}()
 }
 
 func (process *Process) toExternal(host string) string {

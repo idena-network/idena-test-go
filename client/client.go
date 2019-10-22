@@ -3,19 +3,21 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
 type Client struct {
 	url         string
 	reqIdHolder *ReqIdHolder
+	mutex       sync.Mutex
 }
 
 func NewClient(node node.Node, reqIdHolder *ReqIdHolder) *Client {
@@ -32,7 +34,9 @@ func (client *Client) GetEpoch() (Epoch, error) {
 	}
 	epoch := Epoch{}
 	resp := response{Result: &epoch}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return Epoch{}, err
+	}
 	if resp.Error != nil {
 		return Epoch{}, errors.New(resp.Error.Message)
 	}
@@ -45,7 +49,9 @@ func (client *Client) GetCoinbaseAddr() (string, error) {
 		Method: "dna_getCoinbaseAddr",
 	}
 	resp := response{}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return "", err
+	}
 	if resp.Error != nil {
 		return "", errors.New(resp.Error.Message)
 	}
@@ -58,7 +64,9 @@ func (client *Client) GetEnode() (string, error) {
 		Method: "net_enode",
 	}
 	resp := response{}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return "", err
+	}
 	if resp.Error != nil {
 		return "", errors.New(resp.Error.Message)
 	}
@@ -71,7 +79,9 @@ func (client *Client) GetIpfsAddress() (string, error) {
 		Method: "net_ipfsAddress",
 	}
 	resp := response{}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return "", err
+	}
 	if resp.Error != nil {
 		return "", errors.New(resp.Error.Message)
 	}
@@ -85,7 +95,9 @@ func (client *Client) GetIdentities() ([]Identity, error) {
 	}
 	var identities []Identity
 	resp := response{Result: &identities}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return nil, err
+	}
 	if resp.Error != nil {
 		return nil, errors.New(resp.Error.Message)
 	}
@@ -100,7 +112,9 @@ func (client *Client) GetIdentity(addr string) (Identity, error) {
 	}
 	var identity Identity
 	resp := response{Result: &identity}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return Identity{}, err
+	}
 	if resp.Error != nil {
 		return Identity{}, errors.New(resp.Error.Message)
 	}
@@ -108,6 +122,9 @@ func (client *Client) GetIdentity(addr string) (Identity, error) {
 }
 
 func (client *Client) SendInvite(to string) (Invite, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	params := sendInviteArgs{
 		To: to,
 	}
@@ -118,7 +135,9 @@ func (client *Client) SendInvite(to string) (Invite, error) {
 	}
 	invite := Invite{}
 	resp := response{Result: &invite}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+		return Invite{}, err
+	}
 	if resp.Error != nil {
 		return Invite{}, errors.New(resp.Error.Message)
 	}
@@ -126,6 +145,9 @@ func (client *Client) SendInvite(to string) (Invite, error) {
 }
 
 func (client *Client) ActivateInvite(to string) (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	params := activateInviteArgs{
 		To: to,
 	}
@@ -135,7 +157,9 @@ func (client *Client) ActivateInvite(to string) (string, error) {
 		Payload: []activateInviteArgs{params},
 	}
 	resp := response{}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+		return "", err
+	}
 	if resp.Error != nil {
 		return "", errors.New(resp.Error.Message)
 	}
@@ -143,6 +167,9 @@ func (client *Client) ActivateInvite(to string) (string, error) {
 }
 
 func (client *Client) SubmitFlip(hex string, wordPairIdx uint8) (FlipSubmitResponse, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	params := flipSubmitArgs{
 		Hex:  hex,
 		Pair: wordPairIdx,
@@ -154,7 +181,9 @@ func (client *Client) SubmitFlip(hex string, wordPairIdx uint8) (FlipSubmitRespo
 	}
 	submitResp := FlipSubmitResponse{}
 	resp := response{Result: &submitResp}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 0, false, &resp); err != nil {
+		return FlipSubmitResponse{}, err
+	}
 	if resp.Error != nil {
 		return FlipSubmitResponse{}, errors.New(resp.Error.Message)
 	}
@@ -172,7 +201,9 @@ func (client *Client) getFlipHashes(method string) ([]FlipHashesResponse, error)
 	}
 	var hashes []FlipHashesResponse
 	resp := response{Result: &hashes}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return nil, err
+	}
 	if resp.Error != nil {
 		return nil, errors.New(resp.Error.Message)
 	}
@@ -187,7 +218,9 @@ func (client *Client) GetFlip(hash string) (FlipResponse, error) {
 	}
 	flipResponse := FlipResponse{}
 	resp := response{Result: &flipResponse}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 15, true, &resp); err != nil {
+		return FlipResponse{}, err
+	}
 	if resp.Error != nil {
 		return FlipResponse{}, errors.New(resp.Error.Message)
 	}
@@ -195,6 +228,9 @@ func (client *Client) GetFlip(hash string) (FlipResponse, error) {
 }
 
 func (client *Client) SubmitShortAnswers(answers []FlipAnswer) (SubmitAnswersResponse, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	return client.submitAnswers(answers, "flip_submitShortAnswers")
 }
 
@@ -210,7 +246,9 @@ func (client *Client) submitAnswers(answers []FlipAnswer, method string) (Submit
 	}
 	submitResp := SubmitAnswersResponse{}
 	resp := response{Result: &submitResp}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+		return SubmitAnswersResponse{}, err
+	}
 	if resp.Error != nil {
 		return SubmitAnswersResponse{}, errors.New(resp.Error.Message)
 	}
@@ -222,14 +260,23 @@ func (client *Client) GetLongFlipHashes() ([]FlipHashesResponse, error) {
 }
 
 func (client *Client) SubmitLongAnswers(answers []FlipAnswer) (SubmitAnswersResponse, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	return client.submitAnswers(answers, "flip_submitLongAnswers")
 }
 
 func (client *Client) BecomeOnline() (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	return client.becomeOnline(true)
 }
 
 func (client *Client) BecomeOffline() (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	return client.becomeOnline(false)
 }
 
@@ -246,7 +293,9 @@ func (client *Client) becomeOnline(online bool) (string, error) {
 		Payload: []struct{}{{}},
 	}
 	resp := response{}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+		return "", err
+	}
 	if resp.Error != nil {
 		return "", errors.New(resp.Error.Message)
 	}
@@ -254,6 +303,9 @@ func (client *Client) becomeOnline(online bool) (string, error) {
 }
 
 func (client *Client) SendTransaction(txType uint16, from, to string, amount, maxFee float32, payloadHex *string) (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
 	params := sendTxArgs{
 		From:       from,
 		To:         to,
@@ -268,7 +320,9 @@ func (client *Client) SendTransaction(txType uint16, from, to string, amount, ma
 		Payload: []sendTxArgs{params},
 	}
 	resp := response{}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+		return "", err
+	}
 	if resp.Error != nil {
 		return "", errors.New(resp.Error.Message)
 	}
@@ -279,52 +333,72 @@ func (client *Client) getReqId() int {
 	return client.reqIdHolder.GetNextReqId()
 }
 
-func (client *Client) sendRequest(req request) []byte {
+func cut(text string, limit int) string {
+	runes := []rune(text)
+	if len(runes) >= limit {
+		return string(runes[:limit])
+	}
+	return text
+}
+
+func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]byte, error) {
 	reqBody, err := json.Marshal(req)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrapf(err, "unable to serialize request")
 	}
 
-	log.Trace(fmt.Sprintf("%v. Send request: %v", client.url, bytes.NewBuffer(reqBody).String()))
-
-	httpReq, err := http.NewRequest("POST", client.url, bytes.NewBuffer(reqBody))
-	if err != nil {
-		panic(err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
+	log.Trace(fmt.Sprintf("%v. Send request: %v", client.url, cut(string(reqBody), 500)))
 
 	var resp *http.Response
+	defer func() {
+		if resp == nil || resp.Body == nil {
+			return
+		}
+		resp.Body.Close()
+	}()
 	counter := 5
 	for {
+		httpReq, err := http.NewRequest("POST", client.url, bytes.NewBuffer(reqBody))
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to create request")
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+
 		counter--
-		httpClient := &http.Client{}
+		httpClient := &http.Client{
+			Timeout: time.Second * time.Duration(timeoutSec),
+		}
 		resp, err = httpClient.Do(httpReq)
 		if err == nil {
 			break
 		}
-		if counter > 0 {
+		if counter > 0 && retry {
+			log.Warn(fmt.Sprintf("%v. Retrying to send request due to error %v", client.url, err))
 			time.Sleep(time.Millisecond * 50)
 			continue
 		}
-		panic(err)
+		return nil, errors.Wrapf(err, "unable to send request")
 	}
-	defer resp.Body.Close()
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrapf(err, "unable to read response")
 	}
-	return respBody
+	return respBody, nil
 }
 
-func (client *Client) sendRequestAndParseResponse(req request, resp *response) {
-	responseBytes := client.sendRequest(req)
+func (client *Client) sendRequestAndParseResponse(req request, timeoutSec int, retry bool, resp *response) error {
+	responseBytes, err := client.sendRequest(req, timeoutSec, retry)
+	if err != nil {
+		return err
+	}
 
-	log.Trace(fmt.Sprintf("%v. Got response: %v", client.url, string(responseBytes)))
+	log.Trace(fmt.Sprintf("%v. Got response: %v", client.url, cut(string(responseBytes), 500)))
 
 	if err := json.Unmarshal(responseBytes, &resp); err != nil {
-		panic(err)
+		return errors.Wrapf(err, "unable to deserialize response")
 	}
+	return nil
 }
 
 func (client *Client) CeremonyIntervals() (CeremonyIntervals, error) {
@@ -334,7 +408,9 @@ func (client *Client) CeremonyIntervals() (CeremonyIntervals, error) {
 	}
 	ceremonyIntervals := CeremonyIntervals{}
 	resp := response{Result: &ceremonyIntervals}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return CeremonyIntervals{}, err
+	}
 	if resp.Error != nil {
 		return CeremonyIntervals{}, errors.New(resp.Error.Message)
 	}
@@ -348,7 +424,9 @@ func (client *Client) GetPeers() ([]Peer, error) {
 	}
 	var peers []Peer
 	resp := response{Result: &peers}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return nil, err
+	}
 	if resp.Error != nil {
 		return nil, errors.New(resp.Error.Message)
 	}
@@ -362,7 +440,9 @@ func (client *Client) AddPeer(url string) error {
 		Payload: []string{url},
 	}
 	resp := response{}
-	client.sendRequestAndParseResponse(req, &resp)
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return err
+	}
 	if resp.Error != nil {
 		return errors.New(resp.Error.Message)
 	}

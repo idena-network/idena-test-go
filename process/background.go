@@ -1,7 +1,6 @@
 package process
 
 import (
-	"errors"
 	"fmt"
 	"github.com/idena-network/idena-go/blockchain/types"
 	"github.com/idena-network/idena-test-go/common"
@@ -21,10 +20,7 @@ func (process *Process) startEpochBackgroundProcess(wg *sync.WaitGroup, timeout 
 
 		go process.generateTxs(flag)
 
-		ok := common.WaitWithTimeout(wg, timeout)
-		if !ok {
-			process.handleError(errors.New("verification sessions timeout"), "")
-		}
+		common.WaitWithTimeout(wg, timeout)
 		log.Debug("Epoch background process completed")
 		flag.completed = true
 	}()
