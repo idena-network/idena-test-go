@@ -252,14 +252,13 @@ func (process *Process) sendInvites(users []*user.User) {
 	}
 
 	log.Info("Start requesting invites")
-	invitesCount := 0
+	var addresses []string
 	for _, u := range users {
-		err := process.apiClient.CreateInvite(u.Address)
-		process.handleError(err, fmt.Sprintf("%v unable to request invite", u.GetInfo()))
-		log.Info(fmt.Sprintf("%s requested invite", u.GetInfo()))
-		invitesCount++
+		addresses = append(addresses, u.Address)
 	}
-	log.Info(fmt.Sprintf("Requested %v invites", invitesCount))
+	err := process.apiClient.CreateInvites(addresses)
+	process.handleError(err, "Unable to request invites")
+	log.Info(fmt.Sprintf("Requested %v invites", len(addresses)))
 	return
 }
 

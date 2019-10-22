@@ -4,6 +4,7 @@ import (
 	"github.com/idena-network/idena-test-go/process"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -50,6 +51,15 @@ func (api *Api) getIpfsBootNode(r *http.Request) (string, error) {
 func (api *Api) createInvite(r *http.Request) (string, error) {
 	addr := r.FormValue("address")
 	err := api.process.RequestInvite(addr)
+	if err != nil {
+		return "", err
+	}
+	return "OK", nil
+}
+
+func (api *Api) createInvites(r *http.Request) (string, error) {
+	addresses := strings.Split(r.FormValue("addresses"), ",")
+	err := api.process.RequestInvites(addresses)
 	if err != nil {
 		return "", err
 	}

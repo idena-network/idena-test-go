@@ -135,7 +135,7 @@ func (process *Process) waitForGodBotNewEpoch() {
 	}
 	u := process.getActiveUsers()[0]
 	epoch := process.getEpoch(u).Epoch
-	log.Info(fmt.Sprintf("Start waithig for god bot epoch %d", epoch))
+	log.Info(fmt.Sprintf("Start waiting for god bot epoch %d", epoch))
 	for {
 		godBotEpoch, err := process.apiClient.GetEpoch()
 		if err == nil && godBotEpoch == epoch {

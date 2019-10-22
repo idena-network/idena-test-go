@@ -17,6 +17,7 @@ func NewHttpServer(api *Api) *httpServer {
 	handlers["/api/GetBootNode"] = api.getBootNode
 	handlers["/api/GetIpfsBootNode"] = api.getIpfsBootNode
 	handlers["/api/CreateInvite"] = api.createInvite
+	handlers["/api/CreateInvites"] = api.createInvites
 	handlers["/api/GetCeremonyTime"] = api.getCeremonyTime
 	handlers["/api/GetEpoch"] = api.getEpoch
 	handlers["/api/SendFailNotification"] = api.sendFailNotification

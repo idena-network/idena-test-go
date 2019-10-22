@@ -44,6 +44,24 @@ func (process *Process) RequestInvite(address string) error {
 	return nil
 }
 
+func (process *Process) RequestInvites(addresses []string) error {
+	if !process.godMode {
+		return errors.New("unable to send invites as there is no god node")
+	}
+	if process.godUser == nil {
+		return errors.New("god node has not been initialized yet")
+	}
+	for _, address := range addresses {
+		invite, err := process.godUser.Client.SendInvite(address)
+		if err != nil {
+			log.Error(fmt.Sprintf("%s unable to send invite to %s by request", process.godUser.GetInfo(), address))
+			continue
+		}
+		log.Info(fmt.Sprintf("%s sent invite %s to %s by request", process.godUser.GetInfo(), invite.Hash, address))
+	}
+	return nil
+}
+
 func (process *Process) GetCeremonyTime() (int64, error) {
 	if process.ceremonyTime == 0 {
 		return 0, errors.New("ceremony time has not been initialized yet")

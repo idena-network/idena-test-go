@@ -95,9 +95,17 @@ func (process *Process) getGodAddress() string {
 		return godAddress
 	}
 	c := process.apiClient
-	godAddress, err := c.GetGodAddress()
-	process.handleError(err, "Unable to get address")
-	return godAddress
+	var err error
+	for cnt := 5; cnt > 0; cnt-- {
+		var godAddress string
+		godAddress, err = c.GetGodAddress()
+		if err == nil {
+			return godAddress
+		}
+		time.Sleep(requestRetryDelay)
+	}
+	process.handleError(err, "Unable to get god node address from god bot")
+	return ""
 }
 
 func (process *Process) initBootNode() {

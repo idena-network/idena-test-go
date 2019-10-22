@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,6 +50,13 @@ func (c *Client) GetIpfsBootNode() (string, error) {
 func (c *Client) CreateInvite(address string) error {
 	_, err := c.sendRequest("/api/CreateInvite", map[string]string{
 		"address": address,
+	})
+	return err
+}
+
+func (c *Client) CreateInvites(addresses []string) error {
+	_, err := c.sendRequest("/api/CreateInvites", map[string]string{
+		"addresses": strings.Join(addresses, ","),
 	})
 	return err
 }
