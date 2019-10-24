@@ -26,9 +26,6 @@ func (process *Process) test() {
 
 	process.waitForGodBotNewEpoch()
 
-	flipsWg := &sync.WaitGroup{}
-	flipsWg.Add(len(process.users))
-
 	wg := &sync.WaitGroup{}
 	wg.Add(len(process.users))
 	timeout := process.getTestTimeout()
@@ -39,7 +36,7 @@ func (process *Process) test() {
 	for _, u := range process.users {
 		go func(u *user.User) {
 			ues := &userEpochState{}
-			process.testUser(u, process.godAddress, ues, flipsWg)
+			process.testUser(u, process.godAddress, ues)
 			mutex.Lock()
 			es.userStates[u.Index] = ues
 			mutex.Unlock()
@@ -80,7 +77,7 @@ func (process *Process) getTestTimeout() time.Duration {
 	return testTimeout
 }
 
-func (process *Process) testUser(u *user.User, godAddress string, state *userEpochState, flipsWg *sync.WaitGroup) {
+func (process *Process) testUser(u *user.User, godAddress string, state *userEpochState) {
 	u.IsTestRun = true
 	defer func() {
 		u.IsTestRun = false
@@ -95,7 +92,6 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	if !u.Active {
 		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
-		flipsWg.Done()
 		return
 	}
 
@@ -110,13 +106,10 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	if !u.Active {
 		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
-		flipsWg.Done()
 		return
 	}
 
 	process.submitFlips(u, godAddress)
-
-	flipsWg.Done()
 
 	process.provideDelayedFlipKeyIfNeeded(u, epoch.NextValidation)
 
