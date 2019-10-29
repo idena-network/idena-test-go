@@ -1,6 +1,7 @@
 package client
 
 import (
+	"github.com/shopspring/decimal"
 	"time"
 )
 
@@ -13,7 +14,7 @@ type request struct {
 
 type sendTxArgs struct {
 	From       string  `json:"from"`
-	To         string  `json:"to"`
+	To         *string `json:"to"`
 	Amount     float32 `json:"amount"`
 	MaxFee     float32 `json:"maxFee"`
 	Type       uint16  `json:"type"`
@@ -107,4 +108,9 @@ type Peer struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
 	RemoteAddr string `json:"addr"`
+}
+
+type BurntCoins struct {
+	Address string          `json:"address"`
+	Amount  decimal.Decimal `json:"amount"`
 }

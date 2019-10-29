@@ -302,7 +302,7 @@ func (client *Client) becomeOnline(online bool) (string, error) {
 	return resp.Result.(string), nil
 }
 
-func (client *Client) SendTransaction(txType uint16, from, to string, amount, maxFee float32, payloadHex *string) (string, error) {
+func (client *Client) SendTransaction(txType uint16, from string, to *string, amount, maxFee float32, payloadHex *string) (string, error) {
 	client.mutex.Lock()
 	defer client.mutex.Unlock()
 
@@ -447,4 +447,20 @@ func (client *Client) AddPeer(url string) error {
 		return errors.New(resp.Error.Message)
 	}
 	return nil
+}
+
+func (client *Client) BurntCoins() ([]BurntCoins, error) {
+	req := request{
+		Id:     client.getReqId(),
+		Method: "bcn_burntCoins",
+	}
+	var res []BurntCoins
+	resp := response{Result: &res}
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return nil, err
+	}
+	if resp.Error != nil {
+		return nil, errors.New(resp.Error.Message)
+	}
+	return res, nil
 }

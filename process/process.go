@@ -243,7 +243,7 @@ func (process *Process) sendInvites(users []*user.User) {
 			invitesCount++
 
 			amount := float32(100.0)
-			tx, err := sender.Client.SendTransaction(types.SendTx, sender.Address, u.Address, amount, 1.0, nil)
+			tx, err := sender.Client.SendTransaction(types.SendTx, sender.Address, &u.Address, amount, 1.0, nil)
 			process.handleError(err, fmt.Sprintf("%v unable to send transaction to %v", sender.GetInfo(), u.GetInfo()))
 			log.Info(fmt.Sprintf("%s sent transaction %s to %s", sender.GetInfo(), tx, u.GetInfo()))
 		}
