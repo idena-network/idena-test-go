@@ -21,7 +21,7 @@ type Config struct {
 	PortOffset    int
 }
 
-func LoadFromFileWithDefaults(path string, godBotHost string, godBotMode bool) Config {
+func LoadFromFileWithDefaults(path string, godBotHost string, godBotMode bool, portOffset int) Config {
 	configResult := defaultConfig()
 	if len(path) == 0 {
 		return configResult
@@ -40,6 +40,9 @@ func LoadFromFileWithDefaults(path string, godBotHost string, godBotMode bool) C
 	}
 	if godBotMode {
 		configResult.GodMode = godBotMode
+	}
+	if portOffset > 0 {
+		configResult.PortOffset = portOffset
 	}
 	return configResult
 }

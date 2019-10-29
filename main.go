@@ -43,6 +43,14 @@ func main() {
 			Name:  "godBotMode",
 			Usage: "God bot mode",
 		},
+		cli.IntFlag{
+			Name:  "nodes",
+			Usage: "Nodes count",
+		},
+		cli.IntFlag{
+			Name:  "portOffset",
+			Usage: "Nodes ports offset",
+		},
 	}
 
 	app.Action = func(context *cli.Context) error {
@@ -53,7 +61,7 @@ func main() {
 		}
 
 		conf := config.LoadFromFileWithDefaults(context.String("config"), context.String("godBotHost"),
-			context.Bool("godBotMode"))
+			context.Bool("godBotMode"), context.Int("portOffset"))
 
 		workDir := conf.WorkDir
 		initApp(workDir, conf.Verbosity)
@@ -65,6 +73,10 @@ func main() {
 			sc = scenario.Load(filepath.Join(workDir, scenarioFileName))
 		} else {
 			sc = scenario.GetDefaultScenario()
+		}
+		nodes := context.Int("nodes")
+		if nodes > 0 {
+			sc.EpochNewUsers[0] = nodes
 		}
 
 		p := process.NewProcess(

@@ -64,7 +64,7 @@ func (in *initializer) initInstance(index int) {
 		copyFile(in.conf.NodeBaseConfig, filepath.Join(outDir, workDir, "nodeConfig.json"))
 	}
 
-	botConfig := botconfig.LoadFromFileWithDefaults(in.conf.BotConfig, "", false)
+	botConfig := botconfig.LoadFromFileWithDefaults(in.conf.BotConfig, "", false, 0)
 	if index == 0 {
 		botConfig.GodMode = true
 	} else {
