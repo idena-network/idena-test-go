@@ -1,6 +1,7 @@
 package client
 
 import (
+	"github.com/idena-network/idena-go/common/hexutil"
 	"github.com/shopspring/decimal"
 	"time"
 )
@@ -36,6 +37,11 @@ type submitAnswersArgs struct {
 type flipSubmitArgs struct {
 	Hex  string `json:"hex"`
 	Pair uint8  `json:"pairId"`
+}
+
+type changeProfileArgs struct {
+	Banner   *hexutil.Bytes `json:"banner"`
+	Nickname *string        `json:"nickname"`
 }
 
 type FlipAnswer struct {
@@ -113,4 +119,14 @@ type Peer struct {
 type BurntCoins struct {
 	Address string          `json:"address"`
 	Amount  decimal.Decimal `json:"amount"`
+}
+
+type ChangeProfileResponse struct {
+	TxHash string `json:"txHash"`
+	Hash   string `json:"hash"`
+}
+
+type ProfileResponse struct {
+	Nickname string `json:"nickname"`
+	Banner   string `json:"banner"`
 }

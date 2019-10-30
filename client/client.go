@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/idena-network/idena-go/common/hexutil"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
 	"github.com/pkg/errors"
@@ -461,6 +462,54 @@ func (client *Client) BurntCoins() ([]BurntCoins, error) {
 	}
 	if resp.Error != nil {
 		return nil, errors.New(resp.Error.Message)
+	}
+	return res, nil
+}
+
+func (client *Client) ChangeProfile(nickname *string, banner []byte) (ChangeProfileResponse, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	params := changeProfileArgs{}
+	if len(banner) > 0 {
+		hex := hexutil.Bytes(banner)
+		params.Banner = &hex
+	}
+	if nickname != nil {
+		params.Nickname = nickname
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "dna_changeProfile",
+		Payload: []changeProfileArgs{params},
+	}
+	res := ChangeProfileResponse{}
+	resp := response{Result: &res}
+	if err := client.sendRequestAndParseResponse(req, 0, false, &resp); err != nil {
+		return ChangeProfileResponse{}, err
+	}
+	if resp.Error != nil {
+		return ChangeProfileResponse{}, errors.New(resp.Error.Message)
+	}
+	return res, nil
+}
+
+func (client *Client) GetProfile(address string) (ProfileResponse, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "dna_profile",
+		Payload: []string{address},
+	}
+	var res ProfileResponse
+	resp := response{Result: &res}
+	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+		return ProfileResponse{}, err
+	}
+	if resp.Error != nil {
+		return ProfileResponse{}, errors.New(resp.Error.Message)
 	}
 	return res, nil
 }
