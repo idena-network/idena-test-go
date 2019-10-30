@@ -3,6 +3,7 @@ package process
 import (
 	"fmt"
 	"github.com/idena-network/idena-test-go/client"
+	"github.com/idena-network/idena-test-go/common"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
 	"github.com/idena-network/idena-test-go/user"
@@ -39,14 +40,23 @@ func (process *Process) loadNodeBaseConfigData() {
 	if len(process.nodeBaseConfigFileName) == 0 {
 		return
 	}
-	file, err := os.Open(filepath.Join(process.workDir, process.nodeBaseConfigFileName))
-	if err != nil {
-		panic(err)
-	}
+	var byteValue []byte
+	var err error
+	if common.IsValidUrl(process.nodeBaseConfigFileName) {
+		byteValue, err = common.LoadData(process.nodeBaseConfigFileName)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		file, err := os.Open(filepath.Join(process.workDir, process.nodeBaseConfigFileName))
+		if err != nil {
+			panic(err)
+		}
 
-	byteValue, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic(err)
+		byteValue, err = ioutil.ReadAll(file)
+		if err != nil {
+			panic(err)
+		}
 	}
 	process.nodeBaseConfigData = byteValue
 }
@@ -70,6 +80,8 @@ func (process *Process) createGodUser() {
 		process.verbosity,
 		process.maxNetDelay,
 		process.nodeBaseConfigData,
+		process.nodeStartWaitingTime,
+		process.nodeStopWaitingTime,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
 	process.godUser = u

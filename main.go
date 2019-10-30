@@ -31,13 +31,8 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "config",
-			Usage: "Config file",
+			Usage: "Config file or url",
 			Value: "config.json",
-		},
-		cli.StringFlag{
-			Name:  "godBotHost",
-			Usage: "God bot host",
-			Value: "",
 		},
 		cli.BoolFlag{
 			Name:  "godBotMode",
@@ -60,8 +55,8 @@ func main() {
 			return nil
 		}
 
-		conf := config.LoadFromFileWithDefaults(context.String("config"), context.String("godBotHost"),
-			context.Bool("godBotMode"), context.Int("portOffset"))
+		conf := config.LoadFromFileWithDefaults(context.String("config"), context.Bool("godBotMode"),
+			context.Int("portOffset"))
 
 		workDir := conf.WorkDir
 		initApp(workDir, conf.Verbosity)
@@ -70,7 +65,7 @@ func main() {
 
 		var sc scenario.Scenario
 		if len(scenarioFileName) > 0 {
-			sc = scenario.Load(filepath.Join(workDir, scenarioFileName))
+			sc = scenario.Load(workDir, scenarioFileName)
 		} else {
 			sc = scenario.GetDefaultScenario()
 		}
@@ -90,6 +85,8 @@ func main() {
 			*conf.MaxNetDelay,
 			conf.GodMode,
 			conf.GodHost,
+			time.Second*time.Duration(conf.NodeStartWaitingSec),
+			time.Second*time.Duration(conf.NodeStopWaitingSec),
 		)
 
 		if conf.GodMode {

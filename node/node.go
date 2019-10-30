@@ -17,9 +17,6 @@ const (
 
 	argConfigFile = "--config"
 	verbosity     = "--verbosity"
-
-	StartWaitingTime = 10 * time.Second
-	StopWaitingTime  = 4 * time.Second
 )
 
 type StartMode int
@@ -31,49 +28,54 @@ const (
 )
 
 type Node struct {
-	index           int
-	workDir         string
-	execCommandName string
-	dataDir         string
-	nodeDataDir     string
-	port            int
-	autoMine        bool
-	RpcHost         string
-	RpcPort         int
-	BootNode        string
-	IpfsBootNode    string
-	ipfsPort        int
-	GodAddress      string
-	CeremonyTime    int64
-	process         *os.Process
-	logWriter       *bufio.Writer
-	verbosity       int
-	maxNetDelay     int
-	baseConfigData  []byte
+	index            int
+	workDir          string
+	execCommandName  string
+	dataDir          string
+	nodeDataDir      string
+	port             int
+	autoMine         bool
+	RpcHost          string
+	RpcPort          int
+	BootNode         string
+	IpfsBootNode     string
+	ipfsPort         int
+	GodAddress       string
+	CeremonyTime     int64
+	process          *os.Process
+	logWriter        *bufio.Writer
+	verbosity        int
+	maxNetDelay      int
+	baseConfigData   []byte
+	startWaitingTime time.Duration
+	stopWaitingTime  time.Duration
 }
 
 func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int,
 	autoMine bool, rpcHost string, rpcPort int, bootNode string, ipfsBootNode string, ipfsPort int, godAddress string,
-	ceremonyTime int64, verbosity int, maxNetDelay int, baseConfigData []byte) *Node {
+	ceremonyTime int64, verbosity int, maxNetDelay int, baseConfigData []byte, startWaitingTime time.Duration,
+	stopWaitingTime time.Duration) *Node {
 
 	return &Node{
-		index:           index,
-		workDir:         workDir,
-		execCommandName: execCommandName,
-		dataDir:         dataDir,
-		nodeDataDir:     nodeDataDir,
-		port:            port,
-		autoMine:        autoMine,
-		RpcHost:         rpcHost,
-		RpcPort:         rpcPort,
-		BootNode:        bootNode,
-		IpfsBootNode:    ipfsBootNode,
-		ipfsPort:        ipfsPort,
-		GodAddress:      godAddress,
-		CeremonyTime:    ceremonyTime,
-		verbosity:       verbosity,
-		maxNetDelay:     maxNetDelay,
-		baseConfigData:  baseConfigData,
+		index:            index,
+		workDir:          workDir,
+		execCommandName:  execCommandName,
+		dataDir:          dataDir,
+		nodeDataDir:      nodeDataDir,
+		port:             port,
+		autoMine:         autoMine,
+		RpcHost:          rpcHost,
+		RpcPort:          rpcPort,
+		BootNode:         bootNode,
+		IpfsBootNode:     ipfsBootNode,
+		ipfsPort:         ipfsPort,
+		GodAddress:       godAddress,
+		CeremonyTime:     ceremonyTime,
+		verbosity:        verbosity,
+		maxNetDelay:      maxNetDelay,
+		baseConfigData:   baseConfigData,
+		startWaitingTime: startWaitingTime,
+		stopWaitingTime:  stopWaitingTime,
 	}
 }
 
@@ -114,7 +116,7 @@ func (node *Node) Start(deleteMode StartMode) error {
 		return errors.Wrapf(err, "unable to start node process")
 	}
 	node.process = command.Process
-	time.Sleep(StartWaitingTime)
+	time.Sleep(node.startWaitingTime)
 
 	log.Info(fmt.Sprintf("Started node, workDir: %v, parameters: %v", node.workDir, args))
 	return nil
@@ -124,7 +126,7 @@ func (node *Node) Stop() error {
 	if err := node.Destroy(); err != nil {
 		return err
 	}
-	time.Sleep(StopWaitingTime)
+	time.Sleep(node.stopWaitingTime)
 	return nil
 }
 

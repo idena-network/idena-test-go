@@ -2,7 +2,9 @@ package scenario
 
 import (
 	"encoding/json"
+	"github.com/idena-network/idena-test-go/common"
 	"io/ioutil"
+	"path/filepath"
 )
 
 var defaultScenario Scenario
@@ -21,8 +23,8 @@ func GetDefaultScenario() Scenario {
 	return defaultScenario
 }
 
-func Load(fileName string) Scenario {
-	incomingScenario := load(fileName)
+func Load(workDir string, fileName string) Scenario {
+	incomingScenario := load(workDir, fileName)
 	if err := incomingScenario.validate(); err != nil {
 		panic(err)
 	}
@@ -30,8 +32,14 @@ func Load(fileName string) Scenario {
 	return sc
 }
 
-func load(fileName string) incomingScenario {
-	scenarioJson, err := ioutil.ReadFile(fileName)
+func load(workDir string, fileName string) incomingScenario {
+	var scenarioJson []byte
+	var err error
+	if common.IsValidUrl(fileName) {
+		scenarioJson, err = common.LoadData(fileName)
+	} else {
+		scenarioJson, err = ioutil.ReadFile(filepath.Join(workDir, fileName))
+	}
 	if err != nil {
 		panic(err)
 	}

@@ -2,31 +2,40 @@ package config
 
 import (
 	"encoding/json"
+	"github.com/idena-network/idena-test-go/common"
 	"github.com/idena-network/idena-test-go/log"
 	"io/ioutil"
 	"os"
 )
 
 type Config struct {
-	Verbosity     int
-	NodeVerbosity int
-	MaxNetDelay   *int
-	WorkDir       string
-	Command       string
-	Scenario      string
-	NodeConfig    string
-	RpcAddr       string
-	GodMode       bool
-	GodHost       string
-	PortOffset    int
+	Verbosity           int
+	NodeVerbosity       int
+	MaxNetDelay         *int
+	WorkDir             string
+	Command             string
+	Scenario            string
+	NodeConfig          string
+	RpcAddr             string
+	GodMode             bool
+	GodHost             string
+	PortOffset          int
+	NodeStartWaitingSec int
+	NodeStopWaitingSec  int
 }
 
-func LoadFromFileWithDefaults(path string, godBotHost string, godBotMode bool, portOffset int) Config {
+func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
 	configResult := defaultConfig()
 	if len(path) == 0 {
 		return configResult
 	}
-	configJson, err := ioutil.ReadFile(path)
+	var configJson []byte
+	var err error
+	if common.IsValidUrl(path) {
+		configJson, err = common.LoadData(path)
+	} else {
+		configJson, err = ioutil.ReadFile(path)
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -35,9 +44,6 @@ func LoadFromFileWithDefaults(path string, godBotHost string, godBotMode bool, p
 		panic(err)
 	}
 	merge(&c, &configResult)
-	if len(godBotHost) > 0 {
-		configResult.GodHost = godBotHost
-	}
 	if godBotMode {
 		configResult.GodMode = godBotMode
 	}
@@ -54,12 +60,14 @@ func defaultConfig() Config {
 	}
 	defaultMaxNetDelay := 500
 	return Config{
-		Verbosity:     int(log.LvlInfo),
-		NodeVerbosity: int(log.LvlTrace),
-		MaxNetDelay:   &defaultMaxNetDelay,
-		WorkDir:       defaultWorkDir,
-		Command:       "idena-go",
-		RpcAddr:       "localhost",
+		Verbosity:           int(log.LvlInfo),
+		NodeVerbosity:       int(log.LvlTrace),
+		MaxNetDelay:         &defaultMaxNetDelay,
+		WorkDir:             defaultWorkDir,
+		Command:             "idena-go",
+		RpcAddr:             "localhost",
+		NodeStartWaitingSec: 10,
+		NodeStopWaitingSec:  4,
 	}
 }
 
@@ -87,4 +95,6 @@ func merge(from *Config, to *Config) {
 	to.GodMode = from.GodMode
 	to.GodHost = from.GodHost
 	to.PortOffset = from.PortOffset
+	to.NodeStartWaitingSec = from.NodeStartWaitingSec
+	to.NodeStopWaitingSec = from.NodeStopWaitingSec
 }

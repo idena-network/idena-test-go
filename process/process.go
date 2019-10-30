@@ -64,10 +64,13 @@ type Process struct {
 	apiClient              *apiclient.Client
 	firstPortOffset        int
 	mutex                  sync.Mutex
+	nodeStartWaitingTime   time.Duration
+	nodeStopWaitingTime    time.Duration
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string, nodeBaseConfigFileName string,
-	rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string) *Process {
+	rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string, nodeStartWaitingTime time.Duration,
+	nodeStopWaitingTime time.Duration) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -85,6 +88,8 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		godHost:                godHost,
 		apiClient:              apiClient,
 		firstPortOffset:        firstPortOffset,
+		nodeStartWaitingTime:   nodeStartWaitingTime,
+		nodeStopWaitingTime:    nodeStopWaitingTime,
 	}
 }
 
@@ -183,6 +188,8 @@ func (process *Process) createUser(index int) *user.User {
 		process.verbosity,
 		process.maxNetDelay,
 		process.nodeBaseConfigData,
+		process.nodeStartWaitingTime,
+		process.nodeStopWaitingTime,
 	)
 	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
 	process.users = append(process.users, u)
