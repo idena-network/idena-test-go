@@ -441,7 +441,7 @@ func (client *Client) AddPeer(url string) error {
 		Payload: []string{url},
 	}
 	resp := response{}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, 1, false, &resp); err != nil {
 		return err
 	}
 	if resp.Error != nil {
