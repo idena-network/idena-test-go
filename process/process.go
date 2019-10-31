@@ -19,10 +19,6 @@ import (
 )
 
 const (
-	firstRpcPort  = 9010
-	firstIpfsPort = 4010
-	firstPort     = 40410
-
 	invite    = "Invite"
 	candidate = "Candidate"
 	newbie    = "Newbie"
@@ -66,11 +62,14 @@ type Process struct {
 	mutex                  sync.Mutex
 	nodeStartWaitingTime   time.Duration
 	nodeStopWaitingTime    time.Duration
+	firstRpcPort           int
+	firstIpfsPort          int
+	firstPort              int
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string, nodeBaseConfigFileName string,
 	rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string, nodeStartWaitingTime time.Duration,
-	nodeStopWaitingTime time.Duration) *Process {
+	nodeStopWaitingTime time.Duration, firstRpcPort int, firstIpfsPort int, firstPort int) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -90,6 +89,9 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		firstPortOffset:        firstPortOffset,
 		nodeStartWaitingTime:   nodeStartWaitingTime,
 		nodeStopWaitingTime:    nodeStopWaitingTime,
+		firstRpcPort:           firstRpcPort,
+		firstIpfsPort:          firstIpfsPort,
+		firstPort:              firstPort,
 	}
 }
 
@@ -170,19 +172,19 @@ func (process *Process) createUsers(count int) {
 }
 
 func (process *Process) createUser(index int) *user.User {
-	rpcPort := firstRpcPort + process.firstPortOffset + index
+	rpcPort := process.firstRpcPort + process.firstPortOffset + index
 	n := node.NewNode(index,
 		process.workDir,
 		process.execCommandName,
 		DataDir,
 		getNodeDataDir(index, rpcPort),
-		firstPort+process.firstPortOffset+index,
+		process.firstPort+process.firstPortOffset+index,
 		false,
 		process.rpcHost,
 		rpcPort,
 		process.bootNode,
 		process.ipfsBootNode,
-		firstIpfsPort+process.firstPortOffset+index,
+		process.firstIpfsPort+process.firstPortOffset+index,
 		process.godAddress,
 		process.ceremonyTime,
 		process.verbosity,
@@ -403,8 +405,8 @@ func (process *Process) addGodBotPeersTo(users []*user.User) {
 		return
 	}
 	n := 10
-	for port := firstPort + 1; port < firstPort+1+n; port++ {
-		peer := getEnodeForPort(process.bootNode, port)
+	for port := process.firstPort + 1; port < process.firstPort+1+n; port++ {
+		peer := process.getEnodeForPort(process.bootNode, port)
 		for _, u := range users {
 			if err := u.Client.AddPeer(peer); err != nil {
 				log.Warn(fmt.Sprintf("%s unable to add god bot peer %s: %v", u.GetInfo(), peer, err))
@@ -414,8 +416,8 @@ func (process *Process) addGodBotPeersTo(users []*user.User) {
 	}
 }
 
-func getEnodeForPort(baseEnode string, port int) string {
-	return strings.TrimSuffix(baseEnode, strconv.Itoa(firstPort)) + strconv.Itoa(port)
+func (process *Process) getEnodeForPort(baseEnode string, port int) string {
+	return strings.TrimSuffix(baseEnode, strconv.Itoa(process.firstPort)) + strconv.Itoa(port)
 }
 
 func (process *Process) addPeer(peer *user.User, to *user.User) {

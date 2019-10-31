@@ -22,6 +22,9 @@ type Config struct {
 	PortOffset          int
 	NodeStartWaitingSec int
 	NodeStopWaitingSec  int
+	FirstRpcPort        int
+	FirstIpfsPort       int
+	FirstPort           int
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -68,6 +71,9 @@ func defaultConfig() Config {
 		RpcAddr:             "localhost",
 		NodeStartWaitingSec: 10,
 		NodeStopWaitingSec:  4,
+		FirstRpcPort:        9010,
+		FirstIpfsPort:       4010,
+		FirstPort:           40410,
 	}
 }
 
@@ -97,4 +103,7 @@ func merge(from *Config, to *Config) {
 	to.PortOffset = from.PortOffset
 	to.NodeStartWaitingSec = from.NodeStartWaitingSec
 	to.NodeStopWaitingSec = from.NodeStopWaitingSec
+	to.FirstRpcPort = from.FirstRpcPort
+	to.FirstIpfsPort = from.FirstIpfsPort
+	to.FirstPort = from.FirstPort
 }
