@@ -260,6 +260,17 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
+		if process.getCurrentTestIndex() == 0 && flipsToSubmit > 1 {
+			_, err := u.Client.SubmitFlip(flipHex, 0)
+			if err != nil {
+				log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
+				continue
+			}
+			log.Info(fmt.Sprintf("%v submitted flip", u.GetInfo()))
+			submittedFlips = append(submittedFlips, submittedFlip{})
+			time.Sleep(time.Millisecond * 100)
+			continue
+		}
 		wordPairIdx := uint8(i)
 		flipCid, txHash := process.submitFlip(u, flipHex, wordPairIdx)
 		flip := submittedFlip{
@@ -311,7 +322,7 @@ func determineFlipAnswer(hash string) byte {
 
 func (process *Process) getFlipsCountToSubmit(u *user.User, godAddress string) int {
 	requiredFlipsCount := process.getRequiredFlipsCount(u)
-	if u.Address == godAddress && requiredFlipsCount == 0 {
+	if process.getCurrentTestIndex() == 0 && u.Address == godAddress && requiredFlipsCount == 0 {
 		requiredFlipsCount = initialRequiredFlips
 	}
 

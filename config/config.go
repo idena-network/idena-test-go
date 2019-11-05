@@ -100,10 +100,22 @@ func merge(from *Config, to *Config) {
 	to.NodeConfig = from.NodeConfig
 	to.GodMode = from.GodMode
 	to.GodHost = from.GodHost
-	to.PortOffset = from.PortOffset
-	to.NodeStartWaitingSec = from.NodeStartWaitingSec
-	to.NodeStopWaitingSec = from.NodeStopWaitingSec
-	to.FirstRpcPort = from.FirstRpcPort
-	to.FirstIpfsPort = from.FirstIpfsPort
-	to.FirstPort = from.FirstPort
+	if from.PortOffset > 0 {
+		to.PortOffset = from.PortOffset
+	}
+	if from.NodeStartWaitingSec > 0 {
+		to.NodeStartWaitingSec = from.NodeStartWaitingSec
+	}
+	if from.NodeStopWaitingSec > 0 {
+		to.NodeStopWaitingSec = from.NodeStopWaitingSec
+	}
+	if from.FirstRpcPort > 0 {
+		to.FirstRpcPort = from.FirstRpcPort
+	}
+	if from.FirstIpfsPort > 0 {
+		to.FirstIpfsPort = from.FirstIpfsPort
+	}
+	if from.FirstPort > 0 {
+		to.FirstPort = from.FirstPort
+	}
 }

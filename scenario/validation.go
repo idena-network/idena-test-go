@@ -246,7 +246,7 @@ func validateUserCeremony(uc userCeremony, usersCount int, usedUsers map[int]boo
 
 func validateSessionAnswers(rates *answerRates, answers []answer, session string) error {
 	if rates == nil && len(answers) == 0 {
-		return errors.New(fmt.Sprintf("Invalid answers for %s session: answerRates and answers are empty", session))
+		return nil
 	}
 	if rates != nil && len(answers) > 0 {
 		return errors.New(fmt.Sprintf("Invalid answers for %s session: answerRates and answers are both not empty", session))
