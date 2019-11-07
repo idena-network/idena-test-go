@@ -450,6 +450,31 @@ func (client *Client) AddPeer(url string) error {
 	return nil
 }
 
+func (client *Client) Burn(from string, amount, maxFee float32, key string) (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	params := burnArgs{
+		From:   from,
+		Amount: amount,
+		MaxFee: maxFee,
+		Key:    key,
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "dna_burn",
+		Payload: []burnArgs{params},
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
 func (client *Client) BurntCoins() ([]BurntCoins, error) {
 	req := request{
 		Id:     client.getReqId(),

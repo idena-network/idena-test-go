@@ -30,6 +30,13 @@ type activateInviteArgs struct {
 	To string `json:"to"`
 }
 
+type burnArgs struct {
+	From   string  `json:"from"`
+	Amount float32 `json:"amount"`
+	MaxFee float32 `json:"maxFee"`
+	Key    string  `json:"key"`
+}
+
 type submitAnswersArgs struct {
 	Answers []FlipAnswer `json:"answers"`
 }
@@ -119,6 +126,7 @@ type Peer struct {
 type BurntCoins struct {
 	Address string          `json:"address"`
 	Amount  decimal.Decimal `json:"amount"`
+	Key     string          `json:"key"`
 }
 
 type ChangeProfileResponse struct {
