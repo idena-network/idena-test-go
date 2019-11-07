@@ -47,7 +47,7 @@ type flipSubmitArgs struct {
 }
 
 type changeProfileArgs struct {
-	Banner   *hexutil.Bytes `json:"banner"`
+	Info     *hexutil.Bytes `json:"info"`
 	Nickname *string        `json:"nickname"`
 }
 
@@ -136,5 +136,5 @@ type ChangeProfileResponse struct {
 
 type ProfileResponse struct {
 	Nickname string `json:"nickname"`
-	Banner   string `json:"banner"`
+	Info     string `json:"info"`
 }

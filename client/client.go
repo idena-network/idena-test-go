@@ -491,14 +491,14 @@ func (client *Client) BurntCoins() ([]BurntCoins, error) {
 	return res, nil
 }
 
-func (client *Client) ChangeProfile(nickname *string, banner []byte) (ChangeProfileResponse, error) {
+func (client *Client) ChangeProfile(nickname *string, info []byte) (ChangeProfileResponse, error) {
 	client.mutex.Lock()
 	defer client.mutex.Unlock()
 
 	params := changeProfileArgs{}
-	if len(banner) > 0 {
-		hex := hexutil.Bytes(banner)
-		params.Banner = &hex
+	if len(info) > 0 {
+		hex := hexutil.Bytes(info)
+		params.Info = &hex
 	}
 	if nickname != nil {
 		params.Nickname = nickname
