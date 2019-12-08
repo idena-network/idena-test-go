@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+const defaultTimeoutSec = 10
+
 type Client struct {
 	url         string
 	reqIdHolder *ReqIdHolder
@@ -35,7 +37,7 @@ func (client *Client) GetEpoch() (Epoch, error) {
 	}
 	epoch := Epoch{}
 	resp := response{Result: &epoch}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return Epoch{}, err
 	}
 	if resp.Error != nil {
@@ -50,7 +52,7 @@ func (client *Client) GetCoinbaseAddr() (string, error) {
 		Method: "dna_getCoinbaseAddr",
 	}
 	resp := response{}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return "", err
 	}
 	if resp.Error != nil {
@@ -65,7 +67,7 @@ func (client *Client) GetEnode() (string, error) {
 		Method: "net_enode",
 	}
 	resp := response{}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return "", err
 	}
 	if resp.Error != nil {
@@ -80,7 +82,7 @@ func (client *Client) GetIpfsAddress() (string, error) {
 		Method: "net_ipfsAddress",
 	}
 	resp := response{}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return "", err
 	}
 	if resp.Error != nil {
@@ -96,7 +98,7 @@ func (client *Client) GetIdentities() ([]Identity, error) {
 	}
 	var identities []Identity
 	resp := response{Result: &identities}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Error != nil {
@@ -113,7 +115,7 @@ func (client *Client) GetIdentity(addr string) (Identity, error) {
 	}
 	var identity Identity
 	resp := response{Result: &identity}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return Identity{}, err
 	}
 	if resp.Error != nil {
@@ -136,7 +138,7 @@ func (client *Client) SendInvite(to string) (Invite, error) {
 	}
 	invite := Invite{}
 	resp := response{Result: &invite}
-	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, 0, false, &resp); err != nil {
 		return Invite{}, err
 	}
 	if resp.Error != nil {
@@ -158,7 +160,7 @@ func (client *Client) ActivateInvite(to string) (string, error) {
 		Payload: []activateInviteArgs{params},
 	}
 	resp := response{}
-	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, 0, false, &resp); err != nil {
 		return "", err
 	}
 	if resp.Error != nil {
@@ -202,7 +204,7 @@ func (client *Client) getFlipHashes(method string) ([]FlipHashesResponse, error)
 	}
 	var hashes []FlipHashesResponse
 	resp := response{Result: &hashes}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Error != nil {
@@ -247,7 +249,7 @@ func (client *Client) submitAnswers(answers []FlipAnswer, method string) (Submit
 	}
 	submitResp := SubmitAnswersResponse{}
 	resp := response{Result: &submitResp}
-	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
 		return SubmitAnswersResponse{}, err
 	}
 	if resp.Error != nil {
@@ -294,7 +296,7 @@ func (client *Client) becomeOnline(online bool) (string, error) {
 		Payload: []struct{}{{}},
 	}
 	resp := response{}
-	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
 		return "", err
 	}
 	if resp.Error != nil {
@@ -321,7 +323,7 @@ func (client *Client) SendTransaction(txType uint16, from string, to *string, am
 		Payload: []sendTxArgs{params},
 	}
 	resp := response{}
-	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
 		return "", err
 	}
 	if resp.Error != nil {
@@ -409,7 +411,7 @@ func (client *Client) CeremonyIntervals() (CeremonyIntervals, error) {
 	}
 	ceremonyIntervals := CeremonyIntervals{}
 	resp := response{Result: &ceremonyIntervals}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return CeremonyIntervals{}, err
 	}
 	if resp.Error != nil {
@@ -425,7 +427,7 @@ func (client *Client) GetPeers() ([]Peer, error) {
 	}
 	var peers []Peer
 	resp := response{Result: &peers}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Error != nil {
@@ -466,7 +468,7 @@ func (client *Client) Burn(from string, amount, maxFee float32, key string) (str
 		Payload: []burnArgs{params},
 	}
 	resp := response{}
-	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
 		return "", err
 	}
 	if resp.Error != nil {
@@ -482,7 +484,7 @@ func (client *Client) BurntCoins() ([]BurntCoins, error) {
 	}
 	var res []BurntCoins
 	resp := response{Result: &res}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Error != nil {
@@ -530,7 +532,7 @@ func (client *Client) GetProfile(address string) (ProfileResponse, error) {
 	}
 	var res ProfileResponse
 	resp := response{Result: &res}
-	if err := client.sendRequestAndParseResponse(req, 5, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
 		return ProfileResponse{}, err
 	}
 	if resp.Error != nil {
