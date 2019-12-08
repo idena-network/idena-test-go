@@ -86,10 +86,12 @@ func main() {
 			conf.GodMode,
 			conf.GodHost,
 			time.Second*time.Duration(conf.NodeStartWaitingSec),
+			time.Second*time.Duration(conf.NodeStartPauseSec),
 			time.Second*time.Duration(conf.NodeStopWaitingSec),
 			conf.FirstRpcPort,
 			conf.FirstIpfsPort,
 			conf.FirstPort,
+			conf.FlipsChanSize,
 		)
 
 		if conf.GodMode {

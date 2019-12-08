@@ -61,18 +61,25 @@ type Process struct {
 	firstPortOffset        int
 	mutex                  sync.Mutex
 	nodeStartWaitingTime   time.Duration
+	nodeStartPauseTime     time.Duration
 	nodeStopWaitingTime    time.Duration
 	firstRpcPort           int
 	firstIpfsPort          int
 	firstPort              int
+	flipsChan              chan int
 }
 
-func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string, nodeBaseConfigFileName string,
-	rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string, nodeStartWaitingTime time.Duration,
-	nodeStopWaitingTime time.Duration, firstRpcPort int, firstIpfsPort int, firstPort int) *Process {
+func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
+	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
+	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
+	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
+	}
+	var flipsChan chan int
+	if flipsChanSize > 0 {
+		flipsChan = make(chan int, flipsChanSize)
 	}
 	return &Process{
 		sc:                     sc,
@@ -88,10 +95,12 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		apiClient:              apiClient,
 		firstPortOffset:        firstPortOffset,
 		nodeStartWaitingTime:   nodeStartWaitingTime,
+		nodeStartPauseTime:     nodeStartPauseTime,
 		nodeStopWaitingTime:    nodeStopWaitingTime,
 		firstRpcPort:           firstRpcPort,
 		firstIpfsPort:          firstIpfsPort,
 		firstPort:              firstPort,
+		flipsChan:              flipsChan,
 	}
 }
 
@@ -204,6 +213,9 @@ func (process *Process) startNodes(users []*user.User, mode node.StartMode) {
 	wg := sync.WaitGroup{}
 	wg.Add(n)
 	for _, u := range users {
+		if process.nodeStartPauseTime > 0 {
+			time.Sleep(process.nodeStartPauseTime)
+		}
 		go func(u *user.User) {
 			process.startNode(u, mode)
 			wg.Done()
@@ -417,7 +429,14 @@ func (process *Process) addGodBotPeersTo(users []*user.User) {
 }
 
 func (process *Process) getEnodeForPort(baseEnode string, port int) string {
-	return strings.TrimSuffix(baseEnode, strconv.Itoa(process.firstPort)) + strconv.Itoa(port)
+	parts := strings.Split(baseEnode, ":")
+	if len(parts) <= 1 {
+		parts = append(parts, strconv.Itoa(port))
+	} else {
+		parts[len(parts)-1] = strconv.Itoa(port)
+	}
+	res := strings.Join(parts, ":")
+	return res
 }
 
 func (process *Process) addPeer(peer *user.User, to *user.User) {

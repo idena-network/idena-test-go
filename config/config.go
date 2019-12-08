@@ -21,10 +21,12 @@ type Config struct {
 	GodHost             string
 	PortOffset          int
 	NodeStartWaitingSec int
+	NodeStartPauseSec   int
 	NodeStopWaitingSec  int
 	FirstRpcPort        int
 	FirstIpfsPort       int
 	FirstPort           int
+	FlipsChanSize       int
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -70,10 +72,12 @@ func defaultConfig() Config {
 		Command:             "idena-go",
 		RpcAddr:             "localhost",
 		NodeStartWaitingSec: 10,
+		NodeStartPauseSec:   0,
 		NodeStopWaitingSec:  4,
 		FirstRpcPort:        9010,
 		FirstIpfsPort:       4010,
 		FirstPort:           40410,
+		FlipsChanSize:       0,
 	}
 }
 
@@ -106,6 +110,7 @@ func merge(from *Config, to *Config) {
 	if from.NodeStartWaitingSec > 0 {
 		to.NodeStartWaitingSec = from.NodeStartWaitingSec
 	}
+	to.NodeStartPauseSec = from.NodeStartPauseSec
 	if from.NodeStopWaitingSec > 0 {
 		to.NodeStopWaitingSec = from.NodeStopWaitingSec
 	}
@@ -118,4 +123,5 @@ func merge(from *Config, to *Config) {
 	if from.FirstPort > 0 {
 		to.FirstPort = from.FirstPort
 	}
+	to.FlipsChanSize = from.FlipsChanSize
 }

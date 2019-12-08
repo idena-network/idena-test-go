@@ -272,6 +272,10 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			continue
 		}
 		wordPairIdx := uint8(i)
+		if process.flipsChan != nil {
+			process.flipsChan <- 1
+		}
+		log.Info(fmt.Sprintf("%v start submitting flip", u.GetInfo()))
 		flipCid, txHash := process.submitFlip(u, flipHex, wordPairIdx)
 		flip := submittedFlip{
 			hash:        flipCid,
@@ -279,8 +283,10 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			txHash:      txHash,
 		}
 		log.Info(fmt.Sprintf("%v submitted flip %v", u.GetInfo(), flip))
+		if process.flipsChan != nil {
+			<-process.flipsChan
+		}
 		submittedFlips = append(submittedFlips, flip)
-		time.Sleep(time.Second * time.Duration(10+rand.Int()%10))
 	}
 	log.Info(fmt.Sprintf("%v submitted %v flips: %v", u.GetInfo(), len(submittedFlips), submittedFlips))
 }
