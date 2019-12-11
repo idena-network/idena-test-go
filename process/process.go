@@ -165,6 +165,10 @@ func (process *Process) createNewUsers() {
 
 	process.waitForInvites(users)
 
+	if process.getCurrentTestIndex() == 0 && !process.godMode {
+		time.Sleep(time.Second * 5)
+	}
+
 	process.activateInvites(users)
 
 	process.waitForCandidates(users)
