@@ -7,6 +7,7 @@ import (
 )
 
 type request struct {
+	Key     string      `json:"key"`
 	Method  string      `json:"method"`
 	Version string      `json:"jsonrpc"`
 	Id      int         `json:"id,omitempty"`

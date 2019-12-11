@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -63,6 +64,7 @@ func (process *Process) loadNodeBaseConfigData() {
 
 func (process *Process) createGodUser() {
 	index := 0
+	apiKey := apiKeyPrefix + strconv.Itoa(index)
 	n := node.NewNode(index,
 		process.workDir,
 		process.execCommandName,
@@ -82,8 +84,9 @@ func (process *Process) createGodUser() {
 		process.nodeBaseConfigData,
 		process.nodeStartWaitingTime,
 		process.nodeStopWaitingTime,
+		apiKey,
 	)
-	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
+	u := user.NewUser(client.NewClient(*n, apiKey, process.reqIdHolder), n, index)
 	process.godUser = u
 	process.users = append(process.users, u)
 	log.Info("Created god user")

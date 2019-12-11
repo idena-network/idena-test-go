@@ -17,6 +17,7 @@ const (
 
 	argConfigFile = "--config"
 	verbosity     = "--verbosity"
+	apiKey        = "--apikey"
 )
 
 type StartMode int
@@ -49,12 +50,13 @@ type Node struct {
 	baseConfigData   []byte
 	startWaitingTime time.Duration
 	stopWaitingTime  time.Duration
+	apiKeyValue      string
 }
 
 func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int,
 	autoMine bool, rpcHost string, rpcPort int, bootNode string, ipfsBootNode string, ipfsPort int, godAddress string,
 	ceremonyTime int64, verbosity int, maxNetDelay int, baseConfigData []byte, startWaitingTime time.Duration,
-	stopWaitingTime time.Duration) *Node {
+	stopWaitingTime time.Duration, apiKeyValue string) *Node {
 
 	return &Node{
 		index:            index,
@@ -76,6 +78,7 @@ func NewNode(index int, workDir string, execCommandName string, dataDir string, 
 		baseConfigData:   baseConfigData,
 		startWaitingTime: startWaitingTime,
 		stopWaitingTime:  stopWaitingTime,
+		apiKeyValue:      apiKeyValue,
 	}
 }
 
@@ -202,6 +205,9 @@ func (node *Node) getArgs() []string {
 
 	args = append(args, verbosity)
 	args = append(args, strconv.Itoa(node.verbosity))
+
+	args = append(args, apiKey)
+	args = append(args, node.apiKeyValue)
 
 	return args
 }

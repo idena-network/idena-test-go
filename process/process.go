@@ -36,6 +36,8 @@ const (
 	shortSessionFlipKeyDeadline = time.Second * 30
 	flipsWaitingMinTimeout      = requestRetryDelay*2 + time.Second*5
 	flipsWaitingMaxTimeout      = time.Minute
+
+	apiKeyPrefix = "testApiKey"
 )
 
 type Process struct {
@@ -186,6 +188,7 @@ func (process *Process) createUsers(count int) {
 
 func (process *Process) createUser(index int) *user.User {
 	rpcPort := process.firstRpcPort + process.firstPortOffset + index
+	apiKey := apiKeyPrefix + strconv.Itoa(index)
 	n := node.NewNode(index,
 		process.workDir,
 		process.execCommandName,
@@ -205,8 +208,9 @@ func (process *Process) createUser(index int) *user.User {
 		process.nodeBaseConfigData,
 		process.nodeStartWaitingTime,
 		process.nodeStopWaitingTime,
+		apiKey,
 	)
-	u := user.NewUser(client.NewClient(*n, process.reqIdHolder), n, index)
+	u := user.NewUser(client.NewClient(*n, apiKey, process.reqIdHolder), n, index)
 	process.users = append(process.users, u)
 	log.Info(fmt.Sprintf("%v created", u.GetInfo()))
 	return u

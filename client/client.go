@@ -19,14 +19,16 @@ const defaultTimeoutSec = 10
 
 type Client struct {
 	url         string
+	apiKey      string
 	reqIdHolder *ReqIdHolder
 	mutex       sync.Mutex
 }
 
-func NewClient(node node.Node, reqIdHolder *ReqIdHolder) *Client {
+func NewClient(node node.Node, apiKey string, reqIdHolder *ReqIdHolder) *Client {
 	return &Client{
 		url:         "http://localhost:" + strconv.Itoa(node.RpcPort) + "/",
 		reqIdHolder: reqIdHolder,
+		apiKey:      apiKey,
 	}
 }
 
@@ -34,6 +36,7 @@ func (client *Client) GetEpoch() (Epoch, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "dna_epoch",
+		Key:    client.apiKey,
 	}
 	epoch := Epoch{}
 	resp := response{Result: &epoch}
@@ -50,6 +53,7 @@ func (client *Client) GetCoinbaseAddr() (string, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "dna_getCoinbaseAddr",
+		Key:    client.apiKey,
 	}
 	resp := response{}
 	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
@@ -65,6 +69,7 @@ func (client *Client) GetEnode() (string, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "net_enode",
+		Key:    client.apiKey,
 	}
 	resp := response{}
 	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
@@ -80,6 +85,7 @@ func (client *Client) GetIpfsAddress() (string, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "net_ipfsAddress",
+		Key:    client.apiKey,
 	}
 	resp := response{}
 	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
@@ -95,6 +101,7 @@ func (client *Client) GetIdentities() ([]Identity, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "dna_identities",
+		Key:    client.apiKey,
 	}
 	var identities []Identity
 	resp := response{Result: &identities}
@@ -112,6 +119,7 @@ func (client *Client) GetIdentity(addr string) (Identity, error) {
 		Id:      client.getReqId(),
 		Method:  "dna_identity",
 		Payload: []string{addr},
+		Key:     client.apiKey,
 	}
 	var identity Identity
 	resp := response{Result: &identity}
@@ -135,6 +143,7 @@ func (client *Client) SendInvite(to string) (Invite, error) {
 		Id:      client.getReqId(),
 		Method:  "dna_sendInvite",
 		Payload: []sendInviteArgs{params},
+		Key:     client.apiKey,
 	}
 	invite := Invite{}
 	resp := response{Result: &invite}
@@ -158,6 +167,7 @@ func (client *Client) ActivateInvite(to string) (string, error) {
 		Id:      client.getReqId(),
 		Method:  "dna_activateInvite",
 		Payload: []activateInviteArgs{params},
+		Key:     client.apiKey,
 	}
 	resp := response{}
 	if err := client.sendRequestAndParseResponse(req, 0, false, &resp); err != nil {
@@ -181,6 +191,7 @@ func (client *Client) SubmitFlip(hex string, wordPairIdx uint8) (FlipSubmitRespo
 		Id:      client.getReqId(),
 		Method:  "flip_submit",
 		Payload: []flipSubmitArgs{params},
+		Key:     client.apiKey,
 	}
 	submitResp := FlipSubmitResponse{}
 	resp := response{Result: &submitResp}
@@ -201,6 +212,7 @@ func (client *Client) getFlipHashes(method string) ([]FlipHashesResponse, error)
 	req := request{
 		Id:     client.getReqId(),
 		Method: method,
+		Key:    client.apiKey,
 	}
 	var hashes []FlipHashesResponse
 	resp := response{Result: &hashes}
@@ -218,6 +230,7 @@ func (client *Client) GetFlip(hash string) (FlipResponse, error) {
 		Id:      client.getReqId(),
 		Method:  "flip_get",
 		Payload: []string{hash},
+		Key:     client.apiKey,
 	}
 	flipResponse := FlipResponse{}
 	resp := response{Result: &flipResponse}
@@ -246,6 +259,7 @@ func (client *Client) submitAnswers(answers []FlipAnswer, method string) (Submit
 		Id:      client.getReqId(),
 		Method:  method,
 		Payload: []submitAnswersArgs{params},
+		Key:     client.apiKey,
 	}
 	submitResp := SubmitAnswersResponse{}
 	resp := response{Result: &submitResp}
@@ -294,6 +308,7 @@ func (client *Client) becomeOnline(online bool) (string, error) {
 		Id:      client.getReqId(),
 		Method:  method,
 		Payload: []struct{}{{}},
+		Key:     client.apiKey,
 	}
 	resp := response{}
 	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
@@ -321,6 +336,7 @@ func (client *Client) SendTransaction(txType uint16, from string, to *string, am
 		Id:      client.getReqId(),
 		Method:  "dna_sendTransaction",
 		Payload: []sendTxArgs{params},
+		Key:     client.apiKey,
 	}
 	resp := response{}
 	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
@@ -408,6 +424,7 @@ func (client *Client) CeremonyIntervals() (CeremonyIntervals, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "dna_ceremonyIntervals",
+		Key:    client.apiKey,
 	}
 	ceremonyIntervals := CeremonyIntervals{}
 	resp := response{Result: &ceremonyIntervals}
@@ -424,6 +441,7 @@ func (client *Client) GetPeers() ([]Peer, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "net_peers",
+		Key:    client.apiKey,
 	}
 	var peers []Peer
 	resp := response{Result: &peers}
@@ -441,6 +459,7 @@ func (client *Client) AddPeer(url string) error {
 		Id:      client.getReqId(),
 		Method:  "net_addPeer",
 		Payload: []string{url},
+		Key:     client.apiKey,
 	}
 	resp := response{}
 	if err := client.sendRequestAndParseResponse(req, 1, false, &resp); err != nil {
@@ -466,6 +485,7 @@ func (client *Client) Burn(from string, amount, maxFee float32, key string) (str
 		Id:      client.getReqId(),
 		Method:  "dna_burn",
 		Payload: []burnArgs{params},
+		Key:     client.apiKey,
 	}
 	resp := response{}
 	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
@@ -481,6 +501,7 @@ func (client *Client) BurntCoins() ([]BurntCoins, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "bcn_burntCoins",
+		Key:    client.apiKey,
 	}
 	var res []BurntCoins
 	resp := response{Result: &res}
@@ -509,6 +530,7 @@ func (client *Client) ChangeProfile(nickname *string, info []byte) (ChangeProfil
 		Id:      client.getReqId(),
 		Method:  "dna_changeProfile",
 		Payload: []changeProfileArgs{params},
+		Key:     client.apiKey,
 	}
 	res := ChangeProfileResponse{}
 	resp := response{Result: &res}
@@ -529,6 +551,7 @@ func (client *Client) GetProfile(address string) (ProfileResponse, error) {
 		Id:      client.getReqId(),
 		Method:  "dna_profile",
 		Payload: []string{address},
+		Key:     client.apiKey,
 	}
 	var res ProfileResponse
 	resp := response{Result: &res}
