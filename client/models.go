@@ -111,7 +111,6 @@ type SubmitAnswersResponse struct {
 }
 
 type CeremonyIntervals struct {
-	ValidationInterval       float64
 	FlipLotteryDuration      float64
 	ShortSessionDuration     float64
 	LongSessionDuration      float64
