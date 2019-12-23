@@ -40,10 +40,6 @@ func (api *Api) getGodAddress(r *http.Request) (string, error) {
 	return api.process.GetGodAddress()
 }
 
-func (api *Api) getBootNode(r *http.Request) (string, error) {
-	return api.process.GetBootNode()
-}
-
 func (api *Api) getIpfsBootNode(r *http.Request) (string, error) {
 	return api.process.GetIpfsBootNode()
 }

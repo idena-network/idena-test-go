@@ -14,7 +14,6 @@ type httpServer struct {
 func NewHttpServer(api *Api) *httpServer {
 	handlers := make(map[string]handler)
 	handlers["/api/GetGodAddress"] = api.getGodAddress
-	handlers["/api/GetBootNode"] = api.getBootNode
 	handlers["/api/GetIpfsBootNode"] = api.getIpfsBootNode
 	handlers["/api/CreateInvite"] = api.createInvite
 	handlers["/api/CreateInvites"] = api.createInvites

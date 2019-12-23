@@ -2,10 +2,8 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/idena-network/idena-go/common"
 	"github.com/idena-network/idena-go/config"
-	"github.com/idena-network/idena-go/p2p/enode"
 	"math/big"
 	"path/filepath"
 )
@@ -27,9 +25,7 @@ type specConfig struct {
 }
 
 type p2pConfig struct {
-	ListenAddr     string
-	BootstrapNodes []*enode.Node
-	MaxDelay       int
+	MaxDelay int
 }
 
 type rpcConfig struct {
@@ -93,14 +89,6 @@ func addConfig(c *specConfig, configData []byte) {
 }
 
 func (node *Node) buildSpecificConfig() *specConfig {
-	var nodes []*enode.Node
-	if len(node.BootNode) > 0 {
-		p, err := enode.ParseV4(node.BootNode)
-		if err != nil {
-			panic(err)
-		}
-		nodes = append(nodes, p)
-	}
 
 	godAddress := node.GodAddress
 	if len(godAddress) == 0 {
@@ -119,9 +107,7 @@ func (node *Node) buildSpecificConfig() *specConfig {
 		Network: &nw,
 		DataDir: dataDir,
 		P2P: p2pConfig{
-			ListenAddr:     fmt.Sprintf(":%d", node.port),
-			BootstrapNodes: nodes,
-			MaxDelay:       node.maxNetDelay,
+			MaxDelay: node.maxNetDelay,
 		},
 		RPC: rpcConfig{
 			HTTPHost: node.RpcHost,

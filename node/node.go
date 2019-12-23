@@ -39,7 +39,6 @@ type Node struct {
 	autoMine         bool
 	RpcHost          string
 	RpcPort          int
-	BootNode         string
 	IpfsBootNode     string
 	ipfsPort         int
 	GodAddress       string
@@ -56,7 +55,7 @@ type Node struct {
 }
 
 func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int,
-	autoMine bool, rpcHost string, rpcPort int, bootNode string, ipfsBootNode string, ipfsPort int, godAddress string,
+	autoMine bool, rpcHost string, rpcPort int, ipfsBootNode string, ipfsPort int, godAddress string,
 	ceremonyTime int64, verbosity int, maxNetDelay int, baseConfigData []byte, startWaitingTime time.Duration,
 	stopWaitingTime time.Duration, apiKeyValue string, profile string) *Node {
 
@@ -70,7 +69,6 @@ func NewNode(index int, workDir string, execCommandName string, dataDir string, 
 		autoMine:         autoMine,
 		RpcHost:          rpcHost,
 		RpcPort:          rpcPort,
-		BootNode:         bootNode,
 		IpfsBootNode:     ipfsBootNode,
 		ipfsPort:         ipfsPort,
 		GodAddress:       godAddress,

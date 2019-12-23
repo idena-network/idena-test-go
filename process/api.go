@@ -15,13 +15,6 @@ func (process *Process) GetGodAddress() (string, error) {
 	return process.godAddress, nil
 }
 
-func (process *Process) GetBootNode() (string, error) {
-	if len(process.bootNode) == 0 {
-		return "", errors.New("boot node has not been initialized yet")
-	}
-	return process.toExternal(process.bootNode), nil
-}
-
 func (process *Process) GetIpfsBootNode() (string, error) {
 	if len(process.ipfsBootNode) == 0 {
 		return "", errors.New("ipfs boot node has not been initialized yet")
@@ -82,6 +75,7 @@ func (process *Process) SendFailNotification(message string, sender string) {
 
 func (process *Process) toExternal(host string) string {
 	external := strings.Replace(host, "localhost", process.godHost, 1)
+	external = strings.Replace(external, "0.0.0.0", process.godHost, 1)
 	external = strings.Replace(external, "127.0.0.1", process.godHost, 1)
 	return external
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -48,7 +47,6 @@ type Process struct {
 	users                  []*user.User
 	godUser                *user.User
 	godAddress             string
-	bootNode               string
 	ipfsBootNode           string
 	ceremonyTime           int64
 	testCounter            int
@@ -118,7 +116,6 @@ func (process *Process) Start() {
 		if !process.checkActiveUser() {
 			process.handleError(errors.New("there are no active users"), "")
 		}
-		process.addPeers()
 		process.test()
 		process.testCounter++
 	}
@@ -163,10 +160,6 @@ func (process *Process) createNewUsers() {
 
 	process.getNodeAddresses(users)
 
-	process.getEnodes(users)
-
-	process.addPeers()
-
 	process.sendInvites(users)
 
 	process.waitForInvites(users)
@@ -203,7 +196,6 @@ func (process *Process) createUser(index int) *user.User {
 		false,
 		process.rpcHost,
 		rpcPort,
-		process.bootNode,
 		process.ipfsBootNode,
 		process.firstIpfsPort+process.firstPortOffset+index,
 		process.godAddress,
@@ -259,15 +251,6 @@ func (process *Process) getNodeAddresses(users []*user.User) {
 		u.Address, err = u.Client.GetCoinbaseAddr()
 		process.handleError(err, fmt.Sprintf("%v unable to get node address", u.GetInfo()))
 		log.Info(fmt.Sprintf("%v got coinbase address %v", u.GetInfo(), u.Address))
-	}
-}
-
-func (process *Process) getEnodes(users []*user.User) {
-	for _, u := range users {
-		var err error
-		u.Enode, err = u.Client.GetEnode()
-		process.handleError(err, fmt.Sprintf("%v unable to get enode", u.GetInfo()))
-		log.Info(fmt.Sprintf("%v got enode %v", u.GetInfo(), u.Enode))
 	}
 }
 
@@ -426,50 +409,4 @@ func (process *Process) switchNodeIfNeeded(u *user.User) {
 			process.stopNode(u)
 		}
 	}
-}
-
-func (process *Process) addPeers() {
-	log.Info("Start adding peers")
-	defer log.Info("Completed adding peers")
-	users := process.getActiveUsers()
-	for i := 0; i < len(users)-1; i++ {
-		for j := i + 1; j < len(users); j++ {
-			process.addPeer(users[i], users[j])
-		}
-	}
-	process.addGodBotPeersTo(users)
-}
-
-func (process *Process) addGodBotPeersTo(users []*user.User) {
-	if process.godMode {
-		return
-	}
-	n := 10
-	for port := process.firstPort + 1; port < process.firstPort+1+n; port++ {
-		peer := process.getEnodeForPort(process.bootNode, port)
-		for _, u := range users {
-			if err := u.Client.AddPeer(peer); err != nil {
-				log.Warn(fmt.Sprintf("%s unable to add god bot peer %s: %v", u.GetInfo(), peer, err))
-			}
-			log.Debug(fmt.Sprintf("%s added god bot peer %s", u.GetInfo(), peer))
-		}
-	}
-}
-
-func (process *Process) getEnodeForPort(baseEnode string, port int) string {
-	parts := strings.Split(baseEnode, ":")
-	if len(parts) <= 1 {
-		parts = append(parts, strconv.Itoa(port))
-	} else {
-		parts[len(parts)-1] = strconv.Itoa(port)
-	}
-	res := strings.Join(parts, ":")
-	return res
-}
-
-func (process *Process) addPeer(peer *user.User, to *user.User) {
-	if err := to.Client.AddPeer(peer.Enode); err != nil {
-		log.Warn(fmt.Sprintf("%s unable to add peer %s: %v", to.GetInfo(), peer.Enode, err))
-	}
-	log.Debug(fmt.Sprintf("%s added peer %s", to.GetInfo(), peer.Enode))
 }

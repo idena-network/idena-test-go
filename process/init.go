@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -25,7 +26,6 @@ func (process *Process) init() {
 	}
 
 	process.initGodAddress()
-	process.initBootNode()
 	process.initIpfsBootNode()
 
 	process.ceremonyTime = process.getCeremonyTime()
@@ -75,7 +75,6 @@ func (process *Process) createGodUser() {
 		process.rpcHost,
 		process.firstRpcPort+process.firstPortOffset+index,
 		"",
-		"",
 		process.firstIpfsPort+process.firstPortOffset+index,
 		"",
 		0,
@@ -124,24 +123,6 @@ func (process *Process) getGodAddress() string {
 	return ""
 }
 
-func (process *Process) initBootNode() {
-	process.bootNode = process.getBootNode()
-	log.Info(fmt.Sprintf("Got boot node enode: %v", process.bootNode))
-}
-
-func (process *Process) getBootNode() string {
-	if process.godMode {
-		u := process.godUser
-		bootNode, err := u.Client.GetEnode()
-		process.handleError(err, fmt.Sprintf("%v unable to get enode", u.GetInfo()))
-		return bootNode
-	}
-	c := process.apiClient
-	bootNode, err := c.GetBootNode()
-	process.handleError(err, "Unable to get boot node")
-	return bootNode
-}
-
 func (process *Process) initIpfsBootNode() {
 	process.ipfsBootNode = process.getIpfsBootNode()
 	log.Info(fmt.Sprintf("Got ipfs boot node: %v", process.ipfsBootNode))
@@ -152,6 +133,7 @@ func (process *Process) getIpfsBootNode() string {
 		u := process.godUser
 		ipfsBootNode, err := u.Client.GetIpfsAddress()
 		process.handleError(err, fmt.Sprintf("%v unable to get ipfs boot node", u.GetInfo()))
+		ipfsBootNode = strings.Replace(ipfsBootNode, "0.0.0.0", "127.0.0.1", 1)
 		return ipfsBootNode
 	}
 	c := process.apiClient
@@ -174,7 +156,6 @@ func (process *Process) getCeremonyTime() int64 {
 func (process *Process) restartGodNode() {
 	u := process.godUser
 	process.handleError(u.Stop(), "Unable to stop node")
-	u.Node.BootNode = process.bootNode
 	u.Node.GodAddress = process.godAddress
 	u.Node.IpfsBootNode = process.ipfsBootNode
 	u.Node.CeremonyTime = process.ceremonyTime
