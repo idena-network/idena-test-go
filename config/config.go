@@ -27,6 +27,7 @@ type Config struct {
 	FirstIpfsPort       int
 	FirstPort           int
 	FlipsChanSize       int
+	LowPowerProfileRate float32
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -78,6 +79,7 @@ func defaultConfig() Config {
 		FirstIpfsPort:       4010,
 		FirstPort:           40410,
 		FlipsChanSize:       0,
+		LowPowerProfileRate: 0,
 	}
 }
 
@@ -124,4 +126,5 @@ func merge(from *Config, to *Config) {
 		to.FirstPort = from.FirstPort
 	}
 	to.FlipsChanSize = from.FlipsChanSize
+	to.LowPowerProfileRate = from.LowPowerProfileRate
 }

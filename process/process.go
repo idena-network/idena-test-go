@@ -27,6 +27,7 @@ const (
 	periodShortSession = "ShortSession"
 	periodLongSession  = "LongSession"
 	periodNone         = "None"
+	lowPowerProfile    = "lowpower"
 
 	DataDir           = "datadir"
 	requestRetryDelay = 8 * time.Second
@@ -69,12 +70,14 @@ type Process struct {
 	firstIpfsPort          int
 	firstPort              int
 	flipsChan              chan int
+	lowPowerProfileRate    float32
+	lowPowerProfileCount   int
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
 	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
 	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
-	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int) *Process {
+	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -103,6 +106,7 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		firstIpfsPort:          firstIpfsPort,
 		firstPort:              firstPort,
 		flipsChan:              flipsChan,
+		lowPowerProfileRate:    lowPowerProfileRate,
 	}
 }
 
@@ -189,6 +193,7 @@ func (process *Process) createUsers(count int) {
 func (process *Process) createUser(index int) *user.User {
 	rpcPort := process.firstRpcPort + process.firstPortOffset + index
 	apiKey := apiKeyPrefix + strconv.Itoa(index)
+	profile := process.defineNewNodeProfile()
 	n := node.NewNode(index,
 		process.workDir,
 		process.execCommandName,
@@ -209,11 +214,26 @@ func (process *Process) createUser(index int) *user.User {
 		process.nodeStartWaitingTime,
 		process.nodeStopWaitingTime,
 		apiKey,
+		profile,
 	)
 	u := user.NewUser(client.NewClient(*n, apiKey, process.reqIdHolder), n, index)
 	process.users = append(process.users, u)
+	if profile == lowPowerProfile {
+		process.lowPowerProfileCount++
+	}
 	log.Info(fmt.Sprintf("%v created", u.GetInfo()))
 	return u
+}
+
+func (process *Process) defineNewNodeProfile() string {
+	if process.lowPowerProfileRate == 0 || len(process.users) == 0 {
+		return ""
+	}
+	curRate := float32(process.lowPowerProfileCount) / float32(len(process.users))
+	if curRate > process.lowPowerProfileRate {
+		return ""
+	}
+	return lowPowerProfile
 }
 
 func (process *Process) startNodes(users []*user.User, mode node.StartMode) {

@@ -92,6 +92,7 @@ func main() {
 			conf.FirstIpfsPort,
 			conf.FirstPort,
 			conf.FlipsChanSize,
+			conf.LowPowerProfileRate,
 		)
 
 		if conf.GodMode {

@@ -85,6 +85,7 @@ func (process *Process) createGodUser() {
 		process.nodeStartWaitingTime,
 		process.nodeStopWaitingTime,
 		apiKey,
+		"",
 	)
 	u := user.NewUser(client.NewClient(*n, apiKey, process.reqIdHolder), n, index)
 	process.godUser = u
