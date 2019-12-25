@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	mapset "github.com/deckarep/golang-set"
+	common2 "github.com/idena-network/idena-go/common"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
 	"github.com/idena-network/idena-test-go/log"
@@ -115,7 +116,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	waitForShortSession(u)
 
-	process.passVerification(u, godAddress)
+	process.passVerification(u)
 
 	process.collectUserEpochState(u, state)
 
@@ -214,7 +215,7 @@ func (process *Process) collectUserEpochState(u *user.User, state *userEpochStat
 	state.requiredFlips = identity.RequiredFlips
 }
 
-func (process *Process) passVerification(u *user.User, godAddress string) {
+func (process *Process) passVerification(u *user.User) {
 
 	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
 
@@ -256,12 +257,12 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 	}
 	var submittedFlips []submittedFlip
 	for i := 0; i < flipsToSubmit; i++ {
-		flipHex, err := randomHex(rand.Int()%80000 + 80000)
+		flipPrivateHex, flipPublicHex, err := generateFlip()
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
 		if process.getCurrentTestIndex() == 0 && flipsToSubmit > 1 {
-			_, err := u.Client.SubmitFlip(flipHex, 0)
+			_, err := u.Client.SubmitFlip(flipPrivateHex, flipPublicHex, 0)
 			if err != nil {
 				log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
 				continue
@@ -276,7 +277,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			process.flipsChan <- 1
 		}
 		log.Info(fmt.Sprintf("%v start submitting flip", u.GetInfo()))
-		flipCid, txHash := process.submitFlip(u, flipHex, wordPairIdx)
+		flipCid, txHash := process.submitFlip(u, flipPrivateHex, flipPublicHex, wordPairIdx)
 		flip := submittedFlip{
 			hash:        flipCid,
 			wordPairIdx: wordPairIdx,
@@ -291,9 +292,9 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 	log.Info(fmt.Sprintf("%v submitted %v flips: %v", u.GetInfo(), len(submittedFlips), submittedFlips))
 }
 
-func (process *Process) submitFlip(u *user.User, hex string, wordPairIdx uint8) (flipCid, txHash string) {
+func (process *Process) submitFlip(u *user.User, privateHex, publicHex string, wordPairIdx uint8) (flipCid, txHash string) {
 	submittedFlips := process.getIdentity(u).Flips
-	resp, err := u.Client.SubmitFlip(hex, wordPairIdx)
+	resp, err := u.Client.SubmitFlip(privateHex, publicHex, wordPairIdx)
 	if err != nil {
 		log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
 	}
@@ -357,12 +358,43 @@ func (process *Process) getRequiredFlipsCount(u *user.User) int {
 	return requiredFlipsCount
 }
 
-func randomHex(n int) (string, error) {
+func generateFlip() (privateHex, publicHex string, err error) {
+	var privateBytes []byte
+	if privateBytes, err = randomBytes(rand.Int()%80000 + 80000); err != nil {
+		return
+	}
+	privateHex = toHex(privateBytes)
+	publicHex = toHex(reverse(privateBytes))
+	return
+}
+
+func reverse(bytes []byte) []byte {
+	var res []byte
+	for i := len(bytes) - 1; i >= 0; i-- {
+		res = append(res, bytes[i])
+	}
+	return res
+}
+
+func randomBytes(n int) ([]byte, error) {
 	bytes := make([]byte, n)
 	if _, err := rand.Read(bytes); err != nil {
-		return "", err
+		return nil, err
 	}
-	return "0x" + hex.EncodeToString(bytes), nil
+	return bytes, nil
+}
+
+func toHex(bytes []byte) string {
+	return "0x" + hex.EncodeToString(bytes)
+}
+
+func (process *Process) assertFlip(u *user.User, flipHash string, flip client.FlipResponse) {
+	if toHex(reverse(common2.FromHex(flip.PrivateHex))) == flip.PublicHex {
+		return
+	}
+	message :=
+		fmt.Sprintf("%v private flip hex must be equal to reversed public one, cid %s", u.GetInfo(), flipHash)
+	process.handleError(errors.New(message), "")
 }
 
 func waitForShortSession(u *user.User) {
@@ -475,6 +507,7 @@ func (process *Process) getFlips(u *user.User, isShort bool) {
 			process.handleError(err, fmt.Sprintf("%v unable to get flip %s", u.GetInfo(), h.Hash))
 			continue
 		}
+		process.assertFlip(u, h.Hash, flipResponse)
 		flips = append(flips, flipResponse)
 	}
 	setFunc(flips)

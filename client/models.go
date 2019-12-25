@@ -43,8 +43,9 @@ type submitAnswersArgs struct {
 }
 
 type flipSubmitArgs struct {
-	Hex  string `json:"hex"`
-	Pair uint8  `json:"pairId"`
+	PrivateHex string `json:"privateHex"`
+	PublicHex  string `json:"publicHex"`
+	Pair       uint8  `json:"pairId"`
 }
 
 type changeProfileArgs struct {
@@ -103,7 +104,8 @@ type FlipHashesResponse struct {
 }
 
 type FlipResponse struct {
-	Hex string `json:"hex"`
+	PublicHex  string `json:"hex"`
+	PrivateHex string `json:"privateHex"`
 }
 
 type SubmitAnswersResponse struct {

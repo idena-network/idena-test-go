@@ -163,13 +163,14 @@ func (client *Client) ActivateInvite(to string) (string, error) {
 	return resp.Result.(string), nil
 }
 
-func (client *Client) SubmitFlip(hex string, wordPairIdx uint8) (FlipSubmitResponse, error) {
+func (client *Client) SubmitFlip(privateHex, publicHex string, wordPairIdx uint8) (FlipSubmitResponse, error) {
 	client.mutex.Lock()
 	defer client.mutex.Unlock()
 
 	params := flipSubmitArgs{
-		Hex:  hex,
-		Pair: wordPairIdx,
+		PrivateHex: privateHex,
+		PublicHex:  publicHex,
+		Pair:       wordPairIdx,
 	}
 	req := request{
 		Id:      client.getReqId(),
