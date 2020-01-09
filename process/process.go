@@ -322,7 +322,11 @@ func (process *Process) waitForNodesState(users []*user.User, state string) {
 			wg.Done()
 		}(u)
 	}
-	ok := common.WaitWithTimeout(&wg, time.Minute*time.Duration((process.sc.CeremonyMinOffset+1)/2))
+	timeoutMin := (process.sc.CeremonyMinOffset + 1) / 2
+	if process.sc.CeremonyMinOffset-timeoutMin > 8 {
+		timeoutMin = process.sc.CeremonyMinOffset - 8
+	}
+	ok := common.WaitWithTimeout(&wg, time.Minute*time.Duration(timeoutMin))
 	if !ok {
 		process.handleError(errors.New(fmt.Sprintf("State %v waiting timeout", state)), "")
 	}
