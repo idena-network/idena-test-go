@@ -25,7 +25,8 @@ type specConfig struct {
 }
 
 type p2pConfig struct {
-	MaxDelay int
+	MaxPeers *int
+	MaxDelay *int
 }
 
 type rpcConfig struct {
@@ -103,11 +104,12 @@ func (node *Node) buildSpecificConfig() *specConfig {
 	}
 
 	nw := uint32(network)
+	maxNetDelay := node.maxNetDelay
 	return &specConfig{
 		Network: &nw,
 		DataDir: dataDir,
 		P2P: p2pConfig{
-			MaxDelay: node.maxNetDelay,
+			MaxDelay: &maxNetDelay,
 		},
 		RPC: rpcConfig{
 			HTTPHost: node.RpcHost,
