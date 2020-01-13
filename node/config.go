@@ -54,9 +54,12 @@ type consensusConf struct {
 }
 
 type ipfsConfig struct {
-	DataDir   string
-	BootNodes []string
-	IpfsPort  int
+	DataDir     string
+	BootNodes   []string
+	IpfsPort    int
+	LowWater    *int
+	HighWater   *int
+	GracePeriod *string
 }
 
 func buildConfig(node *Node) interface{} {
