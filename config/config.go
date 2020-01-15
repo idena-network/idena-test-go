@@ -28,6 +28,13 @@ type Config struct {
 	FirstPort           int
 	FlipsChanSize       int
 	LowPowerProfileRate float32
+	AliveMonitoring     AliveMonitoringConfig
+}
+
+type AliveMonitoringConfig struct {
+	Enabled     bool
+	IntervalSec int
+	Url         string
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -127,4 +134,7 @@ func merge(from *Config, to *Config) {
 	}
 	to.FlipsChanSize = from.FlipsChanSize
 	to.LowPowerProfileRate = from.LowPowerProfileRate
+	if from.AliveMonitoring.Enabled {
+		to.AliveMonitoring = from.AliveMonitoring
+	}
 }

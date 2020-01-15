@@ -3,6 +3,8 @@ package process
 import (
 	"fmt"
 	"github.com/idena-network/idena-go/blockchain/types"
+	"github.com/idena-network/idena-go/common/eventbus"
+	"github.com/idena-network/idena-test-go/alive"
 	"github.com/idena-network/idena-test-go/apiclient"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
@@ -70,12 +72,15 @@ type Process struct {
 	flipsChan              chan int
 	lowPowerProfileRate    float32
 	lowPowerProfileCount   int
+	aliveManager           alive.Manager
+	bus                    eventbus.Bus
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
 	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
 	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
-	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32) *Process {
+	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32,
+	aliveManager alive.Manager, bus eventbus.Bus) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -105,6 +110,8 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		firstPort:              firstPort,
 		flipsChan:              flipsChan,
 		lowPowerProfileRate:    lowPowerProfileRate,
+		aliveManager:           aliveManager,
+		bus:                    bus,
 	}
 }
 
@@ -376,18 +383,24 @@ func (process *Process) handleError(err error, prefix string) {
 	if err == nil {
 		return
 	}
+	process.mutex.Lock()
+	defer process.mutex.Unlock()
 	fullPrefix := ""
 	if len(prefix) > 0 {
 		fullPrefix = fmt.Sprintf("%v: ", prefix)
 	}
 	fullMessage := fmt.Sprintf("%v%v", fullPrefix, err)
 	log.Error(fullMessage)
-	for _, u := range process.users {
-		if derr := u.Node.Destroy(); derr != nil {
-			log.Warn(derr.Error())
+	process.destroy()
+	if process.godMode {
+		for {
+			if err := process.aliveManager.Disable(); err != nil {
+				log.Warn(errors.Wrap(err, "Unable to disable bot").Error())
+				time.Sleep(requestRetryDelay)
+			}
+			break
 		}
-	}
-	if !process.godMode {
+	} else {
 		if err := process.apiClient.SendFailNotification(fullMessage); err != nil {
 			log.Error(errors.Wrap(err, "Unable to send fail notification to god bot").Error())
 		}
