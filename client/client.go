@@ -189,6 +189,26 @@ func (client *Client) SubmitFlip(privateHex, publicHex string, wordPairIdx uint8
 	return submitResp, nil
 }
 
+func (client *Client) DeleteFlip(hash string) (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_delete",
+		Payload: []string{hash},
+		Key:     client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, 0, false, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
 func (client *Client) GetShortFlipHashes() ([]FlipHashesResponse, error) {
 	return client.getFlipHashes("flip_shortHashes")
 }
