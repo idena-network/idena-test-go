@@ -25,8 +25,8 @@ type specConfig struct {
 }
 
 type p2pConfig struct {
-	MaxPeers *int
-	MaxDelay *int
+	MaxDelay       *int
+	CollectMetrics bool
 }
 
 type rpcConfig struct {
