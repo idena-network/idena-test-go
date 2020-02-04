@@ -20,9 +20,7 @@ type User struct {
 
 type TestContext struct {
 	ShortFlipHashes []client.FlipHashesResponse
-	ShortFlips      []client.FlipResponse
 	LongFlipHashes  []client.FlipHashesResponse
-	LongFlips       []client.FlipResponse
 	TestStartTime   time.Time
 }
 

@@ -225,6 +225,8 @@ func (process *Process) passVerification(u *user.User) {
 
 	process.submitAnswers(u, true)
 
+	u.TestContext.ShortFlipHashes = nil
+
 	waitForLongSession(u)
 
 	process.getFlipHashes(u, false)
@@ -232,16 +234,18 @@ func (process *Process) passVerification(u *user.User) {
 	process.getFlips(u, false)
 
 	process.submitAnswers(u, false)
+
+	u.TestContext.LongFlipHashes = nil
 }
 
 func (process *Process) initTest(u *user.User) {
-	ctx := user.TestContext{}
-	ctx.ShortFlipHashes = nil
-	ctx.ShortFlips = nil
-	ctx.LongFlipHashes = nil
-	ctx.LongFlips = nil
-	ctx.TestStartTime = time.Now()
-	u.TestContext = &ctx
+	if u.TestContext != nil {
+		u.TestContext.ShortFlipHashes = nil
+		u.TestContext.LongFlipHashes = nil
+	}
+	u.TestContext = &user.TestContext{
+		TestStartTime: time.Now(),
+	}
 }
 
 type submittedFlip struct {
@@ -483,17 +487,10 @@ func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse) 
 func (process *Process) getFlips(u *user.User, isShort bool) {
 	name := getSessionName(isShort)
 	var flipHashes []client.FlipHashesResponse
-	var setFunc func([]client.FlipResponse)
 	if isShort {
 		flipHashes = u.TestContext.ShortFlipHashes
-		setFunc = func(flips []client.FlipResponse) {
-			u.TestContext.ShortFlips = flips
-		}
 	} else {
 		flipHashes = u.TestContext.LongFlipHashes
-		setFunc = func(flips []client.FlipResponse) {
-			u.TestContext.LongFlips = flips
-		}
 	}
 
 	var flips []client.FlipResponse
@@ -510,7 +507,6 @@ func (process *Process) getFlips(u *user.User, isShort bool) {
 		process.assertFlip(u, h.Hash, flipResponse)
 		flips = append(flips, flipResponse)
 	}
-	setFunc(flips)
 	log.Info(fmt.Sprintf("%v got %v %s flips", u.GetInfo(), len(flips), name))
 	return
 }
