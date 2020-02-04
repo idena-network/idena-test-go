@@ -51,6 +51,7 @@ type consensusConf struct {
 	MinProposerThreshold *float64 `json:"MinProposerThreshold,omitempty"`
 	MaxProposerThreshold *float64 `json:"MaxProposerThreshold,omitempty"`
 	VrfSensitivityCoef   *float64 `json:"VrfSensitivityCoef,omitempty"`
+	StatusSwitchRange    *uint64  `json:"StatusSwitchRange,omitempty"`
 }
 
 type ipfsConfig struct {
