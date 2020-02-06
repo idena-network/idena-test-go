@@ -61,6 +61,7 @@ type ipfsConfig struct {
 	LowWater    *int
 	HighWater   *int
 	GracePeriod *string
+	Profile     *string
 }
 
 func buildConfig(node *Node) interface{} {
