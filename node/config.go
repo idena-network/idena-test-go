@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/idena-network/idena-go/common"
 	"github.com/idena-network/idena-go/config"
+	"math"
 	"math/big"
 	"path/filepath"
 )
@@ -38,6 +39,7 @@ type genesisConf struct {
 	Alloc             map[string]genesisAllocation
 	FirstCeremonyTime int64
 	GodAddress        string
+	GodAddressInvites uint16
 }
 
 type genesisAllocation struct {
@@ -129,6 +131,7 @@ func (node *Node) buildSpecificConfig() *specConfig {
 			},
 			GodAddress:        godAddress,
 			FirstCeremonyTime: node.CeremonyTime,
+			GodAddressInvites: math.MaxUint16,
 		},
 		Consensus: consensusConf{
 			Automine: node.autoMine,
