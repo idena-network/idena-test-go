@@ -464,7 +464,7 @@ func (process *Process) getFlipHashes(u *user.User, isShort bool) {
 		}
 		log.Info(fmt.Sprintf("%v unable to get %s flip hashes: %v", u.GetInfo(), name, err))
 		if time.Now().After(deadline) {
-			break
+			process.handleError(err, fmt.Sprintf("%v didn't manage to get all flips ready: %v", u.GetInfo(), err))
 		}
 		time.Sleep(requestRetryDelay)
 	}
