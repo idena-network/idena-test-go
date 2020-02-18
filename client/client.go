@@ -394,7 +394,12 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 		}
 		resp, err = httpClient.Do(httpReq)
 		if err == nil {
-			break
+			var respBody []byte
+			respBody, err = ioutil.ReadAll(resp.Body)
+			if err == nil {
+				return respBody, nil
+			}
+			err = errors.Wrapf(err, "unable to read response")
 		}
 		if counter > 0 && retry {
 			log.Warn(fmt.Sprintf("%v. Retrying to send request due to error %v", client.url, err))
@@ -403,12 +408,6 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 		}
 		return nil, errors.Wrapf(err, "unable to send request")
 	}
-
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to read response")
-	}
-	return respBody, nil
 }
 
 func (client *Client) sendRequestAndParseResponse(req request, timeoutSec int, retry bool, resp *response) error {
