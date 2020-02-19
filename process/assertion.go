@@ -15,8 +15,9 @@ type epochState struct {
 }
 
 type userEpochState struct {
-	madeFlips     int
-	requiredFlips int
+	madeFlips      int
+	requiredFlips  int
+	availableFlips int
 }
 
 type errorsHolder struct {
@@ -73,8 +74,8 @@ func (process *Process) logStats(nodeStates map[string]int, identitiesPerUserIdx
 			continue
 		}
 		userEpochState := es.userStates[i]
-		log.Info(fmt.Sprintf("%s state: %s, made flips: %d, required flips: %d, available invites: %d, online: %t",
-			u.GetInfo(), identity.State, userEpochState.madeFlips, userEpochState.requiredFlips, identity.Invites, identity.Online))
+		log.Info(fmt.Sprintf("%s state: %s, made flips: %d, required flips: %d, available flips: %d, available invites: %d, online: %t",
+			u.GetInfo(), identity.State, userEpochState.madeFlips, userEpochState.requiredFlips, userEpochState.availableFlips, identity.Invites, identity.Online))
 	}
 	log.Info("------------------------------------------------------------")
 }
