@@ -213,6 +213,7 @@ func (process *Process) collectUserEpochState(u *user.User, state *userEpochStat
 	identity := process.getIdentity(u)
 	state.madeFlips = len(identity.Flips)
 	state.requiredFlips = identity.RequiredFlips
+	state.availableFlips = identity.AvailableFlips
 }
 
 func (process *Process) passVerification(u *user.User) {
@@ -358,8 +359,17 @@ func (process *Process) getScUserCeremony(u *user.User) *scenario.UserCeremony {
 
 func (process *Process) getRequiredFlipsCount(u *user.User) int {
 	identity := process.getIdentity(u)
-	requiredFlipsCount := identity.RequiredFlips - len(identity.Flips)
-	return requiredFlipsCount
+	flipsCount := identity.RequiredFlips
+	additional := identity.AvailableFlips - identity.RequiredFlips
+	if additional > 0 {
+		a := []byte(u.Address)
+		for i := 0; i < additional; i++ {
+			if a[len(a)-1-i]%2 == 0 {
+				flipsCount++
+			}
+		}
+	}
+	return flipsCount - len(identity.Flips)
 }
 
 func generateFlip() (privateHex, publicHex string, err error) {

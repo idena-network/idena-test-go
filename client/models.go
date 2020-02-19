@@ -78,12 +78,13 @@ type Epoch struct {
 }
 
 type Identity struct {
-	Address       string   `json:"address"`
-	State         string   `json:"state"`
-	RequiredFlips int      `json:"requiredFlips"`
-	Flips         []string `json:"flips"`
-	Invites       int      `json:"invites"`
-	Online        bool     `json:"online"`
+	Address        string   `json:"address"`
+	State          string   `json:"state"`
+	RequiredFlips  int      `json:"requiredFlips"`
+	AvailableFlips int      `json:"availableFlips"`
+	Flips          []string `json:"flips"`
+	Invites        int      `json:"invites"`
+	Online         bool     `json:"online"`
 }
 
 type Invite struct {
