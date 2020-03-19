@@ -47,7 +47,7 @@ func (process *Process) RequestInvites(addresses []string) error {
 	for _, address := range addresses {
 		invite, err := process.godUser.Client.SendInvite(address)
 		if err != nil {
-			log.Error(fmt.Sprintf("%s unable to send invite to %s by request", process.godUser.GetInfo(), address))
+			log.Error(fmt.Sprintf("%s unable to send invite to %s by request: %v", process.godUser.GetInfo(), address, err))
 			continue
 		}
 		log.Info(fmt.Sprintf("%s sent invite %s to %s by request", process.godUser.GetInfo(), invite.Hash, address))
