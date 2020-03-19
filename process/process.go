@@ -36,8 +36,8 @@ const (
 	initialRequiredFlips = 1
 
 	shortSessionFlipKeyDeadline = time.Second * 30
-	flipsWaitingMinTimeout      = requestRetryDelay*2 + time.Second*5
-	flipsWaitingMaxTimeout      = time.Minute
+	flipsWaitingMinTimeout      = time.Minute
+	flipsWaitingMaxTimeout      = time.Second * 90
 
 	apiKeyPrefix = "testApiKey"
 )
