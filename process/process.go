@@ -74,6 +74,7 @@ type Process struct {
 	lowPowerProfileCount   int
 	aliveManager           alive.Manager
 	bus                    eventbus.Bus
+	ceremonyIntervals      *client.CeremonyIntervals
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,

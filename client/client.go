@@ -373,13 +373,6 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 
 	log.Trace(fmt.Sprintf("%v. Send request: %v", client.url, cut(string(reqBody), 500)))
 
-	var resp *http.Response
-	defer func() {
-		if resp == nil || resp.Body == nil {
-			return
-		}
-		resp.Body.Close()
-	}()
 	counter := 5
 	for {
 		httpReq, err := http.NewRequest("POST", client.url, bytes.NewBuffer(reqBody))
@@ -388,19 +381,20 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
 
-		counter--
 		httpClient := &http.Client{
 			Timeout: time.Second * time.Duration(timeoutSec),
 		}
-		resp, err = httpClient.Do(httpReq)
+		resp, err := httpClient.Do(httpReq)
 		if err == nil {
 			var respBody []byte
 			respBody, err = ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
 			if err == nil {
 				return respBody, nil
 			}
 			err = errors.Wrapf(err, "unable to read response")
 		}
+		counter--
 		if counter > 0 && retry {
 			log.Warn(fmt.Sprintf("%v. Retrying to send request due to error %v", client.url, err))
 			time.Sleep(time.Millisecond * 50)

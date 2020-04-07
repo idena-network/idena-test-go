@@ -29,6 +29,7 @@ func (process *Process) test() {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(process.users))
+	process.initCeremonyIntervals()
 	timeout := process.getTestTimeout()
 	es := epochState{
 		userStates: make(map[int]*userEpochState),
@@ -61,11 +62,17 @@ func (process *Process) test() {
 	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%d) **************", process.getCurrentTestIndex()))
 }
 
+func (process *Process) initCeremonyIntervals() {
+	u := process.getActiveUsers()[0]
+	intervals, err := u.Client.CeremonyIntervals()
+	process.handleError(err, fmt.Sprintf("%v unable to get ceremony intervals", u.GetInfo()))
+	process.ceremonyIntervals = &intervals
+}
+
 func (process *Process) getTestTimeout() time.Duration {
 	u := process.getActiveUsers()[0]
 	epoch := process.getEpoch(u)
-	intervals, err := u.Client.CeremonyIntervals()
-	process.handleError(err, fmt.Sprintf("%v unable to get ceremony intervals", u.GetInfo()))
+	intervals := process.ceremonyIntervals
 	now := time.Now()
 	nextValidation := epoch.NextValidation
 	testTimeout := nextValidation.Sub(now) +
@@ -220,7 +227,7 @@ func (process *Process) passVerification(u *user.User) {
 
 	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), process.getRequiredFlipsCount(u)))
 
-	process.getFlipHashes(u, true)
+	process.getFlipHashes(u, true, 3)
 
 	process.getFlips(u, true)
 
@@ -230,9 +237,13 @@ func (process *Process) passVerification(u *user.User) {
 
 	waitForLongSession(u)
 
-	process.getFlipHashes(u, false)
+	process.getFlipHashes(u, false, 10)
 
 	process.getFlips(u, false)
+
+	delay := time.Second * time.Duration(rand.Float64()*process.ceremonyIntervals.LongSessionDuration/2)
+	log.Debug(fmt.Sprintf("%v delay before submitting long answers: %v", u.GetInfo(), delay))
+	time.Sleep(delay)
 
 	process.submitAnswers(u, false)
 
@@ -288,7 +299,12 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			wordPairIdx: wordPairIdx,
 			txHash:      txHash,
 		}
-		log.Info(fmt.Sprintf("%v submitted flip %v", u.GetInfo(), flip))
+		//pub := common2.FromHex(flipPublicHex)
+		//priv := common2.FromHex(flipPrivateHex)
+		//asserted := toHex(reverse(common2.FromHex(flipPrivateHex))) == flipPublicHex
+		//log.Info(fmt.Sprintf("%v submitted flip %v, len(pub): %v, pub: %v...%v, len(priv): %v, priv: %v...%v, asserted: %v", u.GetInfo(), flip,
+		//	len(pub), pub[:10], pub[len(pub)-10:],
+		//	len(priv), priv[:10], priv[len(priv)-10:], asserted))
 		if process.flipsChan != nil {
 			<-process.flipsChan
 		}
@@ -321,9 +337,12 @@ func (process *Process) submitFlip(u *user.User, privateHex, publicHex string, w
 	}
 }
 
-func determineFlipAnswer(hash string) byte {
+func determineFlipAnswer(flipHash client.FlipHashesResponse) byte {
+	if !flipHash.Ready {
+		return common.None
+	}
 	var answer byte
-	bytes := []byte(hash)
+	bytes := []byte(flipHash.Hash)
 	if bytes[len(bytes)-2]%2 == 0 {
 		answer = common.Left
 	} else {
@@ -408,6 +427,13 @@ func (process *Process) assertFlip(u *user.User, flipHash string, flip client.Fl
 	}
 	message :=
 		fmt.Sprintf("%v private flip hex must be equal to reversed public one, cid %s", u.GetInfo(), flipHash)
+
+	//pub := common2.FromHex(flip.PublicHex)
+	//priv := common2.FromHex(flip.PrivateHex)
+	//log.Info(fmt.Sprintf("%v failed flip %v, len(pub): %v, pub: %v...%v, len(priv): %v, priv: %v...%v", u.GetInfo(), flip,
+	//	len(pub), pub[:10], pub[len(pub)-10:],
+	//	len(priv), priv[:10], priv[len(priv)-10:]))
+
 	process.handleError(errors.New(message), "")
 }
 
@@ -441,7 +467,7 @@ func (process *Process) getCurrentTestIndex() int {
 	return process.testCounter
 }
 
-func (process *Process) getFlipHashes(u *user.User, isShort bool) {
+func (process *Process) getFlipHashes(u *user.User, isShort bool, allowableNotReadyCount int) {
 	name := getSessionName(isShort)
 	var loadFunc func() ([]client.FlipHashesResponse, error)
 	var setFunc func([]client.FlipHashesResponse)
@@ -466,30 +492,45 @@ func (process *Process) getFlipHashes(u *user.User, isShort bool) {
 		flipHashes, err = loadFunc()
 		if err != nil {
 			process.handleError(err, fmt.Sprintf("%v unable to get %s flip hashes", u.GetInfo(), name))
-			return
 		}
-		err = process.checkFlipHashes(flipHashes)
-		if err == nil {
-			break
-		}
-		log.Info(fmt.Sprintf("%v unable to get %s flip hashes: %v", u.GetInfo(), name, err))
 		if time.Now().After(deadline) {
+			if err := process.checkFlipHashes(flipHashes, allowableNotReadyCount); err == nil ||
+				errors.Cause(err) == notReadyFlipsAllowableCount {
+				if err != nil {
+					log.Warn(fmt.Sprintf("%v %v", u.GetInfo(), err))
+				}
+				break
+			}
 			process.handleError(err, fmt.Sprintf("%v didn't manage to get all flips ready: %v", u.GetInfo(), err))
 		}
+		if err = process.checkFlipHashes(flipHashes, 0); err == nil {
+			break
+		}
+		log.Warn(fmt.Sprintf("%v unable to get %s flip hashes: %v", u.GetInfo(), name, err))
 		time.Sleep(requestRetryDelay)
 	}
 	setFunc(flipHashes)
 	log.Info(fmt.Sprintf("%v got %d %s flip hashes", u.GetInfo(), len(flipHashes), name))
 }
 
-func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse) error {
+var notReadyFlipsAllowableCount = errors.New("there is not ready flips")
+
+func (process *Process) checkFlipHashes(flipHashes []client.FlipHashesResponse, allowableNotReadyCount int) error {
 	if len(flipHashes) == 0 {
 		return errors.New("empty flip hashes")
 	}
+	var notReadyFlips []string
 	for _, f := range flipHashes {
 		if !f.Ready {
-			return errors.New(fmt.Sprintf("Not ready flip %v", f.Hash))
+			notReadyFlips = append(notReadyFlips, f.Hash)
 		}
+	}
+	if len(notReadyFlips) > 0 {
+		msg := fmt.Sprintf("Not ready flips: %v, allowableNotReadyCount: %v", notReadyFlips, allowableNotReadyCount)
+		if len(notReadyFlips) > allowableNotReadyCount {
+			return errors.New(msg)
+		}
+		return errors.Wrap(notReadyFlipsAllowableCount, msg)
 	}
 	return nil
 }
@@ -539,14 +580,21 @@ func (process *Process) submitAnswers(u *user.User, isShort bool) {
 	}
 	allAnswers := process.getAnswers(u, isShort)
 	var answers []client.FlipAnswer
+	allowableExtraFlips := 0
 	for i, answer := range allAnswers {
 		if i >= len(flipHashes) {
 			break
 		}
 		if flipHashes[i].Extra {
-			continue
+			if allowableExtraFlips == 0 {
+				continue
+			}
+			allowableExtraFlips--
 		}
 		answers = append(answers, answer)
+		if !flipHashes[i].Ready {
+			allowableExtraFlips++
+		}
 	}
 	resp, err := submitFunc(answers)
 	if err != nil {
@@ -567,7 +615,7 @@ func (process *Process) getAnswers(u *user.User, isShort bool) []client.FlipAnsw
 	for _, flipHash := range flipHashes {
 		answers = append(answers, client.FlipAnswer{
 			WrongWords: false,
-			Answer:     determineFlipAnswer(flipHash.Hash),
+			Answer:     determineFlipAnswer(flipHash),
 			Hash:       flipHash.Hash,
 		})
 	}
