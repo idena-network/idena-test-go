@@ -27,28 +27,19 @@ func (process *Process) test() {
 
 	process.waitForGodBotNewEpoch()
 
-	wg := &sync.WaitGroup{}
-	wg.Add(len(process.users))
 	process.initCeremonyIntervals()
 	timeout := process.getTestTimeout()
-	es := epochState{
+	process.wg = &sync.WaitGroup{}
+	newUsers := process.sc.EpochNewUsersAfterFlips[process.getCurrentTestIndex()]
+	process.wg.Add(len(process.users) + newUsers)
+	process.es = &epochState{
 		userStates: make(map[int]*userEpochState),
 	}
-	mutex := sync.Mutex{}
-	for _, u := range process.users {
-		go func(u *user.User) {
-			ues := &userEpochState{}
-			process.testUser(u, process.godAddress, ues)
-			mutex.Lock()
-			es.userStates[u.Index] = ues
-			mutex.Unlock()
-			wg.Done()
-		}(u)
-	}
+	process.testUsers(process.users)
 
-	process.startEpochBackgroundProcess(wg, timeout)
+	process.startEpochBackgroundProcess(process.wg, timeout)
 
-	ok := common.WaitWithTimeout(wg, timeout)
+	ok := common.WaitWithTimeout(process.wg, timeout)
 	if !ok {
 		var nodeNames []string
 		for _, u := range process.users {
@@ -58,8 +49,22 @@ func (process *Process) test() {
 		}
 		process.handleError(errors.New("verification sessions timeout"), strings.Join(nodeNames, ","))
 	}
-	process.assert(process.getCurrentTestIndex(), es)
+	process.assert(process.getCurrentTestIndex(), *process.es)
 	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%d) **************", process.getCurrentTestIndex()))
+}
+
+func (process *Process) testUsers(users []*user.User) {
+	mutex := sync.Mutex{}
+	for _, u := range users {
+		go func(u *user.User) {
+			ues := &userEpochState{}
+			process.testUser(u, process.godAddress, ues)
+			mutex.Lock()
+			process.es.userStates[u.Index] = ues
+			mutex.Unlock()
+			process.wg.Done()
+		}(u)
+	}
 }
 
 func (process *Process) initCeremonyIntervals() {
@@ -120,6 +125,14 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	process.submitFlips(u, godAddress)
 
 	process.provideDelayedFlipKeyIfNeeded(u, epoch.NextValidation)
+
+	if u.Index == 0 {
+		newUsers := process.sc.EpochNewUsersAfterFlips[process.getCurrentTestIndex()]
+		if newUsers > 0 {
+			process.createNewUsers(newUsers, true)
+			process.testUsers(process.users[len(process.users)-newUsers:])
+		}
+	}
 
 	waitForShortSession(u)
 

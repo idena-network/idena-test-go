@@ -15,6 +15,9 @@ func (sc *incomingScenario) validate() error {
 	if err := validateAllNewUsers(sc.NewUsers); err != nil {
 		return err
 	}
+	if err := validateAllNewUsers(sc.NewUsersAfterFlips); err != nil {
+		return err
+	}
 	if err := validateDelayedEpochsNodes(sc.NodeStarts); err != nil {
 		return err
 	}

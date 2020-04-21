@@ -71,7 +71,7 @@ func main() {
 		}
 		nodes := context.Int("nodes")
 		if nodes > 0 {
-			sc.EpochNewUsers[0] = nodes
+			sc.EpochNewUsersBeforeFlips[0] = nodes
 		}
 
 		p := process.NewProcess(

@@ -42,6 +42,8 @@ const (
 
 type Process struct {
 	sc                     scenario.Scenario
+	es                     *epochState
+	wg                     *sync.WaitGroup
 	workDir                string
 	execCommandName        string
 	users                  []*user.User
@@ -120,7 +122,7 @@ func (process *Process) Start() {
 	defer process.destroy()
 	process.init()
 	for {
-		process.createNewUsers()
+		process.createNewUsers(process.sc.EpochNewUsersBeforeFlips[process.getCurrentTestIndex()], false)
 		if !process.checkActiveUser() {
 			process.handleError(errors.New("there are no active users"), "")
 		}
@@ -141,21 +143,18 @@ func getNodeDataDir(index int, port int) string {
 	return fmt.Sprintf("datadir-%d-%d", index, port)
 }
 
-func (process *Process) createNewUsers() {
-	testIndex := process.getCurrentTestIndex()
-	currentUsers := len(process.users)
-	newUsers := process.sc.EpochNewUsers[testIndex]
+func (process *Process) createNewUsers(newUsers int, afterFlips bool) {
 	if newUsers == 0 {
 		return
 	}
-	excludeGodNode := process.godMode && testIndex == 0
+	excludeGodNode := !afterFlips && process.godMode && process.getCurrentTestIndex() == 0
 	if excludeGodNode {
 		newUsers--
 	}
+	currentUsers := len(process.users)
 	if newUsers > 0 {
 		process.createUsers(newUsers)
 	}
-
 	var users []*user.User
 	usersToStart := process.users[currentUsers : currentUsers+newUsers]
 	if excludeGodNode {

@@ -1,17 +1,18 @@
 package scenario
 
 type incomingScenario struct {
-	Users             int                  `json:"users"` // users count
-	CeremonyMinOffset int                  `json:"ceremonyMinOffset"`
-	NewUsers          []newUsers           `json:"newUsers"` // users to create later
-	NodeStarts        []delayedEpochsNodes `json:"nodeStarts"`
-	NodeStops         []delayedEpochsNodes `json:"nodeStops"`
-	NodeOnlines       []epochsNodes        `json:"nodeOnlines"`
-	NodeOfflines      []epochsNodes        `json:"nodeOfflines"`
-	DelayedKeys       []epochsNodes        `json:"delayedKeys"`
-	Txs               []transactions       `json:"txs"`
-	DefaultAnswer     byte                 `json:"defaultAnswer"`
-	Ceremonies        []ceremony           `json:"ceremonies"`
+	Users              int                  `json:"users"` // users count
+	CeremonyMinOffset  int                  `json:"ceremonyMinOffset"`
+	NewUsers           []newUsers           `json:"newUsers"`           // users to create later
+	NewUsersAfterFlips []newUsers           `json:"newUsersAfterFlips"` // users to create later and after flips are submitted
+	NodeStarts         []delayedEpochsNodes `json:"nodeStarts"`
+	NodeStops          []delayedEpochsNodes `json:"nodeStops"`
+	NodeOnlines        []epochsNodes        `json:"nodeOnlines"`
+	NodeOfflines       []epochsNodes        `json:"nodeOfflines"`
+	DelayedKeys        []epochsNodes        `json:"delayedKeys"`
+	Txs                []transactions       `json:"txs"`
+	DefaultAnswer      byte                 `json:"defaultAnswer"`
+	Ceremonies         []ceremony           `json:"ceremonies"`
 }
 
 type newUsers struct {

@@ -6,13 +6,14 @@ import (
 )
 
 type Scenario struct {
-	EpochNewUsers        map[int]int                   // Epoch -> new users count
-	EpochNodeSwitches    map[int]map[int][]*NodeSwitch // Epoch -> node -> sorted switches (stop/start) with delays
-	EpochNodeOnlines     map[int][]int                 // Epoch -> nodes to become online
-	EpochNodeOfflines    map[int][]int                 // Epoch -> nodes to become offline
-	EpochTxs             map[int]*Txs                  // Epoch -> Txs
-	EpochDelayedFlipKeys map[int][]int                 // Epoch -> nodes to provide delayed flip key
-	CeremonyMinOffset    int
+	EpochNewUsersBeforeFlips map[int]int                   // Epoch -> new users count
+	EpochNewUsersAfterFlips  map[int]int                   // Epoch -> new users count
+	EpochNodeSwitches        map[int]map[int][]*NodeSwitch // Epoch -> node -> sorted switches (stop/start) with delays
+	EpochNodeOnlines         map[int][]int                 // Epoch -> nodes to become online
+	EpochNodeOfflines        map[int][]int                 // Epoch -> nodes to become offline
+	EpochTxs                 map[int]*Txs                  // Epoch -> Txs
+	EpochDelayedFlipKeys     map[int][]int                 // Epoch -> nodes to provide delayed flip key
+	CeremonyMinOffset        int
 	// todo remove deprecated field
 	DefaultAnswer byte              // deprecated
 	Ceremonies    map[int]*Ceremony // Epoch -> Ceremony

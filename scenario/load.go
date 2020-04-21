@@ -11,7 +11,7 @@ var defaultScenario Scenario
 
 func init() {
 	defaultScenario = Scenario{
-		EpochNewUsers: map[int]int{
+		EpochNewUsersBeforeFlips: map[int]int{
 			0: 5,
 		},
 		DefaultAnswer:     defaultDefaultAnswer,

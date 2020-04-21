@@ -10,7 +10,8 @@ const defaultDefaultAnswer = common.Left
 
 func convert(incomingSc incomingScenario) Scenario {
 	sc := Scenario{}
-	sc.EpochNewUsers = convertEpochNewUsers(incomingSc.Users, incomingSc.NewUsers)
+	sc.EpochNewUsersBeforeFlips = convertEpochNewUsers(incomingSc.Users, incomingSc.NewUsers)
+	sc.EpochNewUsersAfterFlips = convertEpochNewUsers(0, incomingSc.NewUsersAfterFlips)
 	sc.EpochNodeSwitches = convertNodeSwitches(incomingSc.NodeStarts, incomingSc.NodeStops)
 	sc.EpochNodeOnlines = convertEpochsNodes(incomingSc.NodeOnlines)
 	sc.EpochNodeOfflines = convertEpochsNodes(incomingSc.NodeOfflines)
