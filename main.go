@@ -94,6 +94,8 @@ func main() {
 			conf.FlipsChanSize,
 			conf.LowPowerProfileRate,
 			conf.FastNewbie,
+			conf.MinFlipSize,
+			conf.MaxFlipSize,
 		)
 
 		if conf.GodMode {

@@ -273,7 +273,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 	}
 	var submittedFlips []submittedFlip
 	for i := 0; i < flipsToSubmit; i++ {
-		flipPrivateHex, flipPublicHex, err := generateFlip()
+		flipPrivateHex, flipPublicHex, err := generateFlip(process.minFlipSize, process.maxFlipSize)
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
@@ -283,7 +283,8 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 				log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
 				continue
 			}
-			log.Info(fmt.Sprintf("%v submitted flip", u.GetInfo()))
+			log.Info(fmt.Sprintf("%v submitted flip, priv size: %v, pub size: %v", u.GetInfo(),
+				len(flipPrivateHex), len(flipPublicHex)))
 			submittedFlips = append(submittedFlips, submittedFlip{})
 			time.Sleep(time.Millisecond * 100)
 			continue
@@ -292,7 +293,8 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 		if process.flipsChan != nil {
 			process.flipsChan <- 1
 		}
-		log.Info(fmt.Sprintf("%v start submitting flip", u.GetInfo()))
+		log.Info(fmt.Sprintf("%v start submitting flip, priv size: %v, pub size: %v", u.GetInfo(),
+			len(flipPrivateHex), len(flipPublicHex)))
 		flipCid, txHash := process.submitFlip(u, flipPrivateHex, flipPublicHex, wordPairIdx)
 		flip := submittedFlip{
 			hash:        flipCid,
@@ -386,9 +388,11 @@ func (process *Process) getRequiredFlipsCount(u *user.User) int {
 	return flipsCount - len(identity.Flips)
 }
 
-func generateFlip() (privateHex, publicHex string, err error) {
+func generateFlip(minSize, maxSize int) (privateHex, publicHex string, err error) {
 	var privateBytes []byte
-	if privateBytes, err = randomBytes(rand.Int()%80000 + 80000); err != nil {
+	minSize /= 2
+	maxSize /= 2
+	if privateBytes, err = randomBytes(rand.Int()%(maxSize-minSize) + minSize); err != nil {
 		return
 	}
 	privateHex = toHex(privateBytes)

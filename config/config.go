@@ -29,6 +29,8 @@ type Config struct {
 	FlipsChanSize       int
 	LowPowerProfileRate float32
 	FastNewbie          bool
+	MinFlipSize         int
+	MaxFlipSize         int
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -81,6 +83,8 @@ func defaultConfig() Config {
 		FirstPort:           40410,
 		FlipsChanSize:       0,
 		LowPowerProfileRate: 0,
+		MinFlipSize:         80000,
+		MaxFlipSize:         160000,
 	}
 }
 
@@ -128,4 +132,10 @@ func merge(from *Config, to *Config) {
 	}
 	to.FlipsChanSize = from.FlipsChanSize
 	to.LowPowerProfileRate = from.LowPowerProfileRate
+	if from.MinFlipSize > 0 {
+		to.MinFlipSize = from.MinFlipSize
+	}
+	if from.MaxFlipSize > 0 {
+		to.MaxFlipSize = from.MaxFlipSize
+	}
 }
