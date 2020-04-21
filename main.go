@@ -2,15 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/idena-network/idena-go/common/eventbus"
-	"github.com/idena-network/idena-test-go/alive"
 	"github.com/idena-network/idena-test-go/api"
 	"github.com/idena-network/idena-test-go/config"
 	"github.com/idena-network/idena-test-go/initializer"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/process"
 	"github.com/idena-network/idena-test-go/scenario"
-	"github.com/pkg/errors"
 	"gopkg.in/urfave/cli.v1"
 	"math/rand"
 	"os"
@@ -61,15 +58,6 @@ func main() {
 		conf := config.LoadFromFileWithDefaults(context.String("config"), context.Bool("godBotMode"),
 			context.Int("portOffset"))
 
-		bus := eventbus.New()
-		aliveManager, err := initAliveMonitoring(conf.AliveMonitoring, bus)
-		if err != nil {
-			err := errors.Wrap(err, "Unable to init alive monitoring")
-			fmt.Println(err.Error())
-			time.Sleep(time.Duration(conf.AliveMonitoring.IntervalSec) * time.Second)
-			panic(err)
-		}
-
 		workDir := conf.WorkDir
 		initApp(workDir, conf.Verbosity)
 
@@ -105,8 +93,7 @@ func main() {
 			conf.FirstPort,
 			conf.FlipsChanSize,
 			conf.LowPowerProfileRate,
-			aliveManager,
-			bus,
+			conf.FastNewbie,
 		)
 
 		if conf.GodMode {
@@ -180,12 +167,4 @@ func createLogFile(fullName string) {
 		panic(err)
 	}
 	logFile.Close()
-}
-
-func initAliveMonitoring(c config.AliveMonitoringConfig, bus eventbus.Bus) (alive.Manager, error) {
-	if !c.Enabled || c.IntervalSec == 0 {
-		return alive.NewEmptyManager(), nil
-	}
-	aliveManager := alive.NewManager(c.Url)
-	return aliveManager, alive.NewMonitoring(aliveManager, time.Duration(c.IntervalSec)*time.Second, bus).Start()
 }

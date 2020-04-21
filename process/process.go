@@ -3,8 +3,6 @@ package process
 import (
 	"fmt"
 	"github.com/idena-network/idena-go/blockchain/types"
-	"github.com/idena-network/idena-go/common/eventbus"
-	"github.com/idena-network/idena-test-go/alive"
 	"github.com/idena-network/idena-test-go/apiclient"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
@@ -72,16 +70,15 @@ type Process struct {
 	flipsChan              chan int
 	lowPowerProfileRate    float32
 	lowPowerProfileCount   int
-	aliveManager           alive.Manager
-	bus                    eventbus.Bus
 	ceremonyIntervals      *client.CeremonyIntervals
+	fastNewbie             bool
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
 	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
 	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
 	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32,
-	aliveManager alive.Manager, bus eventbus.Bus) *Process {
+	fastNewbie bool) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -111,8 +108,7 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		firstPort:              firstPort,
 		flipsChan:              flipsChan,
 		lowPowerProfileRate:    lowPowerProfileRate,
-		aliveManager:           aliveManager,
-		bus:                    bus,
+		fastNewbie:             fastNewbie,
 	}
 }
 
@@ -178,7 +174,11 @@ func (process *Process) createNewUsers() {
 
 	process.activateInvites(users)
 
-	process.waitForCandidates(users)
+	if process.fastNewbie {
+		process.waitForNewbies(users)
+	} else {
+		process.waitForCandidates(users)
+	}
 
 	log.Debug("New users creation completed")
 }
@@ -319,6 +319,10 @@ func (process *Process) waitForCandidates(users []*user.User) {
 	process.waitForNodesState(users, candidate)
 }
 
+func (process *Process) waitForNewbies(users []*user.User) {
+	process.waitForNodesState(users, newbie)
+}
+
 func (process *Process) waitForNodesState(users []*user.User, state string) {
 	log.Info(fmt.Sprintf("Start waiting for user states %v", state))
 	wg := sync.WaitGroup{}
@@ -393,15 +397,7 @@ func (process *Process) handleError(err error, prefix string) {
 	fullMessage := fmt.Sprintf("%v%v", fullPrefix, err)
 	log.Error(fullMessage)
 	process.destroy()
-	if process.godMode {
-		for {
-			if err := process.aliveManager.Disable(); err != nil {
-				log.Warn(errors.Wrap(err, "Unable to disable bot").Error())
-				time.Sleep(requestRetryDelay)
-			}
-			break
-		}
-	} else {
+	if !process.godMode {
 		if err := process.apiClient.SendFailNotification(fullMessage); err != nil {
 			log.Error(errors.Wrap(err, "Unable to send fail notification to god bot").Error())
 		}

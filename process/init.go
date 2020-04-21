@@ -1,10 +1,7 @@
 package process
 
 import (
-	"errors"
 	"fmt"
-	"github.com/idena-network/idena-go/common/eventbus"
-	"github.com/idena-network/idena-test-go/alive"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
 	"github.com/idena-network/idena-test-go/log"
@@ -20,12 +17,6 @@ import (
 
 func (process *Process) init() {
 	log.Debug("Start initializing")
-
-	process.bus.Subscribe(alive.DisableEventID,
-		func(e eventbus.Event) {
-			msg := "Bot disabled"
-			process.handleError(errors.New(msg), "")
-		})
 
 	process.loadNodeBaseConfigData()
 

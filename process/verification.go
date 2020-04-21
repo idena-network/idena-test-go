@@ -277,7 +277,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
-		if process.getCurrentTestIndex() == 0 && flipsToSubmit > 1 {
+		if !process.fastNewbie && process.getCurrentTestIndex() == 0 && flipsToSubmit > 1 {
 			_, err := u.Client.SubmitFlip(flipPrivateHex, flipPublicHex, 0)
 			if err != nil {
 				log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
