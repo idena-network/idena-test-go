@@ -299,12 +299,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			wordPairIdx: wordPairIdx,
 			txHash:      txHash,
 		}
-		//pub := common2.FromHex(flipPublicHex)
-		//priv := common2.FromHex(flipPrivateHex)
-		//asserted := toHex(reverse(common2.FromHex(flipPrivateHex))) == flipPublicHex
-		//log.Info(fmt.Sprintf("%v submitted flip %v, len(pub): %v, pub: %v...%v, len(priv): %v, priv: %v...%v, asserted: %v", u.GetInfo(), flip,
-		//	len(pub), pub[:10], pub[len(pub)-10:],
-		//	len(priv), priv[:10], priv[len(priv)-10:], asserted))
+		log.Info(fmt.Sprintf("%v submitted flip %v", u.GetInfo(), flip))
 		if process.flipsChan != nil {
 			<-process.flipsChan
 		}
@@ -427,13 +422,6 @@ func (process *Process) assertFlip(u *user.User, flipHash string, flip client.Fl
 	}
 	message :=
 		fmt.Sprintf("%v private flip hex must be equal to reversed public one, cid %s", u.GetInfo(), flipHash)
-
-	//pub := common2.FromHex(flip.PublicHex)
-	//priv := common2.FromHex(flip.PrivateHex)
-	//log.Info(fmt.Sprintf("%v failed flip %v, len(pub): %v, pub: %v...%v, len(priv): %v, priv: %v...%v", u.GetInfo(), flip,
-	//	len(pub), pub[:10], pub[len(pub)-10:],
-	//	len(priv), priv[:10], priv[len(priv)-10:]))
-
 	process.handleError(errors.New(message), "")
 }
 

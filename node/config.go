@@ -23,6 +23,7 @@ type specConfig struct {
 	Sync             *config.SyncConfig             `json:"Sync,omitempty"`
 	OfflineDetection *config.OfflineDetectionConfig `json:"OfflineDetection,omitempty"`
 	Blockchain       *config.BlockchainConfig       `json:"Blockchain,omitempty"`
+	Mempool          *config.Mempool                `json:"Mempool,omitempty"`
 }
 
 type p2pConfig struct {
@@ -48,12 +49,9 @@ type genesisAllocation struct {
 }
 
 type consensusConf struct {
-	Automine             bool
-	SnapshotRange        *uint64  `json:"SnapshotRange,omitempty"`
-	MinProposerThreshold *float64 `json:"MinProposerThreshold,omitempty"`
-	MaxProposerThreshold *float64 `json:"MaxProposerThreshold,omitempty"`
-	VrfSensitivityCoef   *float64 `json:"VrfSensitivityCoef,omitempty"`
-	StatusSwitchRange    *uint64  `json:"StatusSwitchRange,omitempty"`
+	Automine          bool
+	SnapshotRange     *uint64 `json:"SnapshotRange,omitempty"`
+	StatusSwitchRange *uint64 `json:"StatusSwitchRange,omitempty"`
 }
 
 type ipfsConfig struct {
