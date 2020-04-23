@@ -580,3 +580,39 @@ func (client *Client) GetProfile(address string) (ProfileResponse, error) {
 	}
 	return res, nil
 }
+
+func (client *Client) GetFlipRaw(hash string) (FlipResponse2, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_getRaw",
+		Payload: []string{hash},
+		Key:     client.apiKey,
+	}
+	flipResponse := FlipResponse2{}
+	resp := response{Result: &flipResponse}
+	if err := client.sendRequestAndParseResponse(req, 15, true, &resp); err != nil {
+		return FlipResponse2{}, err
+	}
+	if resp.Error != nil {
+		return FlipResponse2{}, errors.New(resp.Error.Message)
+	}
+	return flipResponse, nil
+}
+
+func (client *Client) GetFlipKeys(hash string) (FlipKeysResponse, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_getKeys",
+		Payload: []string{hash},
+		Key:     client.apiKey,
+	}
+	flipKeysResponse := FlipKeysResponse{}
+	resp := response{Result: &flipKeysResponse}
+	if err := client.sendRequestAndParseResponse(req, 15, true, &resp); err != nil {
+		return FlipKeysResponse{}, err
+	}
+	if resp.Error != nil {
+		return FlipKeysResponse{}, errors.New(resp.Error.Message)
+	}
+	return flipKeysResponse, nil
+}

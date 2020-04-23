@@ -78,13 +78,14 @@ type Process struct {
 	fastNewbie             bool
 	minFlipSize            int
 	maxFlipSize            int
+	decryptFlips           bool
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
 	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
 	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
 	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32,
-	fastNewbie bool, minFlipSize int, maxFlipSize int) *Process {
+	fastNewbie bool, minFlipSize int, maxFlipSize int, decryptFlips bool) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -117,6 +118,7 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		fastNewbie:             fastNewbie,
 		minFlipSize:            minFlipSize,
 		maxFlipSize:            maxFlipSize,
+		decryptFlips:           decryptFlips,
 	}
 }
 

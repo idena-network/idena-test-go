@@ -96,6 +96,7 @@ func main() {
 			conf.FastNewbie,
 			conf.MinFlipSize,
 			conf.MaxFlipSize,
+			conf.DecryptFlips,
 		)
 
 		if conf.GodMode {

@@ -141,3 +141,13 @@ type ProfileResponse struct {
 	Nickname string `json:"nickname"`
 	Info     string `json:"info"`
 }
+
+type FlipResponse2 struct {
+	PublicHex  hexutil.Bytes `json:"publicHex"`
+	PrivateHex hexutil.Bytes `json:"privateHex"`
+}
+
+type FlipKeysResponse struct {
+	PublicKey  hexutil.Bytes `json:"publicKey"`
+	PrivateKey hexutil.Bytes `json:"privateKey"`
+}

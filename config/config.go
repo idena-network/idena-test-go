@@ -31,6 +31,7 @@ type Config struct {
 	FastNewbie          bool
 	MinFlipSize         int
 	MaxFlipSize         int
+	DecryptFlips        bool
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -85,6 +86,7 @@ func defaultConfig() Config {
 		LowPowerProfileRate: 0,
 		MinFlipSize:         80000,
 		MaxFlipSize:         160000,
+		DecryptFlips:        false,
 	}
 }
 
@@ -138,4 +140,5 @@ func merge(from *Config, to *Config) {
 	if from.MaxFlipSize > 0 {
 		to.MaxFlipSize = from.MaxFlipSize
 	}
+	to.DecryptFlips = from.DecryptFlips
 }

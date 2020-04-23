@@ -5,6 +5,9 @@ import (
 	"fmt"
 	mapset "github.com/deckarep/golang-set"
 	common2 "github.com/idena-network/idena-go/common"
+	"github.com/idena-network/idena-go/common/hexutil"
+	"github.com/idena-network/idena-go/crypto"
+	"github.com/idena-network/idena-go/crypto/ecies"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
 	"github.com/idena-network/idena-test-go/log"
@@ -555,7 +558,7 @@ func (process *Process) getFlips(u *user.User, isShort bool) {
 			flips = append(flips, emptyFlip())
 			continue
 		}
-		flipResponse, err := u.Client.GetFlip(h.Hash)
+		flipResponse, err := process.getFlip(u, h.Hash)
 		if err != nil {
 			process.handleError(err, fmt.Sprintf("%v unable to get flip %s", u.GetInfo(), h.Hash))
 			continue
@@ -565,6 +568,48 @@ func (process *Process) getFlips(u *user.User, isShort bool) {
 	}
 	log.Info(fmt.Sprintf("%v got %v %s flips", u.GetInfo(), len(flips), name))
 	return
+}
+
+func (process *Process) getFlip(u *user.User, hash string) (client.FlipResponse, error) {
+	if !process.decryptFlips {
+		return u.Client.GetFlip(hash)
+	}
+	flip, err := u.Client.GetFlipRaw(hash)
+	if err != nil {
+		return client.FlipResponse{}, errors.Wrap(err, "unable to get flip raw")
+	}
+	keys, err := u.Client.GetFlipKeys(hash)
+	if err != nil {
+		return client.FlipResponse{}, errors.Wrap(err, "unable to get flip keys")
+	}
+	publicEncryptionKey, err := bytesToPrivateKey(keys.PublicKey)
+	if err != nil {
+		return client.FlipResponse{}, errors.Wrap(err, "unable to convert public key")
+	}
+	privateEncryptionKey, err := bytesToPrivateKey(keys.PrivateKey)
+	if err != nil {
+		return client.FlipResponse{}, errors.Wrap(err, "unable to convert private key")
+	}
+	decryptedPublicPart, err := publicEncryptionKey.Decrypt(flip.PublicHex, nil, nil)
+	if err != nil {
+		return client.FlipResponse{}, errors.Wrap(err, "unable to decrypt flip public part")
+	}
+	decryptedPrivatePart, err := privateEncryptionKey.Decrypt(flip.PrivateHex, nil, nil)
+	if err != nil {
+		return client.FlipResponse{}, errors.Wrap(err, "unable to decrypt flip private part")
+	}
+	return client.FlipResponse{
+		PublicHex:  hexutil.Bytes(decryptedPublicPart).String(),
+		PrivateHex: hexutil.Bytes(decryptedPrivatePart).String(),
+	}, nil
+}
+
+func bytesToPrivateKey(b []byte) (*ecies.PrivateKey, error) {
+	ecdsaKey, err := crypto.ToECDSA(b)
+	if err != nil {
+		return nil, err
+	}
+	return ecies.ImportECDSA(ecdsaKey), nil
 }
 
 func emptyFlip() client.FlipResponse {
