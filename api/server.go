@@ -20,6 +20,7 @@ func NewHttpServer(api *Api) *httpServer {
 	handlers["/api/GetCeremonyTime"] = api.getCeremonyTime
 	handlers["/api/GetEpoch"] = api.getEpoch
 	handlers["/api/SendFailNotification"] = api.sendFailNotification
+	handlers["/api/SendWarnNotification"] = api.sendWarnNotification
 	return &httpServer{handlers: handlers}
 }
 

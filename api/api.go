@@ -83,3 +83,9 @@ func (api *Api) sendFailNotification(r *http.Request) (string, error) {
 	api.process.SendFailNotification(message, r.RemoteAddr)
 	return "OK", nil
 }
+
+func (api *Api) sendWarnNotification(r *http.Request) (string, error) {
+	message := r.FormValue("message")
+	api.process.SendWarnNotification(message, r.RemoteAddr)
+	return "OK", nil
+}

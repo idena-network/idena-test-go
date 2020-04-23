@@ -2,11 +2,14 @@ package process
 
 import (
 	"fmt"
+	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
+	"github.com/idena-network/idena-test-go/events"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
 	"github.com/idena-network/idena-test-go/user"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -33,6 +36,19 @@ func (process *Process) init() {
 	if process.godMode {
 		process.restartGodNode()
 	}
+
+	process.bus = eventbus.New()
+	process.bus.Subscribe(events.NodeCrashedEventID, func(e eventbus.Event) {
+		nodeCrashedEvent := e.(*events.NodeCrashedEvent)
+		u := process.users[nodeCrashedEvent.Index]
+		log.Warn(fmt.Sprintf("%v node will be restarted due to crash", u.GetInfo()))
+		process.startNode(u, node.DeleteNothing)
+		if !process.godMode {
+			if err := process.apiClient.SendWarnNotification(fmt.Sprintf("%v node has been restarted due to crash", u.GetInfo())); err != nil {
+				log.Error(errors.Wrap(err, "Unable to send warn notification to god bot").Error())
+			}
+		}
+	})
 
 	log.Debug("Initialization completed")
 }
@@ -86,7 +102,7 @@ func (process *Process) createGodUser() {
 		apiKey,
 		"",
 	)
-	u := user.NewUser(client.NewClient(*n, apiKey, process.reqIdHolder), n, index)
+	u := user.NewUser(client.NewClient(*n, index, apiKey, process.reqIdHolder, process.bus), n, index)
 	process.godUser = u
 	process.users = append(process.users, u)
 	log.Info("Created god user")

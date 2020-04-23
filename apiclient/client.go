@@ -92,6 +92,13 @@ func (c *Client) SendFailNotification(message string) error {
 	return err
 }
 
+func (c *Client) SendWarnNotification(message string) error {
+	_, err := c.sendRequest("/api/SendWarnNotification", map[string]string{
+		"message": message,
+	})
+	return err
+}
+
 func (c *Client) sendRequest(path string, params map[string]string) ([]byte, error) {
 	if params == nil {
 		params = make(map[string]string)

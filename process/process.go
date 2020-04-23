@@ -3,6 +3,7 @@ package process
 import (
 	"fmt"
 	"github.com/idena-network/idena-go/blockchain/types"
+	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-test-go/apiclient"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
@@ -41,6 +42,7 @@ const (
 )
 
 type Process struct {
+	bus                    eventbus.Bus
 	sc                     scenario.Scenario
 	es                     *epochState
 	wg                     *sync.WaitGroup
@@ -219,7 +221,7 @@ func (process *Process) createUser(index int) *user.User {
 		apiKey,
 		profile,
 	)
-	u := user.NewUser(client.NewClient(*n, apiKey, process.reqIdHolder), n, index)
+	u := user.NewUser(client.NewClient(*n, index, apiKey, process.reqIdHolder, process.bus), n, index)
 	process.users = append(process.users, u)
 	if profile == lowPowerProfile {
 		process.lowPowerProfileCount++
@@ -406,6 +408,10 @@ func (process *Process) handleError(err error, prefix string) {
 		}
 	}
 	os.Exit(1)
+}
+
+func (process *Process) handleWarn(message string) {
+	log.Warn(message)
 }
 
 func (process *Process) switchNodeIfNeeded(u *user.User) {

@@ -73,6 +73,10 @@ func (process *Process) SendFailNotification(message string, sender string) {
 	}()
 }
 
+func (process *Process) SendWarnNotification(message string, sender string) {
+	process.handleWarn(fmt.Sprintf("Got warn notification from %s: %s", sender, message))
+}
+
 func (process *Process) toExternal(host string) string {
 	external := strings.Replace(host, "localhost", process.godHost, 1)
 	external = strings.Replace(external, "0.0.0.0", process.godHost, 1)

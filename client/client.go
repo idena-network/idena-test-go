@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-go/common/hexutil"
+	"github.com/idena-network/idena-test-go/events"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -18,17 +21,21 @@ import (
 const defaultTimeoutSec = 10
 
 type Client struct {
+	index       int
 	url         string
 	apiKey      string
 	reqIdHolder *ReqIdHolder
 	mutex       sync.Mutex
+	bus         eventbus.Bus
 }
 
-func NewClient(node node.Node, apiKey string, reqIdHolder *ReqIdHolder) *Client {
+func NewClient(node node.Node, index int, apiKey string, reqIdHolder *ReqIdHolder, bus eventbus.Bus) *Client {
 	return &Client{
 		url:         "http://localhost:" + strconv.Itoa(node.RpcPort) + "/",
 		reqIdHolder: reqIdHolder,
 		apiKey:      apiKey,
+		bus:         bus,
+		index:       index,
 	}
 }
 
@@ -394,7 +401,14 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 			}
 			err = errors.Wrapf(err, "unable to read response")
 		}
-		counter--
+		isCrashed := isNodeCrashed(err)
+		if isCrashed {
+			client.bus.Publish(&events.NodeCrashedEvent{
+				Index: client.index,
+			})
+		} else {
+			counter--
+		}
 		if counter > 0 && retry {
 			log.Warn(fmt.Sprintf("%v. Retrying to send request due to error %v", client.url, err))
 			time.Sleep(time.Millisecond * 50)
@@ -402,6 +416,11 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 		}
 		return nil, errors.Wrapf(err, "unable to send request")
 	}
+}
+
+func isNodeCrashed(err error) bool {
+	return err != nil && (strings.Contains(err.Error(), "target machine actively refused it") ||
+		strings.Contains(err.Error(), "connection refused"))
 }
 
 func (client *Client) sendRequestAndParseResponse(req request, timeoutSec int, retry bool, resp *response) error {
