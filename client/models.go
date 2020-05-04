@@ -24,7 +24,8 @@ type sendTxArgs struct {
 }
 
 type sendInviteArgs struct {
-	To string `json:"to"`
+	To     string          `json:"to"`
+	Amount decimal.Decimal `json:"amount"`
 }
 
 type activateInviteArgs struct {

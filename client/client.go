@@ -10,6 +10,7 @@ import (
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -128,7 +129,8 @@ func (client *Client) SendInvite(to string) (Invite, error) {
 	defer client.mutex.Unlock()
 
 	params := sendInviteArgs{
-		To: to,
+		To:     to,
+		Amount: decimal.NewFromFloat(1.0),
 	}
 	req := request{
 		Id:      client.getReqId(),

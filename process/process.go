@@ -2,7 +2,6 @@ package process
 
 import (
 	"fmt"
-	"github.com/idena-network/idena-go/blockchain/types"
 	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-test-go/apiclient"
 	"github.com/idena-network/idena-test-go/client"
@@ -288,11 +287,6 @@ func (process *Process) sendInvites(users []*user.User) {
 			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.GetInfo()))
 			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))
 			invitesCount++
-
-			amount := float32(100.0)
-			tx, err := sender.Client.SendTransaction(types.SendTx, sender.Address, &u.Address, amount, 1.0, nil)
-			process.handleError(err, fmt.Sprintf("%v unable to send transaction to %v", sender.GetInfo(), u.GetInfo()))
-			log.Info(fmt.Sprintf("%s sent transaction %s to %s", sender.GetInfo(), tx, u.GetInfo()))
 		}
 		log.Info(fmt.Sprintf("Sent %v invites", invitesCount))
 		return
