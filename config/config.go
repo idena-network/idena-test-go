@@ -140,5 +140,6 @@ func merge(from *Config, to *Config) {
 	if from.MaxFlipSize > 0 {
 		to.MaxFlipSize = from.MaxFlipSize
 	}
+	to.FastNewbie = from.FastNewbie
 	to.DecryptFlips = from.DecryptFlips
 }
