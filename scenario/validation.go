@@ -65,20 +65,23 @@ func validateNotNegativeFloat(value float32, name string) error {
 }
 
 func validateAllNewUsers(allNewUsers []newUsers) error {
-	usedEpochs := make(map[int]bool)
+	usedEpochInviters := make(map[string]bool)
 	for _, du := range allNewUsers {
-		if err := validateNewUsers(du, usedEpochs); err != nil {
+		if err := validateNewUsers(du, usedEpochInviters); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateNewUsers(du newUsers, usedEpochs map[int]bool) error {
-	if err := validateEpochs(du.Epochs, usedEpochs); err != nil {
+func validateNewUsers(du newUsers, usedEpochInviters map[string]bool) error {
+	if err := validateEpochNodes(du.Epochs, du.Inviter, usedEpochInviters); err != nil {
 		return err
 	}
 	if err := validatePositiveInt(int64(du.Count), "count"); err != nil {
+		return err
+	}
+	if err := validateNotNegativeInt(du.Inviter, "inviter"); err != nil {
 		return err
 	}
 	return nil
@@ -91,6 +94,19 @@ func validateEpochs(epochsStr string, usedEpochs map[int]bool) error {
 	}
 	for _, epoch := range epochs {
 		if err := validateEpoch(epoch, usedEpochs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateEpochNodes(epochsStr string, node int, usedEpochNodes map[string]bool) error {
+	epochs, err := parseNums(epochsStr)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Unable to parse epochs str %s: %s", epochsStr, err.Error()))
+	}
+	for _, epoch := range epochs {
+		if err := validateEpochNode(epoch, node, usedEpochNodes); err != nil {
 			return err
 		}
 	}
@@ -207,6 +223,18 @@ func validateCeremony(c ceremony, epochUsersCount []int, usedEpochs map[int]bool
 	if err := validateAssertion(c.Assertion); err != nil {
 		return err
 	}
+	return nil
+}
+
+func validateEpochNode(epoch int, node int, epochNodes map[string]bool) error {
+	if err := validateNotNegativeInt(epoch, "epoch"); err != nil {
+		return err
+	}
+	key := fmt.Sprintf("%v_%v", epoch, node)
+	if epochNodes[key] {
+		return errors.New(fmt.Sprintf("There is more than 1 section with epoch=%d and node=%d", epoch, node))
+	}
+	epochNodes[key] = true
 	return nil
 }
 

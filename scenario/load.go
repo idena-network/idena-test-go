@@ -11,8 +11,13 @@ var defaultScenario Scenario
 
 func init() {
 	defaultScenario = Scenario{
-		EpochNewUsersBeforeFlips: map[int]int{
-			0: 5,
+		EpochNewUsersBeforeFlips: map[int][]*NewUsers{
+			0: {
+				{
+					Inviter: 0,
+					Count:   5,
+				},
+			},
 		},
 		DefaultAnswer:     defaultDefaultAnswer,
 		CeremonyMinOffset: 5,

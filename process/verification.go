@@ -33,7 +33,11 @@ func (process *Process) test() {
 	process.initCeremonyIntervals()
 	timeout := process.getTestTimeout()
 	process.wg = &sync.WaitGroup{}
-	newUsers := process.sc.EpochNewUsersAfterFlips[process.getCurrentTestIndex()]
+	epochNewUsers := process.sc.EpochNewUsersAfterFlips[process.getCurrentTestIndex()]
+	newUsers := 0
+	for _, epochInviterNewUsers := range epochNewUsers {
+		newUsers += epochInviterNewUsers.Count
+	}
 	process.wg.Add(len(process.users) + newUsers)
 	process.es = &epochState{
 		userStates: make(map[int]*userEpochState),
@@ -129,11 +133,13 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	process.provideDelayedFlipKeyIfNeeded(u, epoch.NextValidation)
 
-	if u.Index == 0 {
-		newUsers := process.sc.EpochNewUsersAfterFlips[process.getCurrentTestIndex()]
-		if newUsers > 0 {
-			process.createNewUsers(newUsers, true)
-			process.testUsers(process.users[len(process.users)-newUsers:])
+	epochNewUsers := process.sc.EpochNewUsersAfterFlips[process.getCurrentTestIndex()]
+	if len(epochNewUsers) > 0 {
+		for _, epochInviterNewUsers := range epochNewUsers {
+			if epochInviterNewUsers.Inviter == u.Index {
+				process.createEpochInviterNewUsers(epochInviterNewUsers, true)
+				process.testUsers(process.users[len(process.users)-epochInviterNewUsers.Count:])
+			}
 		}
 	}
 

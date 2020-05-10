@@ -6,8 +6,8 @@ import (
 )
 
 type Scenario struct {
-	EpochNewUsersBeforeFlips map[int]int                   // Epoch -> new users count
-	EpochNewUsersAfterFlips  map[int]int                   // Epoch -> new users count
+	EpochNewUsersBeforeFlips map[int][]*NewUsers           // Epoch -> new users
+	EpochNewUsersAfterFlips  map[int][]*NewUsers           // Epoch -> new users
 	EpochNodeSwitches        map[int]map[int][]*NodeSwitch // Epoch -> node -> sorted switches (stop/start) with delays
 	EpochNodeOnlines         map[int][]int                 // Epoch -> nodes to become online
 	EpochNodeOfflines        map[int][]int                 // Epoch -> nodes to become offline
@@ -17,6 +17,11 @@ type Scenario struct {
 	// todo remove deprecated field
 	DefaultAnswer byte              // deprecated
 	Ceremonies    map[int]*Ceremony // Epoch -> Ceremony
+}
+
+type NewUsers struct {
+	Count   int
+	Inviter int
 }
 
 type Txs struct {

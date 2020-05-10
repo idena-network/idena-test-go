@@ -30,16 +30,26 @@ func convertDefaultAnswer(incomingDefaultAnswer byte) byte {
 	return incomingDefaultAnswer
 }
 
-func convertEpochNewUsers(incomingUsers int, incomingNewUsers []newUsers) map[int]int {
-	epochUsers := make(map[int]int)
-	epochUsers[0] = incomingUsers
+func convertEpochNewUsers(incomingUsers int, incomingNewUsers []newUsers) map[int][]*NewUsers {
+	newUsersByEpoch := make(map[int][]*NewUsers)
+	if incomingUsers > 0 {
+		newUsersByEpoch[0] = []*NewUsers{
+			{
+				Inviter: 0,
+				Count:   incomingUsers,
+			},
+		}
+	}
 	for _, du := range incomingNewUsers {
 		epochs, _ := parseNums(du.Epochs)
 		for _, epoch := range epochs {
-			epochUsers[epoch] = du.Count
+			newUsersByEpoch[epoch] = append(newUsersByEpoch[epoch], &NewUsers{
+				Inviter: du.Inviter,
+				Count:   du.Count,
+			})
 		}
 	}
-	return epochUsers
+	return newUsersByEpoch
 }
 
 func convertEpochsNodes(incomingEpochsNodes []epochsNodes) map[int][]int {

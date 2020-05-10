@@ -125,7 +125,7 @@ func (process *Process) Start() {
 	defer process.destroy()
 	process.init()
 	for {
-		process.createNewUsers(process.sc.EpochNewUsersBeforeFlips[process.getCurrentTestIndex()], false)
+		process.createEpochNewUsers(process.sc.EpochNewUsersBeforeFlips[process.getCurrentTestIndex()], false)
 		if !process.checkActiveUser() {
 			process.handleError(errors.New("there are no active users"), "")
 		}
@@ -146,31 +146,14 @@ func getNodeDataDir(index int, port int) string {
 	return fmt.Sprintf("datadir-%d-%d", index, port)
 }
 
-func (process *Process) createNewUsers(newUsers int, afterFlips bool) {
-	if newUsers == 0 {
+func (process *Process) createEpochNewUsers(epochNewUsers []*scenario.NewUsers, afterFlips bool) {
+	if len(epochNewUsers) == 0 {
 		return
 	}
-	excludeGodNode := !afterFlips && process.godMode && process.getCurrentTestIndex() == 0
-	if excludeGodNode {
-		newUsers--
-	}
-	currentUsers := len(process.users)
-	if newUsers > 0 {
-		process.createUsers(newUsers)
-	}
 	var users []*user.User
-	usersToStart := process.users[currentUsers : currentUsers+newUsers]
-	if excludeGodNode {
-		users = process.users[currentUsers-1 : currentUsers+newUsers]
-	} else {
-		users = usersToStart
+	for _, epochInviterNewUsers := range epochNewUsers {
+		users = append(users, process.startNewNodesAndSendInvites(epochInviterNewUsers, afterFlips)...)
 	}
-
-	process.startNodes(usersToStart, node.DeleteDataDir)
-
-	process.getNodeAddresses(users)
-
-	process.sendInvites(users)
 
 	process.waitForInvites(users)
 
@@ -187,6 +170,60 @@ func (process *Process) createNewUsers(newUsers int, afterFlips bool) {
 	}
 
 	log.Debug("New users creation completed")
+}
+
+func (process *Process) createEpochInviterNewUsers(epochInviterNewUsers *scenario.NewUsers, afterFlips bool) []*user.User {
+	if epochInviterNewUsers == nil {
+		return nil
+	}
+	users := process.startNewNodesAndSendInvites(epochInviterNewUsers, afterFlips)
+
+	process.waitForInvites(users)
+
+	if process.getCurrentTestIndex() == 0 && !process.godMode {
+		time.Sleep(time.Second * 5)
+	}
+
+	process.activateInvites(users)
+
+	if process.fastNewbie {
+		process.waitForNewbies(users)
+	} else {
+		process.waitForCandidates(users)
+	}
+
+	log.Debug("New users creation completed")
+
+	return users
+}
+
+func (process *Process) startNewNodesAndSendInvites(epochInviterNewUsers *scenario.NewUsers, afterFlips bool) []*user.User {
+	var users []*user.User
+	excludeGodNode := !afterFlips && process.godMode && process.getCurrentTestIndex() == 0
+	newUsers := epochInviterNewUsers.Count
+	if excludeGodNode {
+		newUsers--
+	}
+	process.mutex.Lock()
+	currentUsers := len(process.users)
+	if newUsers > 0 {
+		process.createUsers(newUsers)
+	}
+	process.mutex.Unlock()
+	usersToStart := process.users[currentUsers : currentUsers+newUsers]
+	if excludeGodNode {
+		users = process.users[currentUsers-1 : currentUsers+newUsers]
+	} else {
+		users = usersToStart
+	}
+
+	process.startNodes(usersToStart, node.DeleteDataDir)
+
+	process.getNodeAddresses(users)
+
+	process.sendInvites(epochInviterNewUsers.Inviter, users)
+
+	return users
 }
 
 func (process *Process) createUsers(count int) {
@@ -278,11 +315,11 @@ func (process *Process) stopNode(u *user.User) {
 	log.Info(fmt.Sprintf("Stopped node %v", u.GetInfo()))
 }
 
-func (process *Process) sendInvites(users []*user.User) {
+func (process *Process) sendInvites(inviterIndex int, users []*user.User) {
 	if process.godMode {
 		invitesCount := 0
 		for _, u := range users {
-			sender := process.godUser
+			sender := process.users[inviterIndex]
 			invite, err := sender.Client.SendInvite(u.Address)
 			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.GetInfo()))
 			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))
