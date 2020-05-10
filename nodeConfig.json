@@ -7,6 +7,7 @@
     "AfterLongSessionDuration": 30000000000
   },
   "Consensus": {
-    "StatusSwitchRange": 5
+    "StatusSwitchRange": 5,
+    "MinProposerThreshold": 0.1
   }
 }

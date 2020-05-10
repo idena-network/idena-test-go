@@ -49,9 +49,10 @@ type genesisAllocation struct {
 }
 
 type consensusConf struct {
-	Automine          bool
-	SnapshotRange     *uint64 `json:"SnapshotRange,omitempty"`
-	StatusSwitchRange *uint64 `json:"StatusSwitchRange,omitempty"`
+	Automine             bool
+	SnapshotRange        *uint64  `json:"SnapshotRange,omitempty"`
+	StatusSwitchRange    *uint64  `json:"StatusSwitchRange,omitempty"`
+	MinProposerThreshold *float64 `json:"MinProposerThreshold,omitempty"`
 }
 
 type ipfsConfig struct {
