@@ -130,7 +130,7 @@ func (client *Client) SendInvite(to string) (Invite, error) {
 
 	params := sendInviteArgs{
 		To:     to,
-		Amount: decimal.NewFromFloat(1.0),
+		Amount: decimal.NewFromFloat(100),
 	}
 	req := request{
 		Id:      client.getReqId(),

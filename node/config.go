@@ -124,8 +124,7 @@ func (node *Node) buildSpecificConfig() *specConfig {
 		GenesisConf: genesisConf{
 			Alloc: map[string]genesisAllocation{
 				godAddress: {
-					Balance: big.NewInt(0).Mul(common.DnaBase, big.NewInt(99999)),
-					Stake:   big.NewInt(0).Mul(common.DnaBase, big.NewInt(9999)),
+					Balance: big.NewInt(0).Mul(common.DnaBase, big.NewInt(9999999)),
 				},
 			},
 			GodAddress:        godAddress,
