@@ -21,6 +21,8 @@ import (
 func (process *Process) init() {
 	log.Debug("Start initializing")
 
+	process.bus = eventbus.New()
+
 	process.loadNodeBaseConfigData()
 
 	if process.godMode {
@@ -37,7 +39,6 @@ func (process *Process) init() {
 		process.restartGodNode()
 	}
 
-	process.bus = eventbus.New()
 	process.bus.Subscribe(events.NodeCrashedEventID, func(e eventbus.Event) {
 		nodeCrashedEvent := e.(*events.NodeCrashedEvent)
 		u := process.users[nodeCrashedEvent.Index]
