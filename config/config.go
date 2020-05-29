@@ -77,7 +77,7 @@ func defaultConfig() Config {
 		Command:             "idena-go",
 		RpcAddr:             "localhost",
 		NodeStartWaitingSec: 10,
-		NodeStartPauseSec:   0,
+		NodeStartPauseSec:   1,
 		NodeStopWaitingSec:  4,
 		FirstRpcPort:        9010,
 		FirstIpfsPort:       4010,
@@ -119,7 +119,9 @@ func merge(from *Config, to *Config) {
 	if from.NodeStartWaitingSec > 0 {
 		to.NodeStartWaitingSec = from.NodeStartWaitingSec
 	}
-	to.NodeStartPauseSec = from.NodeStartPauseSec
+	if from.NodeStartPauseSec > 0 {
+		to.NodeStartPauseSec = from.NodeStartPauseSec
+	}
 	if from.NodeStopWaitingSec > 0 {
 		to.NodeStopWaitingSec = from.NodeStopWaitingSec
 	}
