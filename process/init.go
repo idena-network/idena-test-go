@@ -43,6 +43,7 @@ func (process *Process) init() {
 		nodeCrashedEvent := e.(*events.NodeCrashedEvent)
 		u := process.users[nodeCrashedEvent.Index]
 		log.Warn(fmt.Sprintf("%v node will be restarted due to crash", u.GetInfo()))
+		_ = u.Node.Destroy()
 		process.startNode(u, node.DeleteNothing)
 		if !process.godMode {
 			if err := process.apiClient.SendWarnNotification(fmt.Sprintf("%v node has been restarted due to crash", u.GetInfo())); err != nil {
