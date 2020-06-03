@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/idena-network/idena-go/api"
 	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-go/common/hexutil"
 	"github.com/idena-network/idena-test-go/events"
@@ -89,37 +90,20 @@ func (client *Client) GetIpfsAddress() (string, error) {
 	return resp.Result.(string), nil
 }
 
-func (client *Client) GetIdentities() ([]Identity, error) {
-	req := request{
-		Id:     client.getReqId(),
-		Method: "dna_identities",
-		Key:    client.apiKey,
-	}
-	var identities []Identity
-	resp := response{Result: &identities}
-	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
-		return nil, err
-	}
-	if resp.Error != nil {
-		return nil, errors.New(resp.Error.Message)
-	}
-	return identities, nil
-}
-
-func (client *Client) GetIdentity(addr string) (Identity, error) {
+func (client *Client) GetIdentity(addr string) (api.Identity, error) {
 	req := request{
 		Id:      client.getReqId(),
 		Method:  "dna_identity",
 		Payload: []string{addr},
 		Key:     client.apiKey,
 	}
-	var identity Identity
+	var identity api.Identity
 	resp := response{Result: &identity}
 	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
-		return Identity{}, err
+		return api.Identity{}, err
 	}
 	if resp.Error != nil {
-		return Identity{}, errors.New(resp.Error.Message)
+		return api.Identity{}, errors.New(resp.Error.Message)
 	}
 	return identity, nil
 }
@@ -255,6 +239,24 @@ func (client *Client) GetFlip(hash string) (FlipResponse, error) {
 		return FlipResponse{}, errors.New(resp.Error.Message)
 	}
 	return flipResponse, nil
+}
+
+func (client *Client) GetFlipWords(hash string) (api.FlipWordsResponse, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_words",
+		Payload: []string{hash},
+		Key:     client.apiKey,
+	}
+	flipWordsResponse := api.FlipWordsResponse{}
+	resp := response{Result: &flipWordsResponse}
+	if err := client.sendRequestAndParseResponse(req, 15, true, &resp); err != nil {
+		return api.FlipWordsResponse{}, err
+	}
+	if resp.Error != nil {
+		return api.FlipWordsResponse{}, errors.New(resp.Error.Message)
+	}
+	return flipWordsResponse, nil
 }
 
 func (client *Client) SubmitShortAnswers(answers []FlipAnswer) (SubmitAnswersResponse, error) {

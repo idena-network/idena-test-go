@@ -3,7 +3,7 @@ package process
 import (
 	"errors"
 	"fmt"
-	"github.com/idena-network/idena-test-go/client"
+	"github.com/idena-network/idena-go/api"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/scenario"
 	"github.com/idena-network/idena-test-go/user"
@@ -12,6 +12,7 @@ import (
 
 type epochState struct {
 	userStates map[int]*userEpochState // user index -> userEpochState
+	wordsByCid map[string][2]uint32
 }
 
 type userEpochState struct {
@@ -26,7 +27,7 @@ type errorsHolder struct {
 
 func (process *Process) assert(epoch int, es epochState) {
 	nodeStates := process.getNodeStates()
-	identitiesPerUserIdx := make(map[int]client.Identity)
+	identitiesPerUserIdx := make(map[int]api.Identity)
 	for _, u := range process.users {
 		if !u.Active {
 			continue
@@ -62,7 +63,7 @@ func (process *Process) assert(epoch int, es epochState) {
 	process.handleError(errors.New("assertion failed"), "")
 }
 
-func (process *Process) logStats(nodeStates map[string]int, identitiesPerUserIdx map[int]client.Identity, es epochState) {
+func (process *Process) logStats(nodeStates map[string]int, identitiesPerUserIdx map[int]api.Identity, es epochState) {
 	log.Info("---------------- Verification session stats ----------------")
 	for state, count := range nodeStates {
 		log.Info(fmt.Sprintf("State %s, count: %d", state, count))
@@ -118,7 +119,7 @@ func (process *Process) getActiveUsers() []*user.User {
 	return activeUsers
 }
 
-func (process *Process) assertNodes(nodes map[int]*scenario.NodeAssertion, identitiesPerUserIdx map[int]client.Identity, userEpochStates map[int]*userEpochState, eh *errorsHolder) {
+func (process *Process) assertNodes(nodes map[int]*scenario.NodeAssertion, identitiesPerUserIdx map[int]api.Identity, userEpochStates map[int]*userEpochState, eh *errorsHolder) {
 	for userIndex, node := range nodes {
 		if userIndex >= len(process.users) {
 			process.assertionError(fmt.Sprintf("Assertion for user %d is present, but user is absent", userIndex), nil, nil, eh)
@@ -128,7 +129,7 @@ func (process *Process) assertNodes(nodes map[int]*scenario.NodeAssertion, ident
 	}
 }
 
-func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, identitiesPerUserIdx map[int]client.Identity, ues *userEpochState, eh *errorsHolder) {
+func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, identitiesPerUserIdx map[int]api.Identity, ues *userEpochState, eh *errorsHolder) {
 	if node == nil {
 		return
 	}
@@ -151,7 +152,7 @@ func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, i
 		process.assertionError(fmt.Sprintf("Wrong required flips for node %s", u.GetInfo()), *node.RequiredFlips, ues.requiredFlips, eh)
 	}
 
-	if node.AvailableInvites != nil && identity.Invites != *node.AvailableInvites {
+	if node.AvailableInvites != nil && identity.Invites != uint8(*node.AvailableInvites) {
 		process.assertionError(fmt.Sprintf("Wrong available invites for node %s", u.GetInfo()), *node.AvailableInvites, identity.Invites, eh)
 	}
 

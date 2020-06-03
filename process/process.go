@@ -2,6 +2,7 @@ package process
 
 import (
 	"fmt"
+	"github.com/idena-network/idena-go/api"
 	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-test-go/apiclient"
 	"github.com/idena-network/idena-test-go/client"
@@ -398,7 +399,7 @@ func (process *Process) waitForNodeState(u *user.User, states []string) {
 	log.Info(fmt.Sprintf("%v got target state %v", u.GetInfo(), currentState))
 }
 
-func (process *Process) getIdentity(u *user.User) client.Identity {
+func (process *Process) getIdentity(u *user.User) api.Identity {
 	identity, err := u.Client.GetIdentity(u.Address)
 	process.handleError(err, fmt.Sprintf("%v unable to get identity", u.GetInfo()))
 	return identity
