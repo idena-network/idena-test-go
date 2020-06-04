@@ -327,7 +327,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			txHash:      txHash,
 		}
 		log.Info(fmt.Sprintf("%v submitted flip %v", u.GetInfo(), flip))
-		if !(process.godMode && u.Index == 0 && flipsToSubmit == 1) {
+		if process.getCurrentTestIndex() > 0 {
 			process.es.wordsByCid[flipCid] = [2]uint32{words[wordPairIdx].Words[0], words[wordPairIdx].Words[1]}
 		}
 		if process.flipsChan != nil {

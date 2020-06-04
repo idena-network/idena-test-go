@@ -3,6 +3,7 @@ package user
 import (
 	"fmt"
 	"github.com/idena-network/idena-test-go/client"
+	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
 	"time"
 )
@@ -40,8 +41,25 @@ func (u *User) Start(mode node.StartMode) error {
 	if err := u.Node.Start(mode); err != nil {
 		return err
 	}
+	if err := u.waitForSync(); err != nil {
+		return err
+	}
 	u.Active = true
 	return nil
+}
+
+func (u *User) waitForSync() error {
+	for {
+		syncing, err := u.Client.CheckSyncing()
+		if err != nil {
+			return err
+		}
+		if syncing.Syncing {
+			log.Info(fmt.Sprintf("%s syncing", u.GetInfo()))
+			time.Sleep(time.Second * 10)
+		}
+		return nil
+	}
 }
 
 func (u *User) Stop() error {

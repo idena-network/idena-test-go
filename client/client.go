@@ -399,7 +399,7 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 		if err == nil {
 			var respBody []byte
 			respBody, err = ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if err == nil {
 				return respBody, nil
 			}
@@ -619,4 +619,21 @@ func (client *Client) GetFlipKeys(hash string) (FlipKeysResponse, error) {
 		return FlipKeysResponse{}, errors.New(resp.Error.Message)
 	}
 	return flipKeysResponse, nil
+}
+
+func (client *Client) CheckSyncing() (api.Syncing, error) {
+	req := request{
+		Id:     client.getReqId(),
+		Method: "bcn_syncing",
+		Key:    client.apiKey,
+	}
+	syncingResponse := api.Syncing{}
+	resp := response{Result: &syncingResponse}
+	if err := client.sendRequestAndParseResponse(req, 15, true, &resp); err != nil {
+		return api.Syncing{}, err
+	}
+	if resp.Error != nil {
+		return api.Syncing{}, errors.New(resp.Error.Message)
+	}
+	return syncingResponse, nil
 }
