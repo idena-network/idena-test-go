@@ -262,13 +262,15 @@ func (process *Process) passVerification(u *user.User) {
 
 	waitForLongSession(u)
 
+	delay := time.Second * time.Duration(rand.Float64()*process.ceremonyIntervals.LongSessionDuration/2)
+	log.Debug(fmt.Sprintf("%v delay before submitting long answers: %v", u.GetInfo(), delay))
+	delayChan := time.After(delay)
+
 	process.getFlipHashes(u, false, 10)
 
 	process.getFlips(u, false)
 
-	delay := time.Second * time.Duration(rand.Float64()*process.ceremonyIntervals.LongSessionDuration/2)
-	log.Debug(fmt.Sprintf("%v delay before submitting long answers: %v", u.GetInfo(), delay))
-	time.Sleep(delay)
+	<-delayChan
 
 	process.submitAnswers(u, false)
 
