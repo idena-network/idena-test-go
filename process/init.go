@@ -8,6 +8,7 @@ import (
 	"github.com/idena-network/idena-test-go/events"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
+	"github.com/idena-network/idena-test-go/scenario"
 	"github.com/idena-network/idena-test-go/user"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -80,6 +81,13 @@ func (process *Process) loadNodeBaseConfigData() {
 	process.nodeBaseConfigData = byteValue
 }
 
+func getScenarioBucket(buckets map[int]*scenario.Bucket, userIndex int) *scenario.Bucket {
+	if buckets == nil {
+		return nil
+	}
+	return buckets[userIndex]
+}
+
 func (process *Process) createGodUser() {
 	index := 0
 	apiKey := apiKeyPrefix + strconv.Itoa(index)
@@ -103,6 +111,7 @@ func (process *Process) createGodUser() {
 		process.nodeStopWaitingTime,
 		apiKey,
 		"",
+		getScenarioBucket(process.sc.Buckets, index),
 	)
 	u := user.NewUser(client.NewClient(*n, index, apiKey, process.reqIdHolder, process.bus), n, index)
 	process.godUser = u

@@ -147,7 +147,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	waitForShortSession(u)
 
-	process.passVerification(u)
+	process.passVerification(u, epoch.NextValidation.Add(time.Second*time.Duration(process.ceremonyIntervals.ShortSessionDuration)))
 
 	process.collectUserEpochState(u, state)
 
@@ -247,7 +247,7 @@ func (process *Process) collectUserEpochState(u *user.User, state *userEpochStat
 	state.availableFlips = int(identity.AvailableFlips)
 }
 
-func (process *Process) passVerification(u *user.User) {
+func (process *Process) passVerification(u *user.User, shortFinishTime time.Time) {
 
 	requiredFlips, _ := process.getRequiredFlipsInfo(u)
 	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), requiredFlips))
@@ -255,6 +255,8 @@ func (process *Process) passVerification(u *user.User) {
 	process.getFlipHashes(u, true, 3)
 
 	process.getFlips(u, true)
+
+	time.Sleep(shortFinishTime.Sub(time.Now()) - time.Second*20)
 
 	process.submitAnswers(u, true)
 

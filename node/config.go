@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"path/filepath"
+	"time"
 )
 
 const network = 2
@@ -29,6 +30,14 @@ type specConfig struct {
 type p2pConfig struct {
 	MaxDelay       *int
 	CollectMetrics bool
+	TokenBucket    TokenBucket
+}
+
+type TokenBucket struct {
+	Enabled      bool
+	FillInterval time.Duration
+	Capacity     int
+	Quantum      int
 }
 
 type rpcConfig struct {
@@ -111,11 +120,20 @@ func (node *Node) buildSpecificConfig() *specConfig {
 
 	nw := uint32(network)
 	maxNetDelay := node.maxNetDelay
+	var tokenBucket TokenBucket
+	if node.scenarioBucket != nil {
+		tokenBucket.Enabled = true
+		tokenBucket.FillInterval = node.scenarioBucket.FillInterval
+		tokenBucket.Capacity = node.scenarioBucket.Capacity
+		tokenBucket.Quantum = node.scenarioBucket.Quantum
+	}
+
 	return &specConfig{
 		Network: &nw,
 		DataDir: dataDir,
 		P2P: p2pConfig{
-			MaxDelay: &maxNetDelay,
+			MaxDelay:    &maxNetDelay,
+			TokenBucket: tokenBucket,
 		},
 		RPC: rpcConfig{
 			HTTPHost: node.RpcHost,

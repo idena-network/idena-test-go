@@ -259,6 +259,7 @@ func (process *Process) createUser(index int) *user.User {
 		process.nodeStopWaitingTime,
 		apiKey,
 		profile,
+		getScenarioBucket(process.sc.Buckets, index),
 	)
 	u := user.NewUser(client.NewClient(*n, index, apiKey, process.reqIdHolder, process.bus), n, index)
 	process.users = append(process.users, u)

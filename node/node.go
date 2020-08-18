@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/idena-network/idena-test-go/log"
+	"github.com/idena-network/idena-test-go/scenario"
 	"github.com/pkg/errors"
 	"os"
 	"os/exec"
@@ -52,12 +53,13 @@ type Node struct {
 	stopWaitingTime  time.Duration
 	apiKeyValue      string
 	profile          string
+	scenarioBucket   *scenario.Bucket
 }
 
 func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int,
 	autoMine bool, rpcHost string, rpcPort int, ipfsBootNode string, ipfsPort int, godAddress string,
 	ceremonyTime int64, verbosity int, maxNetDelay int, baseConfigData []byte, startWaitingTime time.Duration,
-	stopWaitingTime time.Duration, apiKeyValue string, profile string) *Node {
+	stopWaitingTime time.Duration, apiKeyValue string, profile string, scenarioBucket *scenario.Bucket) *Node {
 
 	return &Node{
 		index:            index,
@@ -80,6 +82,7 @@ func NewNode(index int, workDir string, execCommandName string, dataDir string, 
 		stopWaitingTime:  stopWaitingTime,
 		apiKeyValue:      apiKeyValue,
 		profile:          profile,
+		scenarioBucket:   scenarioBucket,
 	}
 }
 

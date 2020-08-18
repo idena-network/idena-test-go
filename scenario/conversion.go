@@ -20,6 +20,7 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.CeremonyMinOffset = incomingSc.CeremonyMinOffset
 	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
 	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
+	sc.Buckets = convertBuckets(incomingSc.Buckets)
 	return sc
 }
 
@@ -247,4 +248,22 @@ func convertStateAssertion(incomingStateAssertion stateAssertion) StateAssertion
 	stateAssertion.State = incomingStateAssertion.State
 	stateAssertion.Count = incomingStateAssertion.Count
 	return stateAssertion
+}
+
+func convertBuckets(incomingBuckets []bucket) map[int]*Bucket {
+	if len(incomingBuckets) == 0 {
+		return nil
+	}
+	buckets := make(map[int]*Bucket)
+	for _, incomingBucket := range incomingBuckets {
+		users, _ := parseNums(incomingBucket.Users)
+		for _, user := range users {
+			buckets[user] = &Bucket{
+				FillInterval: incomingBucket.FillInterval,
+				Capacity:     incomingBucket.Capacity,
+				Quantum:      incomingBucket.Quantum,
+			}
+		}
+	}
+	return buckets
 }

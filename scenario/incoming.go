@@ -1,5 +1,7 @@
 package scenario
 
+import "time"
+
 type incomingScenario struct {
 	Users              int                  `json:"users"` // users count
 	CeremonyMinOffset  int                  `json:"ceremonyMinOffset"`
@@ -13,6 +15,14 @@ type incomingScenario struct {
 	Txs                []transactions       `json:"txs"`
 	DefaultAnswer      byte                 `json:"defaultAnswer"`
 	Ceremonies         []ceremony           `json:"ceremonies"`
+	Buckets            []bucket             `json:"buckets"`
+}
+
+type bucket struct {
+	Users        string        `json:"users"`
+	FillInterval time.Duration `json:"fillInterval"`
+	Capacity     int           `json:"capacity"`
+	Quantum      int           `json:"quantum"`
 }
 
 type newUsers struct {

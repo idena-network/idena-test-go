@@ -17,6 +17,7 @@ type Scenario struct {
 	// todo remove deprecated field
 	DefaultAnswer byte              // deprecated
 	Ceremonies    map[int]*Ceremony // Epoch -> Ceremony
+	Buckets       map[int]*Bucket   // User -> Bucket
 }
 
 type NewUsers struct {
@@ -112,4 +113,10 @@ func (answers Answers) Get(count int) []byte {
 		result = append(result, answer)
 	}
 	return result
+}
+
+type Bucket struct {
+	FillInterval time.Duration
+	Capacity     int
+	Quantum      int
 }
