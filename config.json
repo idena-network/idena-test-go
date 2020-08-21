@@ -1,14 +1,24 @@
 {
   "Verbosity": 3,
   "NodeVerbosity": 5,
-  "MaxNetDelay": 500,
+  "MaxNetDelay": 0,
   "WorkDir": "",
   "Command": "idena-go",
   "Scenario": "scenario.json",
   "NodeConfig": "nodeConfig.json",
   "RpcAddr": "localhost",
   "GodMode": true,
-  "MinFlipSize": 80000,
-  "MaxFlipSize": 160000,
-  "DecryptFlips": false
+  "NodeStartPauseSec": 1,
+  "FastNewbie": true,
+  "FirstIpfsPort": 40244,
+  "TxSpam": {
+    "Enabled": true,
+    "PayloadSize": 1,
+    "FirstIntervalSec": 30,
+    "IntervalSec": 15,
+    "Count": 700,
+    "Amount": 0.0000001,
+    "MaxFee": 1000.0,
+    "Iterations": 9999
+  }
 }

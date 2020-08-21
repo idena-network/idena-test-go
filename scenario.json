@@ -1,4 +1,45 @@
 {
   "users": 5,
-  "ceremonyMinOffset": 4
+  "ceremonyMinOffset": 99995,
+  "nodeStops": [
+    {
+      "epochs": "10",
+      "nodes": "1"
+    }
+  ],
+  "contracts":
+  {
+    "amount": "9998",
+    "calls": [
+      {
+        "method": "dna_deployContract",
+        "params": {
+          "contractId": 55,
+          "from": "",
+          "codeHash": "0x02",
+          "amount": "1.0",
+          "maxFee": "1000",
+          "dynamicArgs": {
+            "cid": "bafkreicpcolm26zryjbiat43fizyjtwk2wxroag73y5exkfa6tcjksa57y",
+            "startTimeMinOffset": 10,
+            "votingDuration": 4,
+            "publicVotingDuration": 4,
+            "quorum": 3,
+            "committeeSize": 3
+          }
+        }
+      },
+      {
+        "method": "dna_callContract",
+        "params": {
+          "from": "",
+          "contractId": 55,
+          "method": "startVoting",
+          "amount": "1.0",
+          "maxFee": "1000"
+        }
+      }
+    ]
+  }
+
 }

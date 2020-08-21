@@ -13,6 +13,7 @@ type incomingScenario struct {
 	Txs                []transactions       `json:"txs"`
 	DefaultAnswer      byte                 `json:"defaultAnswer"`
 	Ceremonies         []ceremony           `json:"ceremonies"`
+	Contracts          Contracts            `json:"contracts"`
 }
 
 type newUsers struct {

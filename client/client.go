@@ -114,7 +114,9 @@ func (client *Client) SendInvite(to string) (Invite, error) {
 
 	params := sendInviteArgs{
 		To:     to,
-		Amount: decimal.NewFromFloat(100),
+		Amount: decimal.NewFromFloat(999999),
+		//Amount: decimal.NewFromFloat(546),
+		//Amount: decimal.NewFromFloat(5000),
 	}
 	req := request{
 		Id:      client.getReqId(),
@@ -382,7 +384,7 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 		return nil, errors.Wrapf(err, "unable to serialize request")
 	}
 
-	log.Trace(fmt.Sprintf("%v. Send request: %v", client.url, cut(string(reqBody), 500)))
+	log.Trace(fmt.Sprintf("%v. Send request: %v", client.url, cut(string(reqBody), 5000)))
 
 	counter := 5
 	for {
@@ -433,7 +435,7 @@ func (client *Client) sendRequestAndParseResponse(req request, timeoutSec int, r
 		return err
 	}
 
-	log.Trace(fmt.Sprintf("%v. Got response: %v", client.url, cut(string(responseBytes), 500)))
+	log.Trace(fmt.Sprintf("%v. Got response: %v", client.url, cut(string(responseBytes), 5000)))
 
 	if err := json.Unmarshal(responseBytes, &resp); err != nil {
 		return errors.Wrapf(err, "unable to deserialize response")
@@ -636,4 +638,22 @@ func (client *Client) CheckSyncing() (api.Syncing, error) {
 		return api.Syncing{}, errors.New(resp.Error.Message)
 	}
 	return syncingResponse, nil
+}
+
+func (client *Client) Transaction(hash string) (api.Transaction, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "bcn_transaction",
+		Payload: []string{hash},
+		Key:     client.apiKey,
+	}
+	res := api.Transaction{}
+	resp := response{Result: &res}
+	if err := client.sendRequestAndParseResponse(req, 15, false, &resp); err != nil {
+		return api.Transaction{}, err
+	}
+	if resp.Error != nil {
+		return api.Transaction{}, errors.New(resp.Error.Message)
+	}
+	return res, nil
 }

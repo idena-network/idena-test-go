@@ -131,6 +131,13 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 		return
 	}
 
+	// todo
+	if u.Index == 0 {
+		process.tmp()
+	} else {
+		time.Sleep(time.Hour * 24)
+	}
+
 	process.submitFlips(u, godAddress)
 
 	process.provideDelayedFlipKeyIfNeeded(u, epoch.NextValidation)

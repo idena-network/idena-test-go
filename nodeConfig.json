@@ -1,4 +1,7 @@
 {
+  "P2P": {
+    "CollectMetrics": false
+  },
   "Validation": {
     "ValidationInterval": 600000000000,
     "FlipLotteryDuration": 60000000000,
@@ -8,6 +11,18 @@
   },
   "Consensus": {
     "StatusSwitchRange": 5,
-    "MinProposerThreshold": 0.1
+    "MinProposerThreshold": 0.1,
+    "SnapshotRange": 10
+  },
+  "Sync": {
+    "FastSync": true,
+    "ForceFullSync": 5
+  },
+  "Mempool": {
+    "TxPoolQueueSlots": 99999,
+    "TxPoolExecutableSlots": 99999,
+    "TxPoolAddrQueueLimit": 99999,
+    "TxPoolAddrExecutableLimit": 99999,
+    "TxLifetime": 10800000000000
   }
 }

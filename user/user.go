@@ -41,14 +41,14 @@ func (u *User) Start(mode node.StartMode) error {
 	if err := u.Node.Start(mode); err != nil {
 		return err
 	}
-	if err := u.waitForSync(); err != nil {
+	if err := u.WaitForSync(); err != nil {
 		return err
 	}
 	u.Active = true
 	return nil
 }
 
-func (u *User) waitForSync() error {
+func (u *User) WaitForSync() error {
 	for {
 		syncing, err := u.Client.CheckSyncing()
 		if err != nil {

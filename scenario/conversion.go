@@ -20,6 +20,7 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.CeremonyMinOffset = incomingSc.CeremonyMinOffset
 	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
 	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
+	sc.Contracts = incomingSc.Contracts
 	return sc
 }
 

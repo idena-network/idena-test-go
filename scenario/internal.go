@@ -17,6 +17,7 @@ type Scenario struct {
 	// todo remove deprecated field
 	DefaultAnswer byte              // deprecated
 	Ceremonies    map[int]*Ceremony // Epoch -> Ceremony
+	Contracts     Contracts
 }
 
 type NewUsers struct {
