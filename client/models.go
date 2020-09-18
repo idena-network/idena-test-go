@@ -105,10 +105,9 @@ type SubmitAnswersResponse struct {
 }
 
 type CeremonyIntervals struct {
-	FlipLotteryDuration      float64
-	ShortSessionDuration     float64
-	LongSessionDuration      float64
-	AfterLongSessionDuration float64
+	FlipLotteryDuration  float64
+	ShortSessionDuration float64
+	LongSessionDuration  float64
 }
 
 type Peer struct {

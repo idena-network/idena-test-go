@@ -12,6 +12,7 @@ type User struct {
 	Client         *client.Client
 	Node           *node.Node
 	Address        string
+	PubKey         string
 	TestContext    *TestContext
 	Index          int
 	Active         bool

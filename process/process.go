@@ -76,6 +76,7 @@ type Process struct {
 	lowPowerProfileCount   int
 	ceremonyIntervals      *client.CeremonyIntervals
 	fastNewbie             bool
+	validationOnly         bool
 	minFlipSize            int
 	maxFlipSize            int
 	decryptFlips           bool
@@ -85,7 +86,7 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
 	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
 	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32,
-	fastNewbie bool, minFlipSize int, maxFlipSize int, decryptFlips bool) *Process {
+	fastNewbie bool, validationOnly bool, minFlipSize int, maxFlipSize int, decryptFlips bool) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -116,6 +117,7 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		flipsChan:              flipsChan,
 		lowPowerProfileRate:    lowPowerProfileRate,
 		fastNewbie:             fastNewbie,
+		validationOnly:         validationOnly,
 		minFlipSize:            minFlipSize,
 		maxFlipSize:            maxFlipSize,
 		decryptFlips:           decryptFlips,
@@ -156,18 +158,22 @@ func (process *Process) createEpochNewUsers(epochNewUsers []*scenario.NewUsers, 
 		users = append(users, process.startNewNodesAndSendInvites(epochInviterNewUsers, afterFlips)...)
 	}
 
-	process.waitForInvites(users)
-
-	if process.getCurrentTestIndex() == 0 && !process.godMode {
-		time.Sleep(time.Second * 5)
-	}
-
-	process.activateInvites(users)
-
-	if process.fastNewbie {
+	if process.validationOnly {
 		process.waitForNewbies(users)
 	} else {
-		process.waitForCandidates(users)
+		process.waitForInvites(users)
+
+		if process.getCurrentTestIndex() == 0 && !process.godMode {
+			time.Sleep(time.Second * 5)
+		}
+
+		process.activateInvites(users)
+
+		if process.fastNewbie {
+			process.waitForNewbies(users)
+		} else {
+			process.waitForCandidates(users)
+		}
 	}
 
 	log.Debug("New users creation completed")
@@ -179,18 +185,22 @@ func (process *Process) createEpochInviterNewUsers(epochInviterNewUsers *scenari
 	}
 	users := process.startNewNodesAndSendInvites(epochInviterNewUsers, afterFlips)
 
-	process.waitForInvites(users)
-
-	if process.getCurrentTestIndex() == 0 && !process.godMode {
-		time.Sleep(time.Second * 5)
-	}
-
-	process.activateInvites(users)
-
-	if process.fastNewbie {
+	if process.validationOnly {
 		process.waitForNewbies(users)
 	} else {
-		process.waitForCandidates(users)
+		process.waitForInvites(users)
+
+		if process.getCurrentTestIndex() == 0 && !process.godMode {
+			time.Sleep(time.Second * 5)
+		}
+
+		process.activateInvites(users)
+
+		if process.fastNewbie {
+			process.waitForNewbies(users)
+		} else {
+			process.waitForCandidates(users)
+		}
 	}
 
 	log.Debug("New users creation completed")
@@ -302,7 +312,13 @@ func (process *Process) getNodeAddresses(users []*user.User) {
 		var err error
 		u.Address, err = u.Client.GetCoinbaseAddr()
 		process.handleError(err, fmt.Sprintf("%v unable to get node address", u.GetInfo()))
-		log.Info(fmt.Sprintf("%v got coinbase address %v", u.GetInfo(), u.Address))
+		if process.validationOnly {
+			u.PubKey, err = u.Client.GetPubKey()
+			process.handleError(err, fmt.Sprintf("%v unable to get node pub key", u.GetInfo()))
+			log.Info(fmt.Sprintf("%v got coinbase address %v and pub key %v", u.GetInfo(), u.Address, u.PubKey))
+		} else {
+			log.Info(fmt.Sprintf("%v got coinbase address %v", u.GetInfo(), u.Address))
+		}
 	}
 }
 
@@ -321,7 +337,13 @@ func (process *Process) sendInvites(inviterIndex int, users []*user.User) {
 		invitesCount := 0
 		for _, u := range users {
 			sender := process.users[inviterIndex]
-			invite, err := sender.Client.SendInvite(u.Address)
+			var recipient string
+			if process.validationOnly {
+				recipient = u.PubKey
+			} else {
+				recipient = u.Address
+			}
+			invite, err := sender.Client.SendInvite(recipient)
 			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.GetInfo()))
 			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))
 			invitesCount++
@@ -331,13 +353,17 @@ func (process *Process) sendInvites(inviterIndex int, users []*user.User) {
 	}
 
 	log.Info("Start requesting invites")
-	var addresses []string
+	var recipients []string
 	for _, u := range users {
-		addresses = append(addresses, u.Address)
+		if process.validationOnly {
+			recipients = append(recipients, u.PubKey)
+		} else {
+			recipients = append(recipients, u.Address)
+		}
 	}
-	err := process.apiClient.CreateInvites(addresses)
+	err := process.apiClient.CreateInvites(recipients)
 	process.handleError(err, "Unable to request invites")
-	log.Info(fmt.Sprintf("Requested %v invites", len(addresses)))
+	log.Info(fmt.Sprintf("Requested %v invites", len(recipients)))
 	return
 }
 

@@ -99,6 +99,7 @@ func main() {
 			conf.FlipsChanSize,
 			conf.LowPowerProfileRate,
 			conf.FastNewbie,
+			conf.ValidationOnly,
 			conf.MinFlipSize,
 			conf.MaxFlipSize,
 			conf.DecryptFlips,

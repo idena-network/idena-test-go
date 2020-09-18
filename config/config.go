@@ -29,6 +29,7 @@ type Config struct {
 	FlipsChanSize       int
 	LowPowerProfileRate float32
 	FastNewbie          bool
+	ValidationOnly      bool
 	MinFlipSize         int
 	MaxFlipSize         int
 	DecryptFlips        bool
@@ -143,5 +144,6 @@ func merge(from *Config, to *Config) {
 		to.MaxFlipSize = from.MaxFlipSize
 	}
 	to.FastNewbie = from.FastNewbie
+	to.ValidationOnly = from.ValidationOnly
 	to.DecryptFlips = from.DecryptFlips
 }

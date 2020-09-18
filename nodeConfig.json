@@ -3,8 +3,7 @@
     "ValidationInterval": 600000000000,
     "FlipLotteryDuration": 60000000000,
     "ShortSessionDuration": 120000000000,
-    "LongSessionDuration": 120000000000,
-    "AfterLongSessionDuration": 30000000000
+    "LongSessionDuration": 120000000000
   },
   "Consensus": {
     "StatusSwitchRange": 5,

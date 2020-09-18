@@ -93,8 +93,7 @@ func (process *Process) getTestTimeout() time.Duration {
 		time.Second*time.Duration(intervals.FlipLotteryDuration) +
 		time.Second*time.Duration(intervals.ShortSessionDuration) +
 		time.Second*time.Duration(intervals.LongSessionDuration) +
-		time.Second*time.Duration(intervals.AfterLongSessionDuration) +
-		time.Minute*3
+		time.Minute*5
 	log.Debug(fmt.Sprintf("Verification session waiting timeout: %v", testTimeout))
 	return testTimeout
 }
@@ -120,7 +119,9 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	epoch := process.getEpoch(u)
 	log.Info(fmt.Sprintf("%s epoch: %d, next validation time: %v", u.GetInfo(), epoch.Epoch, epoch.NextValidation))
 
-	process.switchOnlineState(u, epoch.NextValidation)
+	if !process.validationOnly {
+		process.switchOnlineState(u, epoch.NextValidation)
+	}
 
 	if wasActive {
 		process.switchNodeIfNeeded(u)
@@ -147,7 +148,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	waitForShortSession(u)
 
-	process.passVerification(u)
+	process.passVerification(u, epoch.NextValidation.Add(time.Second*time.Duration(process.ceremonyIntervals.ShortSessionDuration)))
 
 	process.collectUserEpochState(u, state)
 
@@ -247,7 +248,7 @@ func (process *Process) collectUserEpochState(u *user.User, state *userEpochStat
 	state.availableFlips = int(identity.AvailableFlips)
 }
 
-func (process *Process) passVerification(u *user.User) {
+func (process *Process) passVerification(u *user.User, shortFinishTime time.Time) {
 
 	requiredFlips, _ := process.getRequiredFlipsInfo(u)
 	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), requiredFlips))
@@ -255,6 +256,8 @@ func (process *Process) passVerification(u *user.User) {
 	process.getFlipHashes(u, true, 3)
 
 	process.getFlips(u, true)
+
+	time.Sleep(shortFinishTime.Sub(time.Now()) - time.Second*20)
 
 	process.submitAnswers(u, true)
 
@@ -304,7 +307,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 		if err != nil {
 			process.handleError(err, "unable to generate hex")
 		}
-		if !process.fastNewbie && process.getCurrentTestIndex() == 0 && flipsToSubmit > 1 {
+		if !process.fastNewbie && !process.validationOnly && process.getCurrentTestIndex() == 0 && flipsToSubmit > 1 {
 			_, err := u.Client.SubmitFlip(flipPrivateHex, flipPublicHex, 0)
 			if err != nil {
 				log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
@@ -347,6 +350,9 @@ func (process *Process) submitFlip(u *user.User, privateHex, publicHex string, w
 		log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
 	}
 	log.Info(fmt.Sprintf("%v start waiting for mined flip (resp: %v)", u.GetInfo(), resp))
+	if process.validationOnly {
+		return resp.Hash, resp.TxHash
+	}
 	for {
 		time.Sleep(requestRetryDelay)
 		newSubmittedFlips := process.getIdentity(u).Flips
@@ -704,8 +710,9 @@ func (process *Process) getAnswers(u *user.User, isShort bool) []client.FlipAnsw
 	}
 	var answers []client.FlipAnswer
 	for _, flipHash := range flipHashes {
+		wrongWords := rand.Intn(2) == 1
 		answers = append(answers, client.FlipAnswer{
-			WrongWords: false,
+			WrongWords: wrongWords,
 			Answer:     determineFlipAnswer(flipHash),
 			Hash:       flipHash.Hash,
 		})

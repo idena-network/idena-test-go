@@ -8,3 +8,5 @@
 *.so
 *.dylib
 **/idena-test-go
+
+go.sum

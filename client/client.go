@@ -74,6 +74,22 @@ func (client *Client) GetCoinbaseAddr() (string, error) {
 	return resp.Result.(string), nil
 }
 
+func (client *Client) GetPubKey() (string, error) {
+	req := request{
+		Id:     client.getReqId(),
+		Method: "dna_getPublicKey",
+		Key:    client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
 func (client *Client) GetIpfsAddress() (string, error) {
 	req := request{
 		Id:     client.getReqId(),
