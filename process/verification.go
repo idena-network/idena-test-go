@@ -709,12 +709,18 @@ func (process *Process) getAnswers(u *user.User, isShort bool) []client.FlipAnsw
 		flipHashes = u.TestContext.LongFlipHashes
 	}
 	var answers []client.FlipAnswer
+	reportAll := rand.Intn(10) == 1
 	for _, flipHash := range flipHashes {
-		wrongWords := rand.Intn(2) == 1
+		var grade byte
+		if reportAll {
+			grade = 1
+		} else {
+			grade = byte(rand.Intn(6))
+		}
 		answers = append(answers, client.FlipAnswer{
-			WrongWords: wrongWords,
-			Answer:     determineFlipAnswer(flipHash),
-			Hash:       flipHash.Hash,
+			Grade:  grade,
+			Answer: determineFlipAnswer(flipHash),
+			Hash:   flipHash.Hash,
 		})
 	}
 	return answers

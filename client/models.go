@@ -55,9 +55,9 @@ type changeProfileArgs struct {
 }
 
 type FlipAnswer struct {
-	Answer     byte   `json:"answer"`
-	Hash       string `json:"hash"`
-	WrongWords bool   `json:"wrongWords"`
+	Answer byte   `json:"answer"`
+	Hash   string `json:"hash"`
+	Grade  byte   `json:"grade"`
 }
 
 type response struct {
