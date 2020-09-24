@@ -224,9 +224,10 @@ func (client *Client) GetShortFlipHashes() ([]FlipHashesResponse, error) {
 
 func (client *Client) getFlipHashes(method string) ([]FlipHashesResponse, error) {
 	req := request{
-		Id:     client.getReqId(),
-		Method: method,
-		Key:    client.apiKey,
+		Id:      client.getReqId(),
+		Method:  method,
+		Key:     client.apiKey,
+		Payload: []string{},
 	}
 	var hashes []FlipHashesResponse
 	resp := response{Result: &hashes}
