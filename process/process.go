@@ -1,9 +1,11 @@
 package process
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/idena-network/idena-go/api"
 	"github.com/idena-network/idena-go/common/eventbus"
+	"github.com/idena-network/idena-go/crypto"
 	"github.com/idena-network/idena-test-go/apiclient"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
@@ -37,8 +39,6 @@ const (
 	shortSessionFlipKeyDeadline = time.Second * 30
 	flipsWaitingMinTimeout      = time.Minute
 	flipsWaitingMaxTimeout      = time.Second * 90
-
-	apiKeyPrefix = "testApiKey"
 )
 
 type Process struct {
@@ -80,13 +80,14 @@ type Process struct {
 	minFlipSize            int
 	maxFlipSize            int
 	decryptFlips           bool
+	randomApiKeys          bool
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
 	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
 	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
 	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32,
-	fastNewbie bool, validationOnly bool, minFlipSize int, maxFlipSize int, decryptFlips bool) *Process {
+	fastNewbie bool, validationOnly bool, minFlipSize int, maxFlipSize int, decryptFlips, randomApiKeys bool) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -121,6 +122,7 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		minFlipSize:            minFlipSize,
 		maxFlipSize:            maxFlipSize,
 		decryptFlips:           decryptFlips,
+		randomApiKeys:          randomApiKeys,
 	}
 }
 
@@ -245,9 +247,17 @@ func (process *Process) createUsers(count int) {
 	log.Info(fmt.Sprintf("Created %v users", count))
 }
 
+func generateApiKey(userIndex int, randomApiKeys bool) string {
+	if !randomApiKeys {
+		return "testApiKey" + strconv.Itoa(userIndex)
+	}
+	randomKey, _ := crypto.GenerateKey()
+	return hex.EncodeToString(crypto.FromECDSA(randomKey)[:16])
+}
+
 func (process *Process) createUser(index int) *user.User {
 	rpcPort := process.firstRpcPort + process.firstPortOffset + index
-	apiKey := apiKeyPrefix + strconv.Itoa(index)
+	apiKey := generateApiKey(index, process.randomApiKeys)
 	profile := process.defineNewNodeProfile()
 	n := node.NewNode(index,
 		process.workDir,

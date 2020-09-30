@@ -103,6 +103,7 @@ func main() {
 			conf.MinFlipSize,
 			conf.MaxFlipSize,
 			conf.DecryptFlips,
+			conf.RandomApiKeys,
 		)
 
 		if conf.GodMode {

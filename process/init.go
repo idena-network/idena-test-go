@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -82,7 +81,7 @@ func (process *Process) loadNodeBaseConfigData() {
 
 func (process *Process) createGodUser() {
 	index := 0
-	apiKey := apiKeyPrefix + strconv.Itoa(index)
+	apiKey := generateApiKey(index, process.randomApiKeys)
 	n := node.NewNode(index,
 		process.workDir,
 		process.execCommandName,

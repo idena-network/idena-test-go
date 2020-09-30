@@ -33,6 +33,7 @@ type Config struct {
 	MinFlipSize         int
 	MaxFlipSize         int
 	DecryptFlips        bool
+	RandomApiKeys       bool
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -88,6 +89,7 @@ func defaultConfig() Config {
 		MinFlipSize:         80000,
 		MaxFlipSize:         160000,
 		DecryptFlips:        false,
+		RandomApiKeys:       false,
 	}
 }
 
@@ -146,4 +148,5 @@ func merge(from *Config, to *Config) {
 	to.FastNewbie = from.FastNewbie
 	to.ValidationOnly = from.ValidationOnly
 	to.DecryptFlips = from.DecryptFlips
+	to.RandomApiKeys = from.RandomApiKeys
 }
