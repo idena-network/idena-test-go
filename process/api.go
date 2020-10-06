@@ -69,8 +69,7 @@ func (process *Process) GetEpoch() (uint16, error) {
 func (process *Process) SendFailNotification(message string, sender string) {
 	go func() {
 		time.Sleep(time.Second * 2)
-		if process.validationOnly && (strings.Contains(strings.ToLower(message), "no flips to solve") ||
-			strings.Contains(strings.ToLower(message), "coinbase address is not a ceremony candidate")) {
+		if process.validationOnly {
 			log.Warn(fmt.Sprintf("Got fail notification from %s: %s", sender, message))
 		} else {
 			process.handleError(errors.New(message), fmt.Sprintf("Got fail notification from %s", sender))
