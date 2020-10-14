@@ -1,0 +1,20 @@
+{
+  "users": 5,
+  "ceremonyMinOffset": 7,
+  "nodeUpdates": [
+    {
+      "epochs": "0",
+      "nodes": "1",
+      "delaySec": 30,
+      "stepDelaySec": 0,
+      "command": "idena-go-new"
+    },
+    {
+      "epochs": "0",
+      "nodes": "2-4",
+      "delaySec": 540,
+      "stepDelaySec": 10,
+      "command": "idena-go-new"
+    }
+  ]
+}

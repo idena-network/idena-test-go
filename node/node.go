@@ -83,6 +83,10 @@ func NewNode(index int, workDir string, execCommandName string, dataDir string, 
 	}
 }
 
+func (node *Node) SetExecCommandName(execCommandName string) {
+	node.execCommandName = execCommandName
+}
+
 func (node *Node) Start(deleteMode StartMode) error {
 	if deleteMode == DeleteDataDir {
 		if err := node.deleteDataDir(); err != nil {
@@ -102,7 +106,8 @@ func (node *Node) Start(deleteMode StartMode) error {
 	}
 
 	args := node.getArgs()
-	command := exec.Command(filepath.Join(node.workDir, node.execCommandName), args...)
+	execCommandName := node.execCommandName
+	command := exec.Command(filepath.Join(node.workDir, execCommandName), args...)
 	command.Dir = node.workDir
 
 	filePath := filepath.Join(node.workDir, node.dataDir, fmt.Sprintf("node-%d-%d.log", node.index, node.RpcPort))
@@ -122,7 +127,7 @@ func (node *Node) Start(deleteMode StartMode) error {
 	node.process = command.Process
 	time.Sleep(node.startWaitingTime)
 
-	log.Info(fmt.Sprintf("Started node, workDir: %v, parameters: %v", node.workDir, args))
+	log.Info(fmt.Sprintf("Started node, command: %v, workDir: %v, parameters: %v", execCommandName, node.workDir, args))
 	return nil
 }
 

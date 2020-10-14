@@ -15,8 +15,9 @@ type Scenario struct {
 	EpochDelayedFlipKeys     map[int][]int                 // Epoch -> nodes to provide delayed flip key
 	CeremonyMinOffset        int
 	// todo remove deprecated field
-	DefaultAnswer byte              // deprecated
-	Ceremonies    map[int]*Ceremony // Epoch -> Ceremony
+	DefaultAnswer    byte                        // deprecated
+	Ceremonies       map[int]*Ceremony           // Epoch -> Ceremony
+	EpochNodeUpdates map[int]map[int]*NodeUpdate // Epoch -> node -> node updates
 }
 
 type NewUsers struct {
@@ -71,6 +72,11 @@ type AnswerRates struct {
 	Left          float32
 	Right         float32
 	Inappropriate float32
+}
+
+type NodeUpdate struct {
+	Command string
+	Delay   time.Duration
 }
 
 func (answerRates AnswerRates) Get(count int) []byte {

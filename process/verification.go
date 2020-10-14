@@ -98,12 +98,36 @@ func (process *Process) getTestTimeout() time.Duration {
 	return testTimeout
 }
 
+func (process *Process) updateNode(u *user.User) {
+	epoch := process.getCurrentTestIndex()
+	nodeUpdates, ok := process.sc.EpochNodeUpdates[epoch]
+	if !ok {
+		return
+	}
+	nodeUpdate, ok := nodeUpdates[u.Index]
+	if !ok {
+		return
+	}
+	delay := nodeUpdate.Delay
+	time.Sleep(delay)
+	if epoch != process.getCurrentTestIndex() {
+		log.Warn(fmt.Sprintf("%s unable to update node due to old epoch", u.GetInfo()))
+		return
+	}
+	log.Info(fmt.Sprintf("%s stopping node to update", u.GetInfo()))
+	process.stopNode(u)
+	u.Node.SetExecCommandName(nodeUpdate.Command)
+	process.startNode(u, node.DeleteNothing)
+	log.Info(fmt.Sprintf("%s started updated node", u.GetInfo()))
+}
+
 func (process *Process) testUser(u *user.User, godAddress string, state *userEpochState) {
 	u.IsTestRun = true
 	defer func() {
 		u.IsTestRun = false
 	}()
 	process.initTest(u)
+	go process.updateNode(u)
 
 	wasActive := u.Active
 

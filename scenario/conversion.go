@@ -20,6 +20,7 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.CeremonyMinOffset = incomingSc.CeremonyMinOffset
 	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
 	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
+	sc.EpochNodeUpdates = convertNodeUpdates(incomingSc.NodeUpdates)
 	return sc
 }
 
@@ -247,4 +248,26 @@ func convertStateAssertion(incomingStateAssertion stateAssertion) StateAssertion
 	stateAssertion.State = incomingStateAssertion.State
 	stateAssertion.Count = incomingStateAssertion.Count
 	return stateAssertion
+}
+
+func convertNodeUpdates(updates []nodeUpdates) map[int]map[int]*NodeUpdate {
+	result := make(map[int]map[int]*NodeUpdate)
+	for _, update := range updates {
+		epochs, _ := parseNums(update.Epochs)
+		nodes, _ := parseNums(update.Nodes)
+		for _, epoch := range epochs {
+			delay := time.Second * time.Duration(update.DelaySec)
+			for _, node := range nodes {
+				if _, present := result[epoch]; !present {
+					result[epoch] = make(map[int]*NodeUpdate)
+				}
+				delay += time.Second * time.Duration(update.StepDelaySec)
+				result[epoch][node] = &NodeUpdate{
+					Delay:   delay,
+					Command: update.Command,
+				}
+			}
+		}
+	}
+	return result
 }

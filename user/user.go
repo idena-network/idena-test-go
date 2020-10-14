@@ -64,9 +64,9 @@ func (u *User) waitForSync() error {
 }
 
 func (u *User) Stop() error {
+	u.Active = false
 	if err := u.Node.Stop(); err != nil {
 		return err
 	}
-	u.Active = false
 	return nil
 }

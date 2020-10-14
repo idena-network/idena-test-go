@@ -41,6 +41,10 @@ func (process *Process) init() {
 	process.bus.Subscribe(events.NodeCrashedEventID, func(e eventbus.Event) {
 		nodeCrashedEvent := e.(*events.NodeCrashedEvent)
 		u := process.users[nodeCrashedEvent.Index]
+		if !u.Active {
+			log.Warn(fmt.Sprintf("%v node will not be restarted due to crash since it is not active", u.GetInfo()))
+			return
+		}
 		log.Warn(fmt.Sprintf("%v node will be restarted due to crash", u.GetInfo()))
 		_ = u.Node.Destroy()
 		process.startNode(u, node.DeleteNothing)

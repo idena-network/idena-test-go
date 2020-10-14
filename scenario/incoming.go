@@ -13,6 +13,7 @@ type incomingScenario struct {
 	Txs                []transactions       `json:"txs"`
 	DefaultAnswer      byte                 `json:"defaultAnswer"`
 	Ceremonies         []ceremony           `json:"ceremonies"`
+	NodeUpdates        []nodeUpdates        `json:"nodeUpdates"`
 }
 
 type newUsers struct {
@@ -80,4 +81,10 @@ type nodeAssertion struct {
 	AvailableInvites *int    `json:"availableInvites"`
 	State            *string `json:"state"`
 	Online           *bool   `json:"online"`
+}
+
+type nodeUpdates struct {
+	delayedEpochsNodes
+	StepDelaySec int64  `json:"stepDelaySec"`
+	Command      string `json:"command"`
 }
