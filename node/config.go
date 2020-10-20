@@ -70,8 +70,7 @@ func buildConfig(node *Node) interface{} {
 	if node.baseConfigData == nil {
 		return conf
 	}
-	addConfig(conf, node.baseConfigData)
-	return conf
+	return addConfig(conf, node.baseConfigData)
 }
 
 func (node *Node) buildNodeConfigFileData() []byte {
@@ -85,14 +84,23 @@ func (node *Node) buildNodeConfigFileData() []byte {
 	return bytes
 }
 
-func addConfig(c *specConfig, configData []byte) {
+func addConfig(c *specConfig, configData []byte) interface{} {
 	if configData == nil {
-		return
+		return c
 	}
-	err := json.Unmarshal(configData, c)
+	cData, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
 	}
+	cMap := make(map[string]interface{})
+	if err := json.Unmarshal(cData, &cMap); err != nil {
+		panic(err)
+	}
+	cMap["GenesisConf"].(map[string]interface{})["Alloc"] = c.GenesisConf.Alloc
+	if err := json.Unmarshal(configData, &cMap); err != nil {
+		panic(err)
+	}
+	return cMap
 }
 
 func (node *Node) buildSpecificConfig() *specConfig {
