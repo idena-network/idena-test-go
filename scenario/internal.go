@@ -18,6 +18,7 @@ type Scenario struct {
 	DefaultAnswer    byte                        // deprecated
 	Ceremonies       map[int]*Ceremony           // Epoch -> Ceremony
 	EpochNodeUpdates map[int]map[int]*NodeUpdate // Epoch -> node -> node updates
+	ExternalUserKeys []string
 }
 
 type NewUsers struct {

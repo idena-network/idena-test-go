@@ -14,6 +14,7 @@ type incomingScenario struct {
 	DefaultAnswer      byte                 `json:"defaultAnswer"`
 	Ceremonies         []ceremony           `json:"ceremonies"`
 	NodeUpdates        []nodeUpdates        `json:"nodeUpdates"`
+	ExternalUserKeys   []string             `json:"externalUserKeys"`
 }
 
 type newUsers struct {

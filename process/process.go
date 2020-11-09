@@ -49,6 +49,7 @@ type Process struct {
 	workDir                string
 	execCommandName        string
 	users                  []*user.User
+	externalUsers          []*user.User
 	godUser                *user.User
 	godAddress             string
 	ipfsBootNode           string
@@ -141,6 +142,11 @@ func (process *Process) Start() {
 
 func (process *Process) destroy() {
 	for _, u := range process.users {
+		if err := u.Node.Destroy(); err != nil {
+			log.Warn(err.Error())
+		}
+	}
+	for _, u := range process.externalUsers {
 		if err := u.Node.Destroy(); err != nil {
 			log.Warn(err.Error())
 		}
@@ -259,7 +265,8 @@ func (process *Process) createUser(index int) *user.User {
 	rpcPort := process.firstRpcPort + process.firstPortOffset + index
 	apiKey := generateApiKey(index, process.randomApiKeys)
 	profile := process.defineNewNodeProfile()
-	n := node.NewNode(index,
+	n := node.NewNode("",
+		index,
 		process.workDir,
 		process.execCommandName,
 		DataDir,

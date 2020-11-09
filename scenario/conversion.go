@@ -21,6 +21,7 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
 	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
 	sc.EpochNodeUpdates = convertNodeUpdates(incomingSc.NodeUpdates)
+	sc.ExternalUserKeys = incomingSc.ExternalUserKeys
 	return sc
 }
 

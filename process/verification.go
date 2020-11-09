@@ -45,6 +45,7 @@ func (process *Process) test() {
 		wordsByCid: make(map[string][2]uint32),
 	}
 	process.testUsers(process.users)
+	process.testExternalUsers(process.externalUsers)
 
 	process.startEpochBackgroundProcess(process.wg, timeout)
 
@@ -60,6 +61,78 @@ func (process *Process) test() {
 	}
 	process.assert(process.getCurrentTestIndex(), *process.es)
 	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%d) **************", process.getCurrentTestIndex()))
+}
+
+func (process *Process) testExternalUsers(users []*user.User) {
+	for _, u := range users {
+		go process.testExternalUser(u)
+	}
+}
+
+func (process *Process) testExternalUser(u *user.User) {
+	process.startNode(u, node.DeleteNothing)
+
+	if len(u.Address) == 0 {
+		process.getNodeAddresses([]*user.User{u})
+	}
+
+	var period string
+	for {
+		flipsToSubmit, _ := process.getFlipsInfoToSubmit(u, "")
+		period = process.getEpoch(u).CurrentPeriod
+		if flipsToSubmit > 0 || period != periodNone {
+			break
+		}
+		log.Info(fmt.Sprintf("%s no required flips to submit", u.GetInfo()))
+		time.Sleep(requestRetryDelay)
+	}
+	if period == periodNone {
+		process.submitExternalUserFlips(u, "")
+		time.Sleep(time.Second * 30)
+	} else {
+		log.Info(fmt.Sprintf("%s validation started, flips not submitted", u.GetInfo()))
+	}
+	process.stopNode(u)
+}
+
+func (process *Process) submitExternalUserFlips(u *user.User, godAddress string) {
+	flipsToSubmit, _ := process.getFlipsInfoToSubmit(u, godAddress)
+	if flipsToSubmit == 0 {
+		return
+	}
+	var submittedFlips []submittedFlip
+	for i := 0; i < flipsToSubmit; i++ {
+		flipPrivateHex, flipPublicHex, err := generateFlip(process.minFlipSize, process.maxFlipSize)
+		if err != nil {
+			process.handleError(err, "unable to generate hex")
+		}
+		wordPairIdx := uint8(i)
+		if process.flipsChan != nil {
+			process.flipsChan <- 1
+		}
+		log.Info(fmt.Sprintf("%v start submitting flip, priv size: %v, pub size: %v", u.GetInfo(),
+			len(flipPrivateHex), len(flipPublicHex)))
+		flipCid, txHash := process.submitExternalUserFlip(u, flipPrivateHex, flipPublicHex, wordPairIdx)
+		flip := submittedFlip{
+			hash:        flipCid,
+			wordPairIdx: wordPairIdx,
+			txHash:      txHash,
+		}
+		log.Info(fmt.Sprintf("%v submitted flip %v", u.GetInfo(), flip))
+		if process.flipsChan != nil {
+			<-process.flipsChan
+		}
+		submittedFlips = append(submittedFlips, flip)
+	}
+	log.Info(fmt.Sprintf("%v submitted %v flips: %v", u.GetInfo(), len(submittedFlips), submittedFlips))
+}
+
+func (process *Process) submitExternalUserFlip(u *user.User, privateHex, publicHex string, wordPairIdx uint8) (flipCid, txHash string) {
+	resp, err := u.Client.SubmitFlip(privateHex, publicHex, wordPairIdx)
+	if err != nil {
+		log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
+	}
+	return resp.Hash, resp.TxHash
 }
 
 func (process *Process) testUsers(users []*user.User) {
@@ -147,6 +220,8 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 		process.switchOnlineState(u, epoch.NextValidation)
 	}
 
+	process.submitFlips(u, godAddress)
+
 	if wasActive {
 		process.switchNodeIfNeeded(u)
 	}
@@ -155,8 +230,6 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
 		return
 	}
-
-	process.submitFlips(u, godAddress)
 
 	process.provideDelayedFlipKeyIfNeeded(u, epoch.NextValidation)
 
@@ -398,6 +471,8 @@ func determineFlipAnswer(flipHash client.FlipHashesResponse) byte {
 	if !flipHash.Ready {
 		return common.None
 	}
+	// TODO For web validation test
+	//return common.Right
 	var answer byte
 	bytes := []byte(flipHash.Hash)
 	if bytes[len(bytes)-2]%2 == 0 {
@@ -449,6 +524,8 @@ func (process *Process) getRequiredFlipsInfo(u *user.User) (int, []api.FlipWords
 }
 
 func generateFlip(minSize, maxSize int) (privateHex, publicHex string, err error) {
+	// TODO For web validation test
+	//return privatePart, publicPart, nil
 	var privateBytes []byte
 	minSize /= 2
 	maxSize /= 2
@@ -481,6 +558,8 @@ func toHex(bytes []byte) string {
 }
 
 func (process *Process) assertFlip(u *user.User, flipHash string, flip client.FlipResponse) {
+	// TODO For web validation test
+	//return
 	if toHex(reverse(common2.FromHex(flip.PrivateHex))) == flip.PublicHex {
 		return
 	}
