@@ -40,6 +40,14 @@ func NewClient(node node.Node, index int, apiKey string, reqIdHolder *ReqIdHolde
 	}
 }
 
+func (client *Client) Lock() {
+	client.mutex.Lock()
+}
+
+func (client *Client) Unlock() {
+	client.mutex.Unlock()
+}
+
 func (client *Client) GetEpoch() (Epoch, error) {
 	req := request{
 		Id:     client.getReqId(),
@@ -55,6 +63,24 @@ func (client *Client) GetEpoch() (Epoch, error) {
 		return Epoch{}, errors.New(resp.Error.Message)
 	}
 	return epoch, nil
+}
+
+func (client *Client) GetBalance(addr string) (api.Balance, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "dna_getBalance",
+		Payload: []string{addr},
+		Key:     client.apiKey,
+	}
+	var res api.Balance
+	resp := response{Result: &res}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return api.Balance{}, err
+	}
+	if resp.Error != nil {
+		return api.Balance{}, errors.New(resp.Error.Message)
+	}
+	return res, nil
 }
 
 func (client *Client) GetCoinbaseAddr() (string, error) {
@@ -400,7 +426,7 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 		return nil, errors.Wrapf(err, "unable to serialize request")
 	}
 
-	log.Trace(fmt.Sprintf("%v. Send request: %v", client.url, cut(string(reqBody), 500)))
+	log.Trace(fmt.Sprintf("%v. Send request: %v", client.url, cut(string(reqBody), 5000)))
 
 	counter := 5
 	for {
@@ -451,7 +477,7 @@ func (client *Client) sendRequestAndParseResponse(req request, timeoutSec int, r
 		return err
 	}
 
-	log.Trace(fmt.Sprintf("%v. Got response: %v", client.url, cut(string(responseBytes), 500)))
+	log.Trace(fmt.Sprintf("%v. Got response: %v", client.url, cut(string(responseBytes), 5000)))
 
 	if err := json.Unmarshal(responseBytes, &resp); err != nil {
 		return errors.Wrapf(err, "unable to deserialize response")
@@ -672,4 +698,47 @@ func (client *Client) Transaction(hash string) (api.Transaction, error) {
 		return api.Transaction{}, errors.New(resp.Error.Message)
 	}
 	return res, nil
+}
+
+func (client *Client) GetAddressTransactions(address string, count int) ([]*api.Transaction, error) {
+	params := transactionsArgs{
+		Address: address,
+		Count:   count,
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "bcn_transactions",
+		Key:     client.apiKey,
+		Payload: []transactionsArgs{params},
+	}
+	var txs api.Transactions
+	resp := response{Result: &txs}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return nil, err
+	}
+	if resp.Error != nil {
+		return nil, errors.New(resp.Error.Message)
+	}
+	return txs.Transactions, nil
+}
+
+func (client *Client) GetAddressMempoolTransactions(address string) ([]*api.Transaction, error) {
+	params := transactionsArgs{
+		Address: address,
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "bcn_pendingTransactions",
+		Key:     client.apiKey,
+		Payload: []transactionsArgs{params},
+	}
+	var txs api.Transactions
+	resp := response{Result: &txs}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return nil, err
+	}
+	if resp.Error != nil {
+		return nil, errors.New(resp.Error.Message)
+	}
+	return txs.Transactions, nil
 }

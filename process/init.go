@@ -114,7 +114,7 @@ func (process *Process) createGodUser() {
 }
 
 func (process *Process) startGodNode() {
-	process.handleError(process.godUser.Start(node.DeleteDataDir), "Unable to start god node")
+	process.handleError(process.godUser.Start(node.DeleteDataDir, false), "Unable to start god node")
 	log.Info("Started god node")
 }
 
@@ -180,6 +180,6 @@ func (process *Process) restartGodNode() {
 	u.Node.GodAddress = process.godAddress
 	u.Node.IpfsBootNode = process.ipfsBootNode
 	u.Node.CeremonyTime = process.ceremonyTime
-	process.handleError(u.Start(node.DeleteDb), "Unable to start node")
+	process.handleError(u.Start(node.DeleteDb, false), "Unable to start node")
 	log.Info("Restarted god node")
 }

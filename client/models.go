@@ -54,6 +54,11 @@ type changeProfileArgs struct {
 	Nickname *string        `json:"nickname"`
 }
 
+type transactionsArgs struct {
+	Address string `json:"address"`
+	Count   int    `json:"count"`
+}
+
 type FlipAnswer struct {
 	Answer byte   `json:"answer"`
 	Hash   string `json:"hash"`

@@ -1,4 +1,7 @@
 {
+  "P2P": {
+    "CollectMetrics": false
+  },
   "Validation": {
     "ValidationInterval": 600000000000,
     "FlipLotteryDuration": 60000000000,
@@ -8,6 +11,11 @@
   "Consensus": {
     "StatusSwitchRange": 5,
     "DelegationSwitchRange": 5,
-    "MinProposerThreshold": 0.1
+    "MinProposerThreshold": 0.1,
+    "SnapshotRange": 10
+  },
+  "Sync": {
+    "FastSync": true,
+    "ForceFullSync": 5
   }
 }

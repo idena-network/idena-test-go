@@ -39,18 +39,20 @@ func (u *User) GetInfo() string {
 	return fmt.Sprintf("[User %d-%d]", u.Index, u.Node.RpcPort)
 }
 
-func (u *User) Start(mode node.StartMode) error {
+func (u *User) Start(mode node.StartMode, waitForSync bool) error {
 	if err := u.Node.Start(mode); err != nil {
 		return err
 	}
-	if err := u.waitForSync(); err != nil {
-		return err
+	if waitForSync {
+		if err := u.WaitForSync(); err != nil {
+			return err
+		}
 	}
 	u.Active = true
 	return nil
 }
 
-func (u *User) waitForSync() error {
+func (u *User) WaitForSync() error {
 	for {
 		syncing, err := u.Client.CheckSyncing()
 		if err != nil {
@@ -59,6 +61,7 @@ func (u *User) waitForSync() error {
 		if syncing.Syncing {
 			log.Info(fmt.Sprintf("%s syncing", u.GetInfo()))
 			time.Sleep(time.Second * 10)
+			continue
 		}
 		return nil
 	}

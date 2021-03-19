@@ -339,7 +339,7 @@ func (process *Process) getNodeAddresses(users []*user.User) {
 }
 
 func (process *Process) startNode(u *user.User, mode node.StartMode) {
-	process.handleError(u.Start(mode), "Unable to start node")
+	process.handleError(u.Start(mode, true), "Unable to start node")
 	log.Info(fmt.Sprintf("Started node %v", u.GetInfo()))
 }
 
@@ -514,6 +514,26 @@ func (process *Process) switchNodeIfNeeded(u *user.User) {
 }
 
 func waitForMinedTransaction(client *client.Client, txHash string, timeout time.Duration) error {
+	return wait(func() bool {
+		tx, err := client.Transaction(txHash)
+		if err != nil {
+			log.Warn(errors.Wrapf(err, "unable to get transaction %v", txHash).Error())
+			return false
+		}
+		if tx.BlockHash == (common2.Hash{}) {
+			return false
+		}
+		return true
+	}, timeout)
+}
+
+func (process *Process) waitForOnline(u *user.User, timeout time.Duration) error {
+	return wait(func() bool {
+		return process.getIdentity(u).Online
+	}, timeout)
+}
+
+func wait(check func() bool, timeout time.Duration) error {
 	ticker := time.NewTicker(requestRetryDelay)
 	defer ticker.Stop()
 	timeoutTimer := time.NewTimer(timeout)
@@ -521,17 +541,25 @@ func waitForMinedTransaction(client *client.Client, txHash string, timeout time.
 	for {
 		select {
 		case <-ticker.C:
-			tx, err := client.Transaction(txHash)
-			if err != nil {
-				log.Warn(errors.Wrapf(err, "unable to get transaction %v", txHash).Error())
-				continue
+			if check() {
+				return nil
 			}
-			if tx.BlockHash == (common2.Hash{}) {
-				continue
-			}
-			return nil
 		case <-timeoutTimer.C:
-			return errors.Errorf("tx %v is not mined", txHash)
+			return errors.New("timeout reached")
 		}
 	}
+}
+
+func (process *Process) getLatestTxNonce(u *user.User) (epoch uint16, nonce uint32) {
+	mempoolTxs, err := u.Client.GetAddressMempoolTransactions(u.Address)
+	process.handleError(err, fmt.Sprintf("%v unable to get address mempool txs", u.GetInfo()))
+	txs, err := u.Client.GetAddressTransactions(u.Address, 1)
+	process.handleError(err, fmt.Sprintf("%v unable to get address txs", u.GetInfo()))
+	if len(mempoolTxs) > 0 {
+		return mempoolTxs[0].Epoch, mempoolTxs[0].Nonce
+	}
+	if len(txs) > 0 {
+		return txs[0].Epoch, txs[0].Nonce
+	}
+	return 0, 0
 }

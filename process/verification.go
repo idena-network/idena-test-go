@@ -48,6 +48,11 @@ func (process *Process) test() {
 
 	process.startEpochBackgroundProcess(process.wg, timeout)
 
+	// todo make contracts test epoch configurable
+	if process.getCurrentTestIndex() == 0 && process.fastNewbie || (process.getCurrentTestIndex() == 1 || process.getCurrentTestIndex() == 3) && !process.fastNewbie {
+		go process.runContractsScenario1()
+	}
+
 	ok := common.WaitWithTimeout(process.wg, timeout)
 	if !ok {
 		var nodeNames []string
@@ -791,4 +796,10 @@ func (process *Process) getEpoch(u *user.User) client.Epoch {
 	epoch, err := u.Client.GetEpoch()
 	process.handleError(err, fmt.Sprintf("%v unable to get epoch", u.GetInfo()))
 	return epoch
+}
+
+func (process *Process) getBalance(u *user.User) api.Balance {
+	res, err := u.Client.GetBalance(u.Address)
+	process.handleError(err, fmt.Sprintf("%v unable to get balance", u.GetInfo()))
+	return res
 }
