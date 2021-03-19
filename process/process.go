@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/idena-network/idena-go/api"
+	common2 "github.com/idena-network/idena-go/common"
 	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-go/crypto"
 	"github.com/idena-network/idena-test-go/apiclient"
@@ -81,13 +82,14 @@ type Process struct {
 	maxFlipSize            int
 	decryptFlips           bool
 	randomApiKeys          bool
+	predefinedApiKeys      []string
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
 	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
 	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
 	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32,
-	fastNewbie bool, validationOnly bool, minFlipSize int, maxFlipSize int, decryptFlips, randomApiKeys bool) *Process {
+	fastNewbie bool, validationOnly bool, minFlipSize int, maxFlipSize int, decryptFlips, randomApiKeys bool, predefinedApiKeys []string) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -123,6 +125,7 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		maxFlipSize:            maxFlipSize,
 		decryptFlips:           decryptFlips,
 		randomApiKeys:          randomApiKeys,
+		predefinedApiKeys:      predefinedApiKeys,
 	}
 }
 
@@ -247,7 +250,10 @@ func (process *Process) createUsers(count int) {
 	log.Info(fmt.Sprintf("Created %v users", count))
 }
 
-func generateApiKey(userIndex int, randomApiKeys bool) string {
+func generateApiKey(userIndex int, randomApiKeys bool, predefinedApiKeys []string) string {
+	if userIndex < len(predefinedApiKeys) {
+		return predefinedApiKeys[userIndex]
+	}
 	if !randomApiKeys {
 		return "testApiKey" + strconv.Itoa(userIndex)
 	}
@@ -257,7 +263,7 @@ func generateApiKey(userIndex int, randomApiKeys bool) string {
 
 func (process *Process) createUser(index int) *user.User {
 	rpcPort := process.firstRpcPort + process.firstPortOffset + index
-	apiKey := generateApiKey(index, process.randomApiKeys)
+	apiKey := generateApiKey(index, process.randomApiKeys, process.predefinedApiKeys)
 	profile := process.defineNewNodeProfile()
 	n := node.NewNode(index,
 		process.workDir,
@@ -353,7 +359,7 @@ func (process *Process) sendInvites(inviterIndex int, users []*user.User) {
 			} else {
 				recipient = u.Address
 			}
-			invite, err := sender.Client.SendInvite(recipient)
+			invite, err := sender.Client.SendInvite(recipient, process.sc.InviteAmount)
 			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.GetInfo()))
 			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))
 			invitesCount++
@@ -371,9 +377,12 @@ func (process *Process) sendInvites(inviterIndex int, users []*user.User) {
 			recipients = append(recipients, u.Address)
 		}
 	}
-	err := process.apiClient.CreateInvites(recipients)
+	delegatees, err := process.apiClient.CreateInvites(recipients)
 	process.handleError(err, "Unable to request invites")
-	log.Info(fmt.Sprintf("Requested %v invites", len(recipients)))
+	log.Info(fmt.Sprintf("Requested %v invites, delegatees: %v", len(recipients), len(delegatees)))
+	for idx, delegatee := range delegatees {
+		process.users[idx].MultiBotDelegatee = &delegatee
+	}
 	return
 }
 
@@ -500,6 +509,29 @@ func (process *Process) switchNodeIfNeeded(u *user.User) {
 			process.startNode(u, node.DeleteNothing)
 		} else {
 			process.stopNode(u)
+		}
+	}
+}
+
+func waitForMinedTransaction(client *client.Client, txHash string, timeout time.Duration) error {
+	ticker := time.NewTicker(requestRetryDelay)
+	defer ticker.Stop()
+	timeoutTimer := time.NewTimer(timeout)
+	defer timeoutTimer.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			tx, err := client.Transaction(txHash)
+			if err != nil {
+				log.Warn(errors.Wrapf(err, "unable to get transaction %v", txHash).Error())
+				continue
+			}
+			if tx.BlockHash == (common2.Hash{}) {
+				continue
+			}
+			return nil
+		case <-timeoutTimer.C:
+			return errors.Errorf("tx %v is not mined", txHash)
 		}
 	}
 }

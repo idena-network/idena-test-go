@@ -1,0 +1,36 @@
+{
+  "users": 8,
+  "ceremonyMinOffset": 5,
+  "delegations": [
+    {
+      "epochs": "0",
+      "nodes": "2,4",
+      "delegatee": 1
+    },
+    {
+      "epochs": "1",
+      "nodes": "3",
+      "delegatee": 1
+    }
+  ],
+  "undelegations": [
+    {
+      "epochs": "1",
+      "nodes": "2"
+    }
+  ],
+  "killDelegators": [
+    {
+      "epochs": "1",
+      "nodes": "4",
+      "delegatee": 1
+    }
+  ],
+  "nodeStops": [
+    {
+      "epochs": "1",
+      "nodes": "4",
+      "delaySec": 240
+    }
+  ]
+}

@@ -85,7 +85,7 @@ func (process *Process) loadNodeBaseConfigData() {
 
 func (process *Process) createGodUser() {
 	index := 0
-	apiKey := generateApiKey(index, process.randomApiKeys)
+	apiKey := generateApiKey(index, process.randomApiKeys, process.predefinedApiKeys)
 	n := node.NewNode(index,
 		process.workDir,
 		process.execCommandName,
@@ -132,7 +132,7 @@ func (process *Process) getGodAddress() string {
 	}
 	c := process.apiClient
 	var err error
-	for cnt := 5; cnt > 0; cnt-- {
+	for cnt := 10; cnt > 0; cnt-- {
 		var godAddress string
 		godAddress, err = c.GetGodAddress()
 		if err == nil {

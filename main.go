@@ -104,11 +104,12 @@ func main() {
 			conf.MaxFlipSize,
 			conf.DecryptFlips,
 			conf.RandomApiKeys,
+			conf.PredefinedApiKeys,
 		)
 
 		if conf.GodMode {
 			apiPort := godBotApiPort
-			go api.NewApi(p, apiPort)
+			go api.NewApi(p, sc.MultiBotPools, apiPort)
 			log.Info(fmt.Sprintf("Run http API server, port %d", apiPort))
 		}
 

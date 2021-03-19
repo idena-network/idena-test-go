@@ -128,6 +128,9 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	}()
 	process.initTest(u)
 	go process.updateNode(u)
+	go process.delegate(u)
+	go process.undelegate(u)
+	go process.killDelegators(u)
 
 	wasActive := u.Active
 
@@ -145,6 +148,11 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 
 	if !process.validationOnly {
 		process.switchOnlineState(u, epoch.NextValidation)
+
+		if u.MultiBotDelegatee != nil {
+			go process.delegateTo(u, *u.MultiBotDelegatee)
+			u.MultiBotDelegatee = nil
+		}
 	}
 
 	if wasActive {
@@ -240,7 +248,7 @@ func (process *Process) tryToSwitchOnlineState(u *user.User, nextValidationTime 
 		stateName = "offline"
 	}
 	// Try to switch online state till (nextValidationTime - 3 minutes) to leave time for submitting flips
-	deadline := nextValidationTime.Add(-time.Minute * 3)
+	deadline := nextValidationTime.Add(-time.Minute * 5)
 	attempts := 0
 	for {
 		hash, err := switchOnline()

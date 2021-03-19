@@ -11,7 +11,6 @@ import (
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
 	"github.com/pkg/errors"
-	"github.com/shopspring/decimal"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -124,13 +123,13 @@ func (client *Client) GetIdentity(addr string) (api.Identity, error) {
 	return identity, nil
 }
 
-func (client *Client) SendInvite(to string) (Invite, error) {
+func (client *Client) SendInvite(to string, amount float32) (Invite, error) {
 	client.mutex.Lock()
 	defer client.mutex.Unlock()
 
 	params := sendInviteArgs{
 		To:     to,
-		Amount: decimal.NewFromFloat(100),
+		Amount: amount,
 	}
 	req := request{
 		Id:      client.getReqId(),
@@ -361,9 +360,11 @@ func (client *Client) SendTransaction(txType uint16, from string, to *string, am
 		From:       from,
 		To:         to,
 		Amount:     amount,
-		MaxFee:     maxFee,
 		Type:       txType,
 		PayloadHex: payloadHex,
+	}
+	if maxFee > 0 {
+		params.MaxFee = &maxFee
 	}
 	req := request{
 		Id:      client.getReqId(),
@@ -653,4 +654,22 @@ func (client *Client) CheckSyncing() (api.Syncing, error) {
 		return api.Syncing{}, errors.New(resp.Error.Message)
 	}
 	return syncingResponse, nil
+}
+
+func (client *Client) Transaction(hash string) (api.Transaction, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "bcn_transaction",
+		Payload: []string{hash},
+		Key:     client.apiKey,
+	}
+	res := api.Transaction{}
+	resp := response{Result: &res}
+	if err := client.sendRequestAndParseResponse(req, 15, false, &resp); err != nil {
+		return api.Transaction{}, err
+	}
+	if resp.Error != nil {
+		return api.Transaction{}, errors.New(resp.Error.Message)
+	}
+	return res, nil
 }

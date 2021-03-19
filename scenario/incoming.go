@@ -2,6 +2,7 @@ package scenario
 
 type incomingScenario struct {
 	Users              int                  `json:"users"` // users count
+	InviteAmount       *float32             `json:"inviteAmount"`
 	CeremonyMinOffset  int                  `json:"ceremonyMinOffset"`
 	NewUsers           []newUsers           `json:"newUsers"`           // users to create later
 	NewUsersAfterFlips []newUsers           `json:"newUsersAfterFlips"` // users to create later and after flips are submitted
@@ -14,6 +15,10 @@ type incomingScenario struct {
 	DefaultAnswer      byte                 `json:"defaultAnswer"`
 	Ceremonies         []ceremony           `json:"ceremonies"`
 	NodeUpdates        []nodeUpdates        `json:"nodeUpdates"`
+	Delegations        []delegations        `json:"delegations"`
+	KillDelegators     []killDelegators     `json:"killDelegators"`
+	Undelegations      []epochsNodes        `json:"undelegations"`
+	MultiBotPools      *multiBotPools       `json:"multiBotPools"`
 }
 
 type newUsers struct {
@@ -87,4 +92,19 @@ type nodeUpdates struct {
 	delayedEpochsNodes
 	StepDelaySec int64  `json:"stepDelaySec"`
 	Command      string `json:"command"`
+}
+
+type delegations struct {
+	epochsNodes
+	Delegatee int `json:"delegatee"`
+}
+
+type multiBotPools struct {
+	Sizes             []int   `json:"sizes"`
+	BotDelegatorsRate float64 `json:"botDelegatorsRate"`
+}
+
+type killDelegators struct {
+	epochsNodes
+	Delegatee int `json:"delegatee"`
 }

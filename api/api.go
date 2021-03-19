@@ -1,25 +1,43 @@
 package api
 
 import (
+	"fmt"
+	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/process"
+	"github.com/idena-network/idena-test-go/scenario"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 type Api struct {
 	process   *process.Process
 	apiServer server
+	poolsCtx  *poolsCtx
 }
 
 type server interface {
 	Start(port int)
 }
 
-func NewApi(process *process.Process, serverPort int) *Api {
+type poolsCtx struct {
+	poolSizes     []int
+	rate          float64
+	poolAddresses []string
+	mutex         sync.Mutex
+}
+
+func NewApi(process *process.Process, multiBotBools *scenario.MultiBotPools, serverPort int) *Api {
 	api := &Api{
 		process: process,
+	}
+	if multiBotBools != nil {
+		api.poolsCtx = &poolsCtx{
+			poolSizes: append([]int{}, multiBotBools.Sizes...),
+			rate:      multiBotBools.BotDelegatorsRate,
+		}
 	}
 	httpServer := NewHttpServer(api)
 	httpServer.Start(serverPort)
@@ -44,22 +62,44 @@ func (api *Api) getIpfsBootNode(r *http.Request) (string, error) {
 	return api.process.GetIpfsBootNode()
 }
 
-func (api *Api) createInvite(r *http.Request) (string, error) {
-	addr := r.FormValue("address")
-	err := api.process.RequestInvite(addr)
-	if err != nil {
-		return "", err
-	}
-	return "OK", nil
-}
-
 func (api *Api) createInvites(r *http.Request) (string, error) {
 	addresses := strings.Split(r.FormValue("addresses"), ",")
 	err := api.process.RequestInvites(addresses)
 	if err != nil {
 		return "", err
 	}
-	return "OK", nil
+	resp := "OK"
+	if api.poolsCtx == nil {
+		return resp, nil
+	}
+	api.poolsCtx.mutex.Lock()
+	defer api.poolsCtx.mutex.Unlock()
+	if len(api.poolsCtx.poolAddresses) < len(api.poolsCtx.poolSizes) {
+		api.poolsCtx.poolAddresses = append(api.poolsCtx.poolAddresses, addresses[0])
+		log.Info(fmt.Sprintf("Set pool owner %v, size %v", addresses[0], api.poolsCtx.poolSizes[len(api.poolsCtx.poolAddresses)-1]))
+	} else {
+		var delegatees []string
+		n := int(float64(len(addresses)) * api.poolsCtx.rate)
+		if n == 0 {
+			n = 1
+		}
+		for i := 0; i < n; i++ {
+			for idx, poolSize := range api.poolsCtx.poolSizes {
+				if poolSize > 0 {
+					api.poolsCtx.poolSizes[idx]--
+					delegatee := api.poolsCtx.poolAddresses[idx]
+					delegator := addresses[i]
+					delegatees = append(delegatees, delegatee)
+					log.Info(fmt.Sprintf("Set delegatee %v for %v", delegatee, delegator))
+					break
+				}
+			}
+		}
+		if len(delegatees) > 0 {
+			resp = strings.Join(delegatees, ",")
+		}
+	}
+	return resp, nil
 }
 
 func (api *Api) getCeremonyTime(r *http.Request) (string, error) {

@@ -15,7 +15,6 @@ func NewHttpServer(api *Api) *httpServer {
 	handlers := make(map[string]handler)
 	handlers["/api/GetGodAddress"] = api.getGodAddress
 	handlers["/api/GetIpfsBootNode"] = api.getIpfsBootNode
-	handlers["/api/CreateInvite"] = api.createInvite
 	handlers["/api/CreateInvites"] = api.createInvites
 	handlers["/api/GetCeremonyTime"] = api.getCeremonyTime
 	handlers["/api/GetEpoch"] = api.getEpoch

@@ -7,6 +7,7 @@
   },
   "Consensus": {
     "StatusSwitchRange": 5,
+    "DelegationSwitchRange": 5,
     "MinProposerThreshold": 0.1
   }
 }

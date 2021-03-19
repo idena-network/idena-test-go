@@ -6,6 +6,7 @@ import (
 )
 
 type Scenario struct {
+	InviteAmount             float32
 	EpochNewUsersBeforeFlips map[int][]*NewUsers           // Epoch -> new users
 	EpochNewUsersAfterFlips  map[int][]*NewUsers           // Epoch -> new users
 	EpochNodeSwitches        map[int]map[int][]*NodeSwitch // Epoch -> node -> sorted switches (stop/start) with delays
@@ -18,6 +19,10 @@ type Scenario struct {
 	DefaultAnswer    byte                        // deprecated
 	Ceremonies       map[int]*Ceremony           // Epoch -> Ceremony
 	EpochNodeUpdates map[int]map[int]*NodeUpdate // Epoch -> node -> node updates
+	Delegations      map[int]map[int]int         // Epoch -> node -> delegatee
+	Undelegations    map[int][]int
+	KillDelegators   map[int]map[int][]int // Epoch -> delegatee -> delegators to kill
+	MultiBotPools    *MultiBotPools
 }
 
 type NewUsers struct {
@@ -118,4 +123,9 @@ func (answers Answers) Get(count int) []byte {
 		result = append(result, answer)
 	}
 	return result
+}
+
+type MultiBotPools struct {
+	Sizes             []int
+	BotDelegatorsRate float64
 }

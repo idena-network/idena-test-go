@@ -47,18 +47,19 @@ func (c *Client) GetIpfsBootNode() (string, error) {
 	return string(resp), nil
 }
 
-func (c *Client) CreateInvite(address string) error {
-	_, err := c.sendRequest("/api/CreateInvite", map[string]string{
-		"address": address,
-	})
-	return err
-}
-
-func (c *Client) CreateInvites(addresses []string) error {
-	_, err := c.sendRequest("/api/CreateInvites", map[string]string{
+func (c *Client) CreateInvites(addresses []string) ([]string, error) {
+	resp, err := c.sendRequest("/api/CreateInvites", map[string]string{
 		"addresses": strings.Join(addresses, ","),
 	})
-	return err
+	if err != nil {
+		return nil, err
+	}
+	stringResp := string(resp)
+	if stringResp == "OK" {
+		return nil, nil
+	}
+	delegatees := strings.Split(stringResp, ",")
+	return delegatees, err
 }
 
 func (c *Client) GetCeremonyTime() (int64, error) {

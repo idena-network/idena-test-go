@@ -6,10 +6,14 @@ import (
 	"time"
 )
 
-const defaultDefaultAnswer = common.Left
+const (
+	defaultDefaultAnswer = common.Left
+	defaultInviteAmount  = 100
+)
 
 func convert(incomingSc incomingScenario) Scenario {
 	sc := Scenario{}
+	sc.InviteAmount = convertInviteAmount(incomingSc.InviteAmount)
 	sc.EpochNewUsersBeforeFlips = convertEpochNewUsers(incomingSc.Users, incomingSc.NewUsers)
 	sc.EpochNewUsersAfterFlips = convertEpochNewUsers(0, incomingSc.NewUsersAfterFlips)
 	sc.EpochNodeSwitches = convertNodeSwitches(incomingSc.NodeStarts, incomingSc.NodeStops)
@@ -21,7 +25,18 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.DefaultAnswer = convertDefaultAnswer(incomingSc.DefaultAnswer)
 	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
 	sc.EpochNodeUpdates = convertNodeUpdates(incomingSc.NodeUpdates)
+	sc.Delegations = convertDelegations(incomingSc.Delegations)
+	sc.Undelegations = convertEpochsNodes(incomingSc.Undelegations)
+	sc.MultiBotPools = convertMultiBotPools(incomingSc.MultiBotPools)
+	sc.KillDelegators = convertKillDelegators(incomingSc.KillDelegators)
 	return sc
+}
+
+func convertInviteAmount(incomingInviteAmount *float32) float32 {
+	if incomingInviteAmount == nil {
+		return defaultInviteAmount
+	}
+	return *incomingInviteAmount
 }
 
 func convertDefaultAnswer(incomingDefaultAnswer byte) byte {
@@ -267,6 +282,60 @@ func convertNodeUpdates(updates []nodeUpdates) map[int]map[int]*NodeUpdate {
 					Command: update.Command,
 				}
 			}
+		}
+	}
+	return result
+}
+
+func convertDelegations(incomingDelegations []delegations) map[int]map[int]int {
+	result := make(map[int]map[int]int)
+	for _, incomingDelegation := range incomingDelegations {
+		epochs, err := parseNums(incomingDelegation.Epochs)
+		if err != nil {
+			panic(err)
+		}
+		nodes, err := parseNums(incomingDelegation.Nodes)
+		if err != nil {
+			panic(err)
+		}
+		for _, epoch := range epochs {
+			for _, node := range nodes {
+				if _, present := result[epoch]; !present {
+					result[epoch] = make(map[int]int)
+				}
+				result[epoch][node] = incomingDelegation.Delegatee
+			}
+		}
+	}
+	return result
+}
+
+func convertMultiBotPools(incomingMultiBotPools *multiBotPools) *MultiBotPools {
+	if incomingMultiBotPools == nil {
+		return nil
+	}
+	return &MultiBotPools{
+		Sizes:             incomingMultiBotPools.Sizes,
+		BotDelegatorsRate: incomingMultiBotPools.BotDelegatorsRate,
+	}
+}
+
+func convertKillDelegators(incomingKillDelegators []killDelegators) map[int]map[int][]int {
+	result := make(map[int]map[int][]int)
+	for _, incomingKillDelegatorsItem := range incomingKillDelegators {
+		epochs, err := parseNums(incomingKillDelegatorsItem.Epochs)
+		if err != nil {
+			panic(err)
+		}
+		nodes, err := parseNums(incomingKillDelegatorsItem.Nodes)
+		if err != nil {
+			panic(err)
+		}
+		for _, epoch := range epochs {
+			if _, present := result[epoch]; !present {
+				result[epoch] = make(map[int][]int)
+			}
+			result[epoch][incomingKillDelegatorsItem.Delegatee] = append(result[epoch][incomingKillDelegatorsItem.Delegatee], nodes...)
 		}
 	}
 	return result

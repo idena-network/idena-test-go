@@ -9,15 +9,16 @@ import (
 )
 
 type User struct {
-	Client         *client.Client
-	Node           *node.Node
-	Address        string
-	PubKey         string
-	TestContext    *TestContext
-	Index          int
-	Active         bool
-	SentAutoOnline bool
-	IsTestRun      bool
+	Client            *client.Client
+	Node              *node.Node
+	Address           string
+	PubKey            string
+	TestContext       *TestContext
+	Index             int
+	Active            bool
+	SentAutoOnline    bool
+	MultiBotDelegatee *string
+	IsTestRun         bool
 }
 
 type TestContext struct {

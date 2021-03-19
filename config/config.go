@@ -34,6 +34,7 @@ type Config struct {
 	MaxFlipSize         int
 	DecryptFlips        bool
 	RandomApiKeys       bool
+	PredefinedApiKeys   []string
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -149,4 +150,5 @@ func merge(from *Config, to *Config) {
 	to.ValidationOnly = from.ValidationOnly
 	to.DecryptFlips = from.DecryptFlips
 	to.RandomApiKeys = from.RandomApiKeys
+	to.PredefinedApiKeys = from.PredefinedApiKeys
 }
