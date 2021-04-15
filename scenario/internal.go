@@ -28,6 +28,7 @@ type Scenario struct {
 type NewUsers struct {
 	Count   int
 	Inviter int
+	Command string
 }
 
 type Txs struct {

@@ -223,7 +223,7 @@ func (process *Process) startNewNodesAndSendInvites(epochInviterNewUsers *scenar
 	process.mutex.Lock()
 	currentUsers := len(process.users)
 	if newUsers > 0 {
-		process.createUsers(newUsers)
+		process.createUsers(newUsers, epochInviterNewUsers.Command)
 	}
 	process.mutex.Unlock()
 	usersToStart := process.users[currentUsers : currentUsers+newUsers]
@@ -242,10 +242,10 @@ func (process *Process) startNewNodesAndSendInvites(epochInviterNewUsers *scenar
 	return users
 }
 
-func (process *Process) createUsers(count int) {
+func (process *Process) createUsers(count int, command string) {
 	currentUsersCount := len(process.users)
 	for i := 0; i < count; i++ {
-		process.createUser(i + currentUsersCount)
+		process.createUser(i+currentUsersCount, command)
 	}
 	log.Info(fmt.Sprintf("Created %v users", count))
 }
@@ -261,7 +261,7 @@ func generateApiKey(userIndex int, randomApiKeys bool, predefinedApiKeys []strin
 	return hex.EncodeToString(crypto.FromECDSA(randomKey)[:16])
 }
 
-func (process *Process) createUser(index int) *user.User {
+func (process *Process) createUser(index int, command string) *user.User {
 	rpcPort := process.firstRpcPort + process.firstPortOffset + index
 	apiKey := generateApiKey(index, process.randomApiKeys, process.predefinedApiKeys)
 	profile := process.defineNewNodeProfile()
@@ -286,6 +286,9 @@ func (process *Process) createUser(index int) *user.User {
 		apiKey,
 		profile,
 	)
+	if len(command) > 0 {
+		n.SetExecCommandName(command)
+	}
 	u := user.NewUser(client.NewClient(*n, index, apiKey, process.reqIdHolder, process.bus), n, index)
 	process.users = append(process.users, u)
 	if profile == lowPowerProfile {
