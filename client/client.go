@@ -673,3 +673,43 @@ func (client *Client) Transaction(hash string) (api.Transaction, error) {
 	}
 	return res, nil
 }
+
+func (client *Client) AddIpfsData(dataHex string, pin bool) (string, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "ipfs_add",
+		Payload: []interface{}{dataHex, pin},
+		Key:     client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, 60, false, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
+func (client *Client) StoreToIpfs(cid string) (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	params := storeToIpfsTxArgs{
+		Cid: cid,
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "dna_storeToIpfs",
+		Payload: []storeToIpfsTxArgs{params},
+		Key:     client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}

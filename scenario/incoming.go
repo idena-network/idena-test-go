@@ -19,6 +19,7 @@ type incomingScenario struct {
 	KillDelegators     []killDelegators     `json:"killDelegators"`
 	Undelegations      []epochsNodes        `json:"undelegations"`
 	MultiBotPools      *multiBotPools       `json:"multiBotPools"`
+	StoreToIpfsTxs     []storeToIpfsTxs     `json:"storeToIpfsTxs"`
 }
 
 type newUsers struct {
@@ -29,8 +30,9 @@ type newUsers struct {
 }
 
 type epochsNodes struct {
-	Epochs string `json:"epochs"` // "1,3-5,8" means 1,3,4,5,8
-	Nodes  string `json:"nodes"`  // "1,3-5,8" means 1,3,4,5,8
+	Epochs      string `json:"epochs"` // "1,3-5,8" means 1,3,4,5,8
+	Nodes       string `json:"nodes"`  // "1,3-5,8" means 1,3,4,5,8
+	OnlyGodMode bool   `json:"onlyGodMode"`
 }
 
 type delayedEpochsNodes struct {
@@ -108,4 +110,10 @@ type multiBotPools struct {
 type killDelegators struct {
 	epochsNodes
 	Delegatee int `json:"delegatee"`
+}
+
+type storeToIpfsTxs struct {
+	delayedEpochsNodes
+	Sizes        []int `json:"sizes"`
+	StepDelaySec int64 `json:"stepDelaySec"`
 }

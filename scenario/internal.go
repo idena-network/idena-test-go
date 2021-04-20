@@ -23,6 +23,7 @@ type Scenario struct {
 	Undelegations    map[int][]int
 	KillDelegators   map[int]map[int][]int // Epoch -> delegatee -> delegators to kill
 	MultiBotPools    *MultiBotPools
+	StoreToIpfsTxs   map[int]map[int]*StoreToIpfsTxs
 }
 
 type NewUsers struct {
@@ -129,4 +130,10 @@ func (answers Answers) Get(count int) []byte {
 type MultiBotPools struct {
 	Sizes             []int
 	BotDelegatorsRate float64
+}
+
+type StoreToIpfsTxs struct {
+	Sizes     []int
+	Delay     time.Duration
+	StepDelay time.Duration
 }

@@ -23,6 +23,10 @@ type sendTxArgs struct {
 	PayloadHex *string  `json:"payload"`
 }
 
+type storeToIpfsTxArgs struct {
+	Cid string `json:"cid"`
+}
+
 type sendInviteArgs struct {
 	To     string  `json:"to"`
 	Amount float32 `json:"amount"`

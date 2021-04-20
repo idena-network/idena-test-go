@@ -11,7 +11,7 @@ const (
 	defaultInviteAmount  = 100
 )
 
-func convert(incomingSc incomingScenario) Scenario {
+func convert(incomingSc incomingScenario, godMode bool) Scenario {
 	sc := Scenario{}
 	sc.InviteAmount = convertInviteAmount(incomingSc.InviteAmount)
 	sc.EpochNewUsersBeforeFlips = convertEpochNewUsers(incomingSc.Users, incomingSc.NewUsers)
@@ -29,6 +29,7 @@ func convert(incomingSc incomingScenario) Scenario {
 	sc.Undelegations = convertEpochsNodes(incomingSc.Undelegations)
 	sc.MultiBotPools = convertMultiBotPools(incomingSc.MultiBotPools)
 	sc.KillDelegators = convertKillDelegators(incomingSc.KillDelegators)
+	sc.StoreToIpfsTxs = convertStoreToIpfsTxs(incomingSc.StoreToIpfsTxs, godMode)
 	return sc
 }
 
@@ -337,6 +338,32 @@ func convertKillDelegators(incomingKillDelegators []killDelegators) map[int]map[
 				result[epoch] = make(map[int][]int)
 			}
 			result[epoch][incomingKillDelegatorsItem.Delegatee] = append(result[epoch][incomingKillDelegatorsItem.Delegatee], nodes...)
+		}
+	}
+	return result
+}
+
+func convertStoreToIpfsTxs(storeToIpfsTxs []storeToIpfsTxs, godMode bool) map[int]map[int]*StoreToIpfsTxs {
+	result := make(map[int]map[int]*StoreToIpfsTxs)
+	for _, item := range storeToIpfsTxs {
+		epochs, _ := parseNums(item.Epochs)
+		nodes, _ := parseNums(item.Nodes)
+		if item.OnlyGodMode && !godMode {
+			continue
+		}
+		for _, epoch := range epochs {
+			delay := time.Second * time.Duration(item.DelaySec)
+			stepDelay := time.Second * time.Duration(item.StepDelaySec)
+			for _, node := range nodes {
+				if _, present := result[epoch]; !present {
+					result[epoch] = make(map[int]*StoreToIpfsTxs)
+				}
+				result[epoch][node] = &StoreToIpfsTxs{
+					Delay:     delay,
+					StepDelay: stepDelay,
+					Sizes:     item.Sizes,
+				}
+			}
 		}
 	}
 	return result

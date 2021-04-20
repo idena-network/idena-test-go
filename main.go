@@ -65,7 +65,7 @@ func main() {
 
 		var sc scenario.Scenario
 		if len(scenarioFileName) > 0 {
-			sc = scenario.Load(workDir, scenarioFileName)
+			sc = scenario.Load(workDir, scenarioFileName, conf.GodMode)
 		} else {
 			sc = scenario.GetDefaultScenario()
 		}

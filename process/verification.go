@@ -131,6 +131,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	go process.delegate(u)
 	go process.undelegate(u)
 	go process.killDelegators(u)
+	go process.sendStoreToIpfsTxs(u)
 
 	wasActive := u.Active
 

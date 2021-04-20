@@ -7,6 +7,7 @@ replace github.com/tendermint/iavl => github.com/idena-network/iavl v0.12.3-0.20
 require (
 	github.com/deckarep/golang-set v1.7.1
 	github.com/go-stack/stack v1.8.0
+	github.com/google/tink/go v0.0.0-20200401233402-a389e601043a
 	github.com/idena-network/idena-go v0.22.1
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pkg/errors v0.9.1

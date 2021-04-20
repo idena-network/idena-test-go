@@ -1,0 +1,14 @@
+{
+  "users": 5,
+  "ceremonyMinOffset": 4,
+  "storeToIpfsTxs": [
+    {
+      "epochs": "0",
+      "nodes": "0",
+      "onlyGodMode": true,
+      "delaySec": 10,
+      "stepDelaySec": 20,
+      "sizes": [2000, 20000, 200000]
+    }
+  ]
+}
