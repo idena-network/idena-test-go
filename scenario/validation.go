@@ -81,8 +81,10 @@ func validateNewUsers(du newUsers, usedEpochInviters map[string]bool) error {
 	if err := validatePositiveInt(int64(du.Count), "count"); err != nil {
 		return err
 	}
-	if err := validateNotNegativeInt(du.Inviter, "inviter"); err != nil {
-		return err
+	if du.Inviter != nil {
+		if err := validateNotNegativeInt(*du.Inviter, "inviter"); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -100,7 +102,7 @@ func validateEpochs(epochsStr string, usedEpochs map[int]bool) error {
 	return nil
 }
 
-func validateEpochNodes(epochsStr string, node int, usedEpochNodes map[string]bool) error {
+func validateEpochNodes(epochsStr string, node *int, usedEpochNodes map[string]bool) error {
 	epochs, err := parseNums(epochsStr)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Unable to parse epochs str %s: %s", epochsStr, err.Error()))
@@ -185,23 +187,24 @@ func validateCeremonies(ceremonies []ceremony, epochUsersCount []int) error {
 func buildEpochUserCounts(sc *incomingScenario) []int {
 	var epochUserCounts []int
 	epochUserCounts = append(epochUserCounts, sc.Users)
-
 	epochUserCountsMap := make(map[int]int)
 	var maxEpoch int
-	for _, epochNewUsers := range sc.NewUsers {
+	newUsers := append(sc.NewUsers, sc.NewUsersAfterFlips...)
+	for _, epochNewUsers := range newUsers {
 		epochs, _ := parseNums(epochNewUsers.Epochs)
 		for _, epoch := range epochs {
-			epochUserCountsMap[epoch] = epochNewUsers.Count
+			epochUserCountsMap[epoch] += epochNewUsers.Count
 			if maxEpoch < epoch {
 				maxEpoch = epoch
 			}
 		}
 	}
-
+	if c, ok := epochUserCountsMap[0]; ok {
+		epochUserCounts[0] += c
+	}
 	for i := 1; i <= maxEpoch; i++ {
 		epochUserCounts = append(epochUserCounts, epochUserCounts[i-1]+epochUserCountsMap[i])
 	}
-
 	return epochUserCounts
 }
 
@@ -226,7 +229,7 @@ func validateCeremony(c ceremony, epochUsersCount []int, usedEpochs map[int]bool
 	return nil
 }
 
-func validateEpochNode(epoch int, node int, epochNodes map[string]bool) error {
+func validateEpochNode(epoch int, node *int, epochNodes map[string]bool) error {
 	if err := validateNotNegativeInt(epoch, "epoch"); err != nil {
 		return err
 	}
@@ -263,8 +266,10 @@ func validateUserCeremony(uc userCeremony, usersCount int, usedUsers map[int]boo
 	if err := validateCeremonyUsers(uc.Users, usersCount, usedUsers); err != nil {
 		return err
 	}
-	if err := validateNotNegativeInt(uc.SubmitFlips, "submitFlips"); err != nil {
-		return err
+	if uc.SubmitFlips != nil {
+		if err := validateNotNegativeInt(*uc.SubmitFlips, "submitFlips"); err != nil {
+			return err
+		}
 	}
 	if err := validateSessionAnswers(uc.ShortAnswerRates, uc.ShortAnswers, "short"); err != nil {
 		return err

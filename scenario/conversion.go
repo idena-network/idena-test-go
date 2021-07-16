@@ -50,9 +50,10 @@ func convertDefaultAnswer(incomingDefaultAnswer byte) byte {
 func convertEpochNewUsers(incomingUsers int, incomingNewUsers []newUsers) map[int][]*NewUsers {
 	newUsersByEpoch := make(map[int][]*NewUsers)
 	if incomingUsers > 0 {
+		inviter := 0
 		newUsersByEpoch[0] = []*NewUsers{
 			{
-				Inviter: 0,
+				Inviter: &inviter,
 				Count:   incomingUsers,
 			},
 		}
@@ -180,8 +181,9 @@ func convertUserCeremonies(incomingUserCeremonies []userCeremony, defaultAnswer 
 func convertUserCeremony(incomingUserCeremony userCeremony, defaultAnswer byte) *UserCeremony {
 	userCeremony := UserCeremony{}
 	userCeremony.SubmitFlips = incomingUserCeremony.SubmitFlips
-	userCeremony.ShortAnswers = convertAnswers(incomingUserCeremony.ShortAnswerRates, incomingUserCeremony.ShortAnswers, defaultAnswer)
-	userCeremony.LongAnswers = convertAnswers(incomingUserCeremony.LongAnswerRates, incomingUserCeremony.LongAnswers, defaultAnswer)
+	//userCeremony.ShortAnswers = convertAnswers(incomingUserCeremony.ShortAnswerRates, incomingUserCeremony.ShortAnswers, defaultAnswer)
+	//userCeremony.LongAnswers = convertAnswers(incomingUserCeremony.LongAnswerRates, incomingUserCeremony.LongAnswers, defaultAnswer)
+	userCeremony.SkipValidation = incomingUserCeremony.SkipValidation
 	return &userCeremony
 }
 

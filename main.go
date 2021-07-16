@@ -71,9 +71,10 @@ func main() {
 		}
 		nodes := context.Int("nodes")
 		if nodes > 0 {
+			inviter := 0
 			sc.EpochNewUsersBeforeFlips[0] = []*scenario.NewUsers{
 				{
-					Inviter: 0,
+					Inviter: &inviter,
 					Count:   nodes,
 				},
 			}

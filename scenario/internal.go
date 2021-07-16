@@ -28,7 +28,7 @@ type Scenario struct {
 
 type NewUsers struct {
 	Count   int
-	Inviter int
+	Inviter *int
 	Command string
 }
 
@@ -48,9 +48,10 @@ type Ceremony struct {
 }
 
 type UserCeremony struct {
-	SubmitFlips  int
-	ShortAnswers AnswersHolder
-	LongAnswers  AnswersHolder
+	SubmitFlips *int
+	//ShortAnswers   AnswersHolder
+	//LongAnswers    AnswersHolder
+	SkipValidation bool
 }
 
 type AnswersHolder interface {

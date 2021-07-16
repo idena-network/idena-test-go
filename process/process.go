@@ -158,26 +158,29 @@ func (process *Process) createEpochNewUsers(epochNewUsers []*scenario.NewUsers, 
 	if len(epochNewUsers) == 0 {
 		return
 	}
-	var users []*user.User
+	var candidates []*user.User
 	for _, epochInviterNewUsers := range epochNewUsers {
-		users = append(users, process.startNewNodesAndSendInvites(epochInviterNewUsers, afterFlips)...)
+		users := process.startNewNodesAndSendInvites(epochInviterNewUsers, afterFlips)
+		if epochInviterNewUsers.Inviter != nil {
+			candidates = append(candidates, users...)
+		}
 	}
 
 	if process.validationOnly {
-		process.waitForNewbies(users)
+		process.waitForNewbies(candidates)
 	} else {
-		process.waitForInvites(users)
+		process.waitForInvites(candidates)
 
 		if process.getCurrentTestIndex() == 0 && !process.godMode {
 			time.Sleep(time.Second * 5)
 		}
 
-		process.activateInvites(users)
+		process.activateInvites(candidates)
 
 		if process.fastNewbie {
-			process.waitForNewbies(users)
+			process.waitForNewbies(candidates)
 		} else {
-			process.waitForCandidates(users)
+			process.waitForCandidates(candidates)
 		}
 	}
 
@@ -189,22 +192,26 @@ func (process *Process) createEpochInviterNewUsers(epochInviterNewUsers *scenari
 		return nil
 	}
 	users := process.startNewNodesAndSendInvites(epochInviterNewUsers, afterFlips)
+	var candidates []*user.User
+	if epochInviterNewUsers.Inviter != nil {
+		candidates = users
+	}
 
 	if process.validationOnly {
-		process.waitForNewbies(users)
+		process.waitForNewbies(candidates)
 	} else {
-		process.waitForInvites(users)
+		process.waitForInvites(candidates)
 
 		if process.getCurrentTestIndex() == 0 && !process.godMode {
 			time.Sleep(time.Second * 5)
 		}
 
-		process.activateInvites(users)
+		process.activateInvites(candidates)
 
 		if process.fastNewbie {
-			process.waitForNewbies(users)
+			process.waitForNewbies(candidates)
 		} else {
-			process.waitForCandidates(users)
+			process.waitForCandidates(candidates)
 		}
 	}
 
@@ -237,7 +244,9 @@ func (process *Process) startNewNodesAndSendInvites(epochInviterNewUsers *scenar
 
 	process.getNodeAddresses(users)
 
-	process.sendInvites(epochInviterNewUsers.Inviter, users)
+	if epochInviterNewUsers.Inviter != nil {
+		process.sendInvites(*epochInviterNewUsers.Inviter, users)
+	}
 
 	return users
 }

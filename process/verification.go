@@ -172,7 +172,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	epochNewUsers := process.sc.EpochNewUsersAfterFlips[process.getCurrentTestIndex()]
 	if len(epochNewUsers) > 0 {
 		for _, epochInviterNewUsers := range epochNewUsers {
-			if epochInviterNewUsers.Inviter == u.Index {
+			if epochInviterNewUsers.Inviter == nil && u.Index == 0 || epochInviterNewUsers.Inviter != nil && *epochInviterNewUsers.Inviter == u.Index {
 				process.createEpochInviterNewUsers(epochInviterNewUsers, true)
 				process.testUsers(process.users[len(process.users)-epochInviterNewUsers.Count:])
 			}
@@ -282,6 +282,12 @@ func (process *Process) collectUserEpochState(u *user.User, state *userEpochStat
 }
 
 func (process *Process) passVerification(u *user.User, shortFinishTime time.Time) {
+	userCeremony := process.getScUserCeremony(u)
+	skipValidation := userCeremony != nil && userCeremony.SkipValidation
+	if skipValidation {
+		log.Info(fmt.Sprintf("%v skip validation", u.GetInfo()))
+		return
+	}
 
 	requiredFlips, _ := process.getRequiredFlipsInfo(u)
 	log.Debug(fmt.Sprintf("%v required flips: %d", u.GetInfo(), requiredFlips))
@@ -425,8 +431,8 @@ func (process *Process) getFlipsInfoToSubmit(u *user.User, godAddress string) (i
 
 	flipsCountToSubmit := requiredFlipsCount
 	userCeremony := process.getScUserCeremony(u)
-	if userCeremony != nil {
-		flipsCountToSubmit = userCeremony.SubmitFlips
+	if userCeremony != nil && userCeremony.SubmitFlips != nil {
+		flipsCountToSubmit = *userCeremony.SubmitFlips
 	}
 
 	log.Info(fmt.Sprintf("%v required flips: %d, flips to submit: %d, words: %v", u.GetInfo(), requiredFlipsCount, flipsCountToSubmit, words))

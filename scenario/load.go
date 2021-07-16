@@ -10,11 +10,12 @@ import (
 var defaultScenario Scenario
 
 func init() {
+	inviter := 0
 	defaultScenario = Scenario{
 		EpochNewUsersBeforeFlips: map[int][]*NewUsers{
 			0: {
 				{
-					Inviter: 0,
+					Inviter: &inviter,
 					Count:   5,
 				},
 			},

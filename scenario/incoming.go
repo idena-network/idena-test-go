@@ -25,7 +25,7 @@ type incomingScenario struct {
 type newUsers struct {
 	Epochs  string `json:"epochs"` // example: "1,3-5,8" means 1,3,4,5,8
 	Count   int    `json:"count"`
-	Inviter int    `json:"inviter"`
+	Inviter *int   `json:"inviter"`
 	Command string `json:"command"`
 }
 
@@ -52,8 +52,9 @@ type ceremony struct {
 }
 
 type userCeremony struct {
-	Users       string `json:"users"` // "1,3-5,8" means 1,3,4,5,8
-	SubmitFlips int    `json:"submitFlips"`
+	Users          string `json:"users"` // "1,3-5,8" means 1,3,4,5,8
+	SubmitFlips    *int   `json:"submitFlips"`
+	SkipValidation bool   `json:"skipValidation"`
 	// todo remove deprecated fields
 	ShortAnswers     []answer     `json:"shortAnswers"`     // deprecated
 	ShortAnswerRates *answerRates `json:"shortAnswerRates"` // deprecated
