@@ -30,7 +30,7 @@ func (process *Process) RequestInvites(addresses []string) error {
 		return errors.New("god node has not been initialized yet")
 	}
 	for _, address := range addresses {
-		invite, err := process.godUser.Client.SendInvite(address, process.sc.InviteAmount)
+		invite, err := process.godUser.SendInvite(address, process.sc.InviteAmount)
 		if err != nil {
 			log.Error(fmt.Sprintf("%s unable to send invite to %s by request: %v", process.godUser.GetInfo(), address, err))
 			continue

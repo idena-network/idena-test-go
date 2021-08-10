@@ -21,6 +21,7 @@ type sendTxArgs struct {
 	MaxFee     *float32 `json:"maxFee"`
 	Type       uint16   `json:"type"`
 	PayloadHex *string  `json:"payload"`
+	UseProto   bool     `json:"useProto"`
 }
 
 type storeToIpfsTxArgs struct {
@@ -30,10 +31,6 @@ type storeToIpfsTxArgs struct {
 type sendInviteArgs struct {
 	To     string  `json:"to"`
 	Amount float32 `json:"amount"`
-}
-
-type activateInviteArgs struct {
-	To string `json:"to"`
 }
 
 type burnArgs struct {

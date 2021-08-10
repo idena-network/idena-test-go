@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-func (process *Process) sendStoreToIpfsTxs(u *user.User) {
+func (process *Process) sendStoreToIpfsTxs(u user.User) {
 	epoch := process.getCurrentTestIndex()
 	epochStoreToIpfsTxs, ok := process.sc.StoreToIpfsTxs[epoch]
 	if !ok {
 		return
 	}
-	userStoreToIpfsTxs, ok := epochStoreToIpfsTxs[u.Index]
+	userStoreToIpfsTxs, ok := epochStoreToIpfsTxs[u.GetIndex()]
 	if !ok {
 		return
 	}
@@ -27,20 +27,20 @@ func (process *Process) sendStoreToIpfsTxs(u *user.User) {
 	}
 }
 
-func (process *Process) sendStoreToIpfsTx(u *user.User, size int) {
+func (process *Process) sendStoreToIpfsTx(u user.User, size int) {
 	data := random.GetRandomBytes(uint32(size))
 	dataHex := toHex(data)
-	cid, err := u.Client.AddIpfsData(dataHex, true)
+	cid, err := u.AddIpfsData(dataHex, true)
 	if err != nil {
 		process.handleError(err, fmt.Sprintf("%v unable to add ipfs data", u.GetInfo()))
 	}
 	log.Info(fmt.Sprintf("%v added ipfs data to send StoreToIpfsTx", u.GetInfo()))
-	hash, err := u.Client.StoreToIpfs(cid)
+	hash, err := u.StoreToIpfs(cid)
 	if err != nil {
 		process.handleError(err, fmt.Sprintf("%v unable to send StoreToIpfsTx, cid: %v", u.GetInfo(), cid))
 	}
 	log.Info(fmt.Sprintf("%v sent StoreToIpfsTx, hash: %v", u.GetInfo(), hash))
-	if err := waitForMinedTransaction(u.Client, hash, time.Minute*5); err != nil {
+	if err := waitForMinedTransaction(u, hash, time.Minute*5); err != nil {
 		process.handleError(err, fmt.Sprintf("%v unable to mine StoreToIpfsTx", u.GetInfo()))
 	}
 	log.Info(fmt.Sprintf("%v mined StoreToIpfsTx, hash: %v", u.GetInfo(), hash))

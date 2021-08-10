@@ -8,6 +8,7 @@ import (
 	"github.com/idena-network/idena-test-go/events"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/node"
+	"github.com/idena-network/idena-test-go/scenario"
 	"github.com/idena-network/idena-test-go/user"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -41,12 +42,12 @@ func (process *Process) init() {
 	process.bus.Subscribe(events.NodeCrashedEventID, func(e eventbus.Event) {
 		nodeCrashedEvent := e.(*events.NodeCrashedEvent)
 		u := process.users[nodeCrashedEvent.Index]
-		if !u.Active {
+		if !u.IsActive() {
 			log.Warn(fmt.Sprintf("%v node will not be restarted due to crash since it is not active", u.GetInfo()))
 			return
 		}
 		log.Warn(fmt.Sprintf("%v node will be restarted due to crash", u.GetInfo()))
-		_ = u.Node.Destroy()
+		_ = u.DestroyNode()
 		process.startNode(u, node.DeleteNothing)
 		if !process.godMode {
 			if err := process.apiClient.SendWarnNotification(fmt.Sprintf("%v node has been restarted due to crash", u.GetInfo())); err != nil {
@@ -83,6 +84,24 @@ func (process *Process) loadNodeBaseConfigData() {
 	process.nodeBaseConfigData = byteValue
 }
 
+func isNodeShared(index int, sc scenario.Scenario) bool {
+	for _, epochNewUsers := range sc.EpochNewUsersBeforeFlips {
+		for _, newUsers := range epochNewUsers {
+			if newUsers.SharedNode != nil && *newUsers.SharedNode == index {
+				return true
+			}
+		}
+	}
+	for _, epochNewUsers := range sc.EpochNewUsersAfterFlips {
+		for _, newUsers := range epochNewUsers {
+			if newUsers.SharedNode != nil && *newUsers.SharedNode == index {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (process *Process) createGodUser() {
 	index := 0
 	apiKey := generateApiKey(index, process.randomApiKeys, process.predefinedApiKeys)
@@ -106,8 +125,9 @@ func (process *Process) createGodUser() {
 		process.nodeStopWaitingTime,
 		apiKey,
 		"",
+		isNodeShared(index, process.sc),
 	)
-	u := user.NewUser(client.NewClient(*n, index, apiKey, process.reqIdHolder, process.bus), n, index)
+	u := user.NewUser(nil, client.NewClient(n.RpcPort, index, apiKey, process.bus), n, index)
 	process.godUser = u
 	process.users = append(process.users, u)
 	log.Info("Created god user")
@@ -126,8 +146,9 @@ func (process *Process) initGodAddress() {
 func (process *Process) getGodAddress() string {
 	if process.godMode {
 		u := process.godUser
-		godAddress, err := u.Client.GetCoinbaseAddr()
+		err := u.InitAddress()
 		process.handleError(err, fmt.Sprintf("%v unable to get address", u.GetInfo()))
+		godAddress := u.GetAddress()
 		return godAddress
 	}
 	c := process.apiClient
@@ -152,7 +173,7 @@ func (process *Process) initIpfsBootNode() {
 func (process *Process) getIpfsBootNode() string {
 	if process.godMode {
 		u := process.godUser
-		ipfsBootNode, err := u.Client.GetIpfsAddress()
+		ipfsBootNode, err := u.GetIpfsAddress()
 		process.handleError(err, fmt.Sprintf("%v unable to get ipfs boot node", u.GetInfo()))
 		ipfsBootNode = strings.Replace(ipfsBootNode, "0.0.0.0", "127.0.0.1", 1)
 		return ipfsBootNode
@@ -177,9 +198,7 @@ func (process *Process) getCeremonyTime() int64 {
 func (process *Process) restartGodNode() {
 	u := process.godUser
 	process.handleError(u.Stop(), "Unable to stop node")
-	u.Node.GodAddress = process.godAddress
-	u.Node.IpfsBootNode = process.ipfsBootNode
-	u.Node.CeremonyTime = process.ceremonyTime
+	u.UpdateNodeParameters(process.godAddress, process.ipfsBootNode, process.ceremonyTime)
 	process.handleError(u.Start(node.DeleteDb), "Unable to start node")
 	log.Info("Restarted god node")
 }

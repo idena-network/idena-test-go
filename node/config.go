@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"github.com/idena-network/idena-go/common"
 	"github.com/idena-network/idena-go/config"
+	"github.com/imdario/mergo"
 	"math"
 	"math/big"
 	"path/filepath"
+	"time"
 )
 
 const network = 2
@@ -31,6 +33,7 @@ type p2pConfig struct {
 	MaxOutboundPeers *int `json:"MaxOutboundPeers,omitempty"`
 	MaxDelay         *int
 	CollectMetrics   bool
+	Multishard       bool
 }
 
 type rpcConfig struct {
@@ -68,12 +71,15 @@ type ipfsConfig struct {
 }
 
 func buildConfig(node *Node) interface{} {
+	defaultConfig, err := config.MakeConfigFromFile("")
+	if err != nil {
+		panic(err)
+	}
 	conf := node.buildSpecificConfig()
 	if node.baseConfigData == nil {
 		return conf
 	}
-	addConfig(conf, node.baseConfigData)
-	return conf
+	return addConfig(defaultConfig, conf, node.baseConfigData)
 }
 
 func (node *Node) buildNodeConfigFileData() []byte {
@@ -87,14 +93,41 @@ func (node *Node) buildNodeConfigFileData() []byte {
 	return bytes
 }
 
-func addConfig(c *specConfig, configData []byte) {
-	if configData == nil {
-		return
-	}
-	err := json.Unmarshal(configData, c)
+func addConfig(defaultConfig *config.Config, c *specConfig, configData []byte) interface{} {
+	//defaultConfigData, err := json.Marshal(defaultConfig)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//defaultConfigMap := make(map[string]interface{})
+	//if err := json.Unmarshal(defaultConfigData, &defaultConfigMap); err != nil {
+	//	panic(err)
+	//}
+	resMap := make(map[string]interface{})
+	//if err := mergo.Merge(&resMap, defaultConfigMap); err != nil {
+	//	panic(err)
+	//}
+	cData, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
 	}
+	cMap := make(map[string]interface{})
+	if err := json.Unmarshal(cData, &cMap); err != nil {
+		panic(err)
+	}
+	if err := mergo.Merge(&resMap, cMap, mergo.WithOverride); err != nil {
+		panic(err)
+	}
+	if configData != nil {
+		configDataMap := make(map[string]interface{})
+		if err := json.Unmarshal(configData, &configDataMap); err != nil {
+			panic(err)
+		}
+		if err := mergo.Merge(&resMap, configDataMap, mergo.WithOverride); err != nil {
+			panic(err)
+		}
+	}
+	resMap["GenesisConf"].(map[string]interface{})["Alloc"] = c.GenesisConf.Alloc
+	return resMap
 }
 
 func (node *Node) buildSpecificConfig() *specConfig {
@@ -113,11 +146,16 @@ func (node *Node) buildSpecificConfig() *specConfig {
 
 	nw := uint32(network)
 	maxNetDelay := node.maxNetDelay
+	allFlipsLoadingTime := time.Hour * 2
+	if node.isShared {
+		allFlipsLoadingTime = time.Minute * 4
+	}
 	return &specConfig{
 		Network: &nw,
 		DataDir: dataDir,
 		P2P: p2pConfig{
-			MaxDelay: &maxNetDelay,
+			MaxDelay:   &maxNetDelay,
+			Multishard: node.isShared,
 		},
 		RPC: rpcConfig{
 			HTTPHost: node.RpcHost,
@@ -141,6 +179,12 @@ func (node *Node) buildSpecificConfig() *specConfig {
 			DataDir:   filepath.Join(dataDir, config.DefaultIpfsDataDir),
 			IpfsPort:  node.ipfsPort,
 			BootNodes: bootNodes,
+		},
+		Sync: &config.SyncConfig{
+			FastSync:            true,
+			ForceFullSync:       config.DefaultForceFullSync,
+			LoadAllFlips:        node.isShared,
+			AllFlipsLoadingTime: allFlipsLoadingTime,
 		},
 	}
 }

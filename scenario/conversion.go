@@ -11,7 +11,10 @@ const (
 	defaultInviteAmount  = 100
 )
 
-func convert(incomingSc incomingScenario, godMode bool) Scenario {
+func convert(incomingSc incomingScenario, godMode bool, nodes int) Scenario {
+	if nodes > 0 {
+		incomingSc.Users = nodes
+	}
 	sc := Scenario{}
 	sc.InviteAmount = convertInviteAmount(incomingSc.InviteAmount)
 	sc.EpochNewUsersBeforeFlips = convertEpochNewUsers(incomingSc.Users, incomingSc.NewUsers)
@@ -62,9 +65,10 @@ func convertEpochNewUsers(incomingUsers int, incomingNewUsers []newUsers) map[in
 		epochs, _ := parseNums(du.Epochs)
 		for _, epoch := range epochs {
 			newUsersByEpoch[epoch] = append(newUsersByEpoch[epoch], &NewUsers{
-				Inviter: du.Inviter,
-				Command: du.Command,
-				Count:   du.Count,
+				Inviter:    du.Inviter,
+				Command:    du.Command,
+				Count:      du.Count,
+				SharedNode: du.SharedNode,
 			})
 		}
 	}

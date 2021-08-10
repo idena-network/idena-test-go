@@ -29,10 +29,10 @@ func (process *Process) assert(epoch int, es epochState) {
 	nodeStates := process.getNodeStates()
 	identitiesPerUserIdx := make(map[int]api.Identity)
 	for _, u := range process.users {
-		if !u.Active {
+		if !u.IsActive() {
 			continue
 		}
-		identitiesPerUserIdx[u.Index] = process.getIdentity(u)
+		identitiesPerUserIdx[u.GetIndex()] = process.getIdentity(u)
 	}
 
 	process.logStats(nodeStates, identitiesPerUserIdx, es)
@@ -97,7 +97,7 @@ func (process *Process) getNodeStates() map[string]int {
 	wg.Add(activeUsersCount)
 	mutex := sync.Mutex{}
 	for _, u := range activeUsers {
-		go func(u *user.User) {
+		go func(u user.User) {
 			mutex.Lock()
 			defer mutex.Unlock()
 			identity := process.getIdentity(u)
@@ -109,10 +109,10 @@ func (process *Process) getNodeStates() map[string]int {
 	return states
 }
 
-func (process *Process) getActiveUsers() []*user.User {
-	var activeUsers []*user.User
+func (process *Process) getActiveUsers() []user.User {
+	var activeUsers []user.User
 	for _, u := range process.users {
-		if u.Active {
+		if u.IsActive() {
 			activeUsers = append(activeUsers, u)
 		}
 	}
@@ -129,11 +129,11 @@ func (process *Process) assertNodes(nodes map[int]*scenario.NodeAssertion, ident
 	}
 }
 
-func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, identitiesPerUserIdx map[int]api.Identity, ues *userEpochState, eh *errorsHolder) {
+func (process *Process) assertNode(u user.User, node *scenario.NodeAssertion, identitiesPerUserIdx map[int]api.Identity, ues *userEpochState, eh *errorsHolder) {
 	if node == nil {
 		return
 	}
-	identity, present := identitiesPerUserIdx[u.Index]
+	identity, present := identitiesPerUserIdx[u.GetIndex()]
 
 	if !present {
 		log.Warn(fmt.Sprintf("Unable to assert state for node %s as it is stopped", u.GetInfo()))
@@ -144,7 +144,7 @@ func (process *Process) assertNode(u *user.User, node *scenario.NodeAssertion, i
 		process.assertionError(fmt.Sprintf("Wrong state for node %s", u.GetInfo()), *node.State, identity.State, eh)
 	}
 
-	if node.MadeFlips != nil && ues.madeFlips != *node.MadeFlips && !(process.godMode && u.Index == process.godUser.Index && process.getCurrentTestIndex() == 0) {
+	if node.MadeFlips != nil && ues.madeFlips != *node.MadeFlips && !(process.godMode && u.GetIndex() == process.godUser.GetIndex() && process.getCurrentTestIndex() == 0) {
 		process.assertionError(fmt.Sprintf("Wrong made flips for node %s", u.GetInfo()), *node.MadeFlips, ues.madeFlips, eh)
 	}
 

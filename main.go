@@ -64,19 +64,19 @@ func main() {
 		scenarioFileName := conf.Scenario
 
 		var sc scenario.Scenario
+		nodes := context.Int("nodes")
 		if len(scenarioFileName) > 0 {
-			sc = scenario.Load(workDir, scenarioFileName, conf.GodMode)
+			sc = scenario.Load(workDir, scenarioFileName, conf.GodMode, nodes)
 		} else {
 			sc = scenario.GetDefaultScenario()
-		}
-		nodes := context.Int("nodes")
-		if nodes > 0 {
-			inviter := 0
-			sc.EpochNewUsersBeforeFlips[0] = []*scenario.NewUsers{
-				{
-					Inviter: &inviter,
-					Count:   nodes,
-				},
+			if nodes > 0 {
+				inviter := 0
+				sc.EpochNewUsersBeforeFlips[0] = []*scenario.NewUsers{
+					{
+						Inviter: &inviter,
+						Count:   nodes,
+					},
+				}
 			}
 		}
 
@@ -92,7 +92,7 @@ func main() {
 			conf.GodMode,
 			conf.GodHost,
 			time.Second*time.Duration(conf.NodeStartWaitingSec),
-			time.Second*time.Duration(conf.NodeStartPauseSec),
+			time.Millisecond*time.Duration(conf.NodeStartPauseMs),
 			time.Second*time.Duration(conf.NodeStopWaitingSec),
 			conf.FirstRpcPort,
 			conf.FirstIpfsPort,

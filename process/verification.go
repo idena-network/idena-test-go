@@ -6,9 +6,6 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	"github.com/idena-network/idena-go/api"
 	common2 "github.com/idena-network/idena-go/common"
-	"github.com/idena-network/idena-go/common/hexutil"
-	"github.com/idena-network/idena-go/crypto"
-	"github.com/idena-network/idena-go/crypto/ecies"
 	"github.com/idena-network/idena-test-go/client"
 	"github.com/idena-network/idena-test-go/common"
 	"github.com/idena-network/idena-test-go/log"
@@ -52,7 +49,7 @@ func (process *Process) test() {
 	if !ok {
 		var nodeNames []string
 		for _, u := range process.users {
-			if u.IsTestRun {
+			if u.IsTestRun() {
 				nodeNames = append(nodeNames, u.GetInfo())
 			}
 		}
@@ -62,14 +59,14 @@ func (process *Process) test() {
 	log.Info(fmt.Sprintf("************** All verification sessions completed (test #%d) **************", process.getCurrentTestIndex()))
 }
 
-func (process *Process) testUsers(users []*user.User) {
+func (process *Process) testUsers(users []user.User) {
 	mutex := sync.Mutex{}
 	for _, u := range users {
-		go func(u *user.User) {
+		go func(u user.User) {
 			ues := &userEpochState{}
 			process.testUser(u, process.godAddress, ues)
 			mutex.Lock()
-			process.es.userStates[u.Index] = ues
+			process.es.userStates[u.GetIndex()] = ues
 			mutex.Unlock()
 			process.wg.Done()
 		}(u)
@@ -78,7 +75,7 @@ func (process *Process) testUsers(users []*user.User) {
 
 func (process *Process) initCeremonyIntervals() {
 	u := process.getActiveUsers()[0]
-	intervals, err := u.Client.CeremonyIntervals()
+	intervals, err := u.CeremonyIntervals()
 	process.handleError(err, fmt.Sprintf("%v unable to get ceremony intervals", u.GetInfo()))
 	process.ceremonyIntervals = &intervals
 }
@@ -98,13 +95,13 @@ func (process *Process) getTestTimeout() time.Duration {
 	return testTimeout
 }
 
-func (process *Process) updateNode(u *user.User) {
+func (process *Process) updateNode(u user.User) {
 	epoch := process.getCurrentTestIndex()
 	nodeUpdates, ok := process.sc.EpochNodeUpdates[epoch]
 	if !ok {
 		return
 	}
-	nodeUpdate, ok := nodeUpdates[u.Index]
+	nodeUpdate, ok := nodeUpdates[u.GetIndex()]
 	if !ok {
 		return
 	}
@@ -116,15 +113,15 @@ func (process *Process) updateNode(u *user.User) {
 	}
 	log.Info(fmt.Sprintf("%s stopping node to update", u.GetInfo()))
 	process.stopNode(u)
-	u.Node.SetExecCommandName(nodeUpdate.Command)
+	u.SetNodeExecCommandName(nodeUpdate.Command)
 	process.startNode(u, node.DeleteNothing)
 	log.Info(fmt.Sprintf("%s started updated node", u.GetInfo()))
 }
 
-func (process *Process) testUser(u *user.User, godAddress string, state *userEpochState) {
-	u.IsTestRun = true
+func (process *Process) testUser(u user.User, godAddress string, state *userEpochState) {
+	u.SetIsTestRun(true)
 	defer func() {
-		u.IsTestRun = false
+		u.SetIsTestRun(false)
 	}()
 	process.initTest(u)
 	go process.updateNode(u)
@@ -133,13 +130,13 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	go process.killDelegators(u)
 	go process.sendStoreToIpfsTxs(u)
 
-	wasActive := u.Active
+	wasActive := u.IsActive()
 
 	if !wasActive {
 		process.switchNodeIfNeeded(u)
 	}
 
-	if !u.Active {
+	if !u.IsActive() {
 		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
 		return
 	}
@@ -150,9 +147,10 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	if !process.validationOnly {
 		process.switchOnlineState(u, epoch.NextValidation)
 
-		if u.MultiBotDelegatee != nil {
-			go process.delegateTo(u, *u.MultiBotDelegatee)
-			u.MultiBotDelegatee = nil
+		multiBotDelegatee := u.GetMultiBotDelegatee()
+		if multiBotDelegatee != nil {
+			go process.delegateTo(u, *multiBotDelegatee)
+			u.SetMultiBotDelegatee(nil)
 		}
 	}
 
@@ -160,7 +158,7 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 		process.switchNodeIfNeeded(u)
 	}
 
-	if !u.Active {
+	if !u.IsActive() {
 		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
 		return
 	}
@@ -172,16 +170,16 @@ func (process *Process) testUser(u *user.User, godAddress string, state *userEpo
 	epochNewUsers := process.sc.EpochNewUsersAfterFlips[process.getCurrentTestIndex()]
 	if len(epochNewUsers) > 0 {
 		for _, epochInviterNewUsers := range epochNewUsers {
-			if epochInviterNewUsers.Inviter == nil && u.Index == 0 || epochInviterNewUsers.Inviter != nil && *epochInviterNewUsers.Inviter == u.Index {
-				process.createEpochInviterNewUsers(epochInviterNewUsers, true)
+			if epochInviterNewUsers.Inviter == nil && u.GetIndex() == 0 || epochInviterNewUsers.Inviter != nil && *epochInviterNewUsers.Inviter == u.GetIndex() {
+				process.createEpochInviterNewUsers(epochInviterNewUsers)
 				process.testUsers(process.users[len(process.users)-epochInviterNewUsers.Count:])
 			}
 		}
 	}
 
-	waitForShortSession(u)
+	waitForFlipLottery(u)
 
-	process.passVerification(u, epoch.NextValidation.Add(time.Second*time.Duration(process.ceremonyIntervals.ShortSessionDuration)))
+	process.passVerification(u, epoch.NextValidation, epoch.NextValidation.Add(time.Second*time.Duration(process.ceremonyIntervals.ShortSessionDuration)))
 
 	process.collectUserEpochState(u, state)
 
@@ -208,17 +206,17 @@ func (process *Process) waitForGodBotNewEpoch() {
 	}
 }
 
-func (process *Process) switchOnlineState(u *user.User, nextValidationTime time.Time) {
+func (process *Process) switchOnlineState(u user.User, nextValidationTime time.Time) {
 	testIndex := process.getCurrentTestIndex()
 	onlines := process.sc.EpochNodeOnlines[testIndex]
-	becomeOnline := pos(onlines, u.Index) != -1
+	becomeOnline := pos(onlines, u.GetIndex()) != -1
 	if becomeOnline {
 		if attempts, err := process.tryToSwitchOnlineState(u, nextValidationTime, true); err != nil {
 			process.handleError(err, fmt.Sprintf("%v unable to become online, attempts: %d", u.GetInfo(), attempts))
 		}
 	}
 	offlines := process.sc.EpochNodeOfflines[testIndex]
-	becomeOffline := pos(offlines, u.Index) != -1
+	becomeOffline := pos(offlines, u.GetIndex()) != -1
 	if becomeOffline {
 		if attempts, err := process.tryToSwitchOnlineState(u, nextValidationTime, false); err != nil {
 			process.handleError(err, fmt.Sprintf("%v unable to become offline, attempts: %d", u.GetInfo(), attempts))
@@ -226,26 +224,26 @@ func (process *Process) switchOnlineState(u *user.User, nextValidationTime time.
 	}
 
 	// Become online by default if state is newbie
-	if !becomeOnline && !becomeOffline && !u.SentAutoOnline {
+	if !becomeOnline && !becomeOffline && !u.GetAutoOnlineSent() {
 		identity := process.getIdentity(u)
 		if identity.State == newbie || identity.State == verified {
 			if attempts, err := process.tryToSwitchOnlineState(u, nextValidationTime, true); err != nil {
 				log.Warn(fmt.Sprintf("%v unable to become online, attempts: %d, error: %v", u.GetInfo(), attempts, err))
 			} else {
-				u.SentAutoOnline = true
+				u.SetAutoOnlineSent(true)
 			}
 		}
 	}
 }
 
-func (process *Process) tryToSwitchOnlineState(u *user.User, nextValidationTime time.Time, online bool) (int, error) {
+func (process *Process) tryToSwitchOnlineState(u user.User, nextValidationTime time.Time, online bool) (int, error) {
 	var switchOnline func() (string, error)
 	var stateName string
 	if online {
-		switchOnline = u.Client.BecomeOnline
+		switchOnline = u.BecomeOnline
 		stateName = "online"
 	} else {
-		switchOnline = u.Client.BecomeOffline
+		switchOnline = u.BecomeOffline
 		stateName = "offline"
 	}
 	// Try to switch online state till (nextValidationTime - 3 minutes) to leave time for submitting flips
@@ -274,14 +272,27 @@ func pos(slice []int, target int) int {
 	return -1
 }
 
-func (process *Process) collectUserEpochState(u *user.User, state *userEpochState) {
+func (process *Process) collectUserEpochState(u user.User, state *userEpochState) {
 	identity := process.getIdentity(u)
 	state.madeFlips = len(identity.Flips)
 	state.requiredFlips = int(identity.RequiredFlips)
 	state.availableFlips = int(identity.AvailableFlips)
 }
 
-func (process *Process) passVerification(u *user.User, shortFinishTime time.Time) {
+func (process *Process) passVerification(u user.User, shortStartTime, shortFinishTime time.Time) {
+
+	publicFlipKeysChan := time.After(shortStartTime.Sub(time.Now()))
+
+	process.sendPrivateFlipKeysPackages(u)
+
+	log.Info(fmt.Sprintf("%v start waiting for %v", u.GetInfo(), shortStartTime))
+
+	<-publicFlipKeysChan
+
+	process.sendPublicFlipKey(u)
+
+	waitForShortSession(u)
+
 	userCeremony := process.getScUserCeremony(u)
 	skipValidation := userCeremony != nil && userCeremony.SkipValidation
 	if skipValidation {
@@ -300,9 +311,11 @@ func (process *Process) passVerification(u *user.User, shortFinishTime time.Time
 
 	process.submitAnswers(u, true)
 
-	u.TestContext.ShortFlipHashes = nil
+	u.GetTestContext().ShortFlipHashes = nil
 
 	waitForLongSession(u)
+
+	process.submitOpenShortAnswers(u)
 
 	delay := time.Second * time.Duration(rand.Float64()*process.ceremonyIntervals.LongSessionDuration/2)
 	log.Debug(fmt.Sprintf("%v delay before submitting long answers: %v", u.GetInfo(), delay))
@@ -316,17 +329,18 @@ func (process *Process) passVerification(u *user.User, shortFinishTime time.Time
 
 	process.submitAnswers(u, false)
 
-	u.TestContext.LongFlipHashes = nil
+	u.GetTestContext().LongFlipHashes = nil
 }
 
-func (process *Process) initTest(u *user.User) {
-	if u.TestContext != nil {
-		u.TestContext.ShortFlipHashes = nil
-		u.TestContext.LongFlipHashes = nil
+func (process *Process) initTest(u user.User) {
+	if u.GetTestContext() != nil {
+		u.GetTestContext().ShortFlipHashes = nil
+		u.GetTestContext().LongFlipHashes = nil
 	}
-	u.TestContext = &user.TestContext{
+	u.SetTestContext(&user.TestContext{
 		TestStartTime: time.Now(),
-	}
+		Epoch:         uint16(process.getCurrentTestIndex()),
+	})
 }
 
 type submittedFlip struct {
@@ -335,7 +349,7 @@ type submittedFlip struct {
 	txHash      string
 }
 
-func (process *Process) submitFlips(u *user.User, godAddress string) {
+func (process *Process) submitFlips(u user.User, godAddress string) {
 	flipsToSubmit, words := process.getFlipsInfoToSubmit(u, godAddress)
 	if flipsToSubmit == 0 {
 		return
@@ -347,7 +361,7 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 			process.handleError(err, "unable to generate hex")
 		}
 		if !process.fastNewbie && !process.validationOnly && process.getCurrentTestIndex() == 0 && flipsToSubmit > 1 {
-			_, err := u.Client.SubmitFlip(flipPrivateHex, flipPublicHex, 0)
+			_, err := u.SubmitFlip(flipPrivateHex, flipPublicHex, 0)
 			if err != nil {
 				log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
 				continue
@@ -382,9 +396,9 @@ func (process *Process) submitFlips(u *user.User, godAddress string) {
 	log.Info(fmt.Sprintf("%v submitted %v flips: %v", u.GetInfo(), len(submittedFlips), submittedFlips))
 }
 
-func (process *Process) submitFlip(u *user.User, privateHex, publicHex string, wordPairIdx uint8) (flipCid, txHash string) {
+func (process *Process) submitFlip(u user.User, privateHex, publicHex string, wordPairIdx uint8) (flipCid, txHash string) {
 	submittedFlips := process.getIdentity(u).Flips
-	resp, err := u.Client.SubmitFlip(privateHex, publicHex, wordPairIdx)
+	resp, err := u.SubmitFlip(privateHex, publicHex, wordPairIdx)
 	if err != nil {
 		log.Warn(fmt.Sprintf("%v got submit flip request error: %v", u.GetInfo(), err))
 	}
@@ -423,9 +437,9 @@ func determineFlipAnswer(flipHash client.FlipHashesResponse) byte {
 	return answer
 }
 
-func (process *Process) getFlipsInfoToSubmit(u *user.User, godAddress string) (int, []api.FlipWords) {
+func (process *Process) getFlipsInfoToSubmit(u user.User, godAddress string) (int, []api.FlipWords) {
 	requiredFlipsCount, words := process.getRequiredFlipsInfo(u)
-	if process.getCurrentTestIndex() == 0 && u.Address == godAddress && requiredFlipsCount == 0 {
+	if process.getCurrentTestIndex() == 0 && u.GetAddress() == godAddress && requiredFlipsCount == 0 {
 		requiredFlipsCount = initialRequiredFlips
 	}
 
@@ -440,27 +454,18 @@ func (process *Process) getFlipsInfoToSubmit(u *user.User, godAddress string) (i
 	return flipsCountToSubmit, words
 }
 
-func (process *Process) getScUserCeremony(u *user.User) *scenario.UserCeremony {
+func (process *Process) getScUserCeremony(u user.User) *scenario.UserCeremony {
 	ceremony := process.sc.Ceremonies[process.getCurrentTestIndex()]
 	if ceremony == nil {
 		return nil
 	}
-	return ceremony.UserCeremonies[u.Index]
+	return ceremony.UserCeremonies[u.GetIndex()]
 }
 
-func (process *Process) getRequiredFlipsInfo(u *user.User) (int, []api.FlipWords) {
-	identity := process.getIdentity(u)
-	flipsCount := identity.RequiredFlips
-	additional := identity.AvailableFlips - identity.RequiredFlips
-	if additional > 0 {
-		a := []byte(u.Address)
-		for i := 0; i < int(additional); i++ {
-			if a[len(a)-1-i]%2 == 0 {
-				flipsCount++
-			}
-		}
-	}
-	return int(flipsCount) - len(identity.Flips), identity.FlipKeyWordPairs
+func (process *Process) getRequiredFlipsInfo(u user.User) (int, []api.FlipWords) {
+	flipsToSubmit, words, err := u.GetRequiredFlipsInfo()
+	process.handleError(err, fmt.Sprintf("%v unable to get required flips info", u.GetInfo()))
+	return flipsToSubmit, words
 }
 
 func generateFlip(minSize, maxSize int) (privateHex, publicHex string, err error) {
@@ -495,7 +500,7 @@ func toHex(bytes []byte) string {
 	return "0x" + hex.EncodeToString(bytes)
 }
 
-func (process *Process) assertFlip(u *user.User, flipHash string, flip client.FlipResponse) {
+func (process *Process) assertFlip(u user.User, flipHash string, flip client.FlipResponse) {
 	if toHex(reverse(common2.FromHex(flip.PrivateHex))) == flip.PublicHex {
 		return
 	}
@@ -504,7 +509,7 @@ func (process *Process) assertFlip(u *user.User, flipHash string, flip client.Fl
 	process.handleError(errors.New(message), "")
 }
 
-func (process *Process) assertFlipWords(u *user.User, flipHash string, flipWordsResponse api.FlipWordsResponse) {
+func (process *Process) assertFlipWords(u user.User, flipHash string, flipWordsResponse api.FlipWordsResponse) {
 	if flipWordsResponse.Words[0] == flipWordsResponse.Words[1] {
 		message :=
 			fmt.Sprintf("%v equal flip words: %v, cid %s", u.GetInfo(), flipWordsResponse.Words, flipHash)
@@ -519,14 +524,18 @@ func (process *Process) assertFlipWords(u *user.User, flipHash string, flipWords
 	}
 }
 
-func waitForShortSession(u *user.User) {
+func waitForFlipLottery(u user.User) {
+	waitForPeriod(u, periodFlipLottery)
+}
+
+func waitForShortSession(u user.User) {
 	waitForPeriod(u, periodShortSession)
 }
 
-func waitForPeriod(u *user.User, period string) {
+func waitForPeriod(u user.User, period string) {
 	log.Info(fmt.Sprintf("%v start waiting for period %v", u.GetInfo(), period))
 	for {
-		epoch, _ := u.Client.GetEpoch()
+		epoch, _ := u.GetEpoch()
 		currentPeriod := epoch.CurrentPeriod
 		log.Debug(fmt.Sprintf("%v current period: %v", u.GetInfo(), currentPeriod))
 		if currentPeriod == period {
@@ -537,11 +546,11 @@ func waitForPeriod(u *user.User, period string) {
 	log.Info(fmt.Sprintf("%v period %v started", u.GetInfo(), period))
 }
 
-func waitForLongSession(u *user.User) {
+func waitForLongSession(u user.User) {
 	waitForPeriod(u, periodLongSession)
 }
 
-func waitForSessionFinish(u *user.User) {
+func waitForSessionFinish(u user.User) {
 	waitForPeriod(u, periodNone)
 }
 
@@ -549,19 +558,19 @@ func (process *Process) getCurrentTestIndex() int {
 	return process.testCounter
 }
 
-func (process *Process) getFlipHashes(u *user.User, isShort bool, allowableNotReadyCount int) {
+func (process *Process) getFlipHashes(u user.User, isShort bool, allowableNotReadyCount int) {
 	name := getSessionName(isShort)
 	var loadFunc func() ([]client.FlipHashesResponse, error)
 	var setFunc func([]client.FlipHashesResponse)
 	if isShort {
-		loadFunc = u.Client.GetShortFlipHashes
+		loadFunc = u.GetShortFlipHashes
 		setFunc = func(flipHashes []client.FlipHashesResponse) {
-			u.TestContext.ShortFlipHashes = flipHashes
+			u.GetTestContext().ShortFlipHashes = flipHashes
 		}
 	} else {
-		loadFunc = u.Client.GetLongFlipHashes
+		loadFunc = u.GetLongFlipHashes
 		setFunc = func(flipHashes []client.FlipHashesResponse) {
-			u.TestContext.LongFlipHashes = flipHashes
+			u.GetTestContext().LongFlipHashes = flipHashes
 		}
 	}
 	// Random deadline to have some users with None answers in case of delayed flip keys
@@ -597,7 +606,7 @@ func (process *Process) getFlipHashes(u *user.User, isShort bool, allowableNotRe
 
 var notReadyFlipsAllowableCount = errors.New("there is not ready flips")
 
-func (process *Process) checkFlipHashes(u *user.User, flipHashes []client.FlipHashesResponse, allowableNotReadyCount int, isShort bool) error {
+func (process *Process) checkFlipHashes(u user.User, flipHashes []client.FlipHashesResponse, allowableNotReadyCount int, isShort bool) error {
 	if len(flipHashes) == 0 {
 		return errors.New("empty flip hashes")
 	}
@@ -609,7 +618,7 @@ func (process *Process) checkFlipHashes(u *user.User, flipHashes []client.FlipHa
 			continue
 		}
 		if !isShort && process.getCurrentTestIndex() > 0 {
-			flipWordsResponse, err := u.Client.GetFlipWords(f.Hash)
+			flipWordsResponse, err := u.GetFlipWords(f.Hash)
 			if err != nil {
 				flipsWithoutWords = append(flipsWithoutWords, f.Hash)
 				log.Warn(fmt.Sprintf("%v unable to get flip words %s: %v", u.GetInfo(), f.Hash, err))
@@ -629,13 +638,13 @@ func (process *Process) checkFlipHashes(u *user.User, flipHashes []client.FlipHa
 	return nil
 }
 
-func (process *Process) getFlips(u *user.User, isShort bool) {
+func (process *Process) getFlips(u user.User, isShort bool) {
 	name := getSessionName(isShort)
 	var flipHashes []client.FlipHashesResponse
 	if isShort {
-		flipHashes = u.TestContext.ShortFlipHashes
+		flipHashes = u.GetTestContext().ShortFlipHashes
 	} else {
-		flipHashes = u.TestContext.LongFlipHashes
+		flipHashes = u.GetTestContext().LongFlipHashes
 	}
 
 	var flips []client.FlipResponse
@@ -656,63 +665,25 @@ func (process *Process) getFlips(u *user.User, isShort bool) {
 	return
 }
 
-func (process *Process) getFlip(u *user.User, hash string) (client.FlipResponse, error) {
-	if !process.decryptFlips {
-		return u.Client.GetFlip(hash)
-	}
-	flip, err := u.Client.GetFlipRaw(hash)
-	if err != nil {
-		return client.FlipResponse{}, errors.Wrap(err, "unable to get flip raw")
-	}
-	keys, err := u.Client.GetFlipKeys(hash)
-	if err != nil {
-		return client.FlipResponse{}, errors.Wrap(err, "unable to get flip keys")
-	}
-	publicEncryptionKey, err := bytesToPrivateKey(keys.PublicKey)
-	if err != nil {
-		return client.FlipResponse{}, errors.Wrap(err, "unable to convert public key")
-	}
-	privateEncryptionKey, err := bytesToPrivateKey(keys.PrivateKey)
-	if err != nil {
-		return client.FlipResponse{}, errors.Wrap(err, "unable to convert private key")
-	}
-	decryptedPublicPart, err := publicEncryptionKey.Decrypt(flip.PublicHex, nil, nil)
-	if err != nil {
-		return client.FlipResponse{}, errors.Wrap(err, "unable to decrypt flip public part")
-	}
-	decryptedPrivatePart, err := privateEncryptionKey.Decrypt(flip.PrivateHex, nil, nil)
-	if err != nil {
-		return client.FlipResponse{}, errors.Wrap(err, "unable to decrypt flip private part")
-	}
-	return client.FlipResponse{
-		PublicHex:  hexutil.Bytes(decryptedPublicPart).String(),
-		PrivateHex: hexutil.Bytes(decryptedPrivatePart).String(),
-	}, nil
-}
-
-func bytesToPrivateKey(b []byte) (*ecies.PrivateKey, error) {
-	ecdsaKey, err := crypto.ToECDSA(b)
-	if err != nil {
-		return nil, err
-	}
-	return ecies.ImportECDSA(ecdsaKey), nil
+func (process *Process) getFlip(u user.User, hash string) (client.FlipResponse, error) {
+	return u.GetFlip(process.decryptFlips, hash)
 }
 
 func emptyFlip() client.FlipResponse {
 	return client.FlipResponse{}
 }
 
-func (process *Process) submitAnswers(u *user.User, isShort bool) {
+func (process *Process) submitAnswers(u user.User, isShort bool) {
 	var submitFunc func([]client.FlipAnswer) (client.SubmitAnswersResponse, error)
 	name := getSessionName(isShort)
 	log.Trace(fmt.Sprintf("%v start submitting %s answers", u.GetInfo(), name))
 	var flipHashes []client.FlipHashesResponse
 	if isShort {
-		submitFunc = u.Client.SubmitShortAnswers
-		flipHashes = u.TestContext.ShortFlipHashes
+		submitFunc = u.SubmitShortAnswers
+		flipHashes = u.GetTestContext().ShortFlipHashes
 	} else {
-		submitFunc = u.Client.SubmitLongAnswers
-		flipHashes = u.TestContext.LongFlipHashes
+		submitFunc = u.SubmitLongAnswers
+		flipHashes = u.GetTestContext().LongFlipHashes
 	}
 	allAnswers := process.getAnswers(u, isShort)
 	var answers []client.FlipAnswer
@@ -740,12 +711,12 @@ func (process *Process) submitAnswers(u *user.User, isShort bool) {
 	}
 }
 
-func (process *Process) getAnswers(u *user.User, isShort bool) []client.FlipAnswer {
+func (process *Process) getAnswers(u user.User, isShort bool) []client.FlipAnswer {
 	var flipHashes []client.FlipHashesResponse
 	if isShort {
-		flipHashes = u.TestContext.ShortFlipHashes
+		flipHashes = u.GetTestContext().ShortFlipHashes
 	} else {
-		flipHashes = u.TestContext.LongFlipHashes
+		flipHashes = u.GetTestContext().LongFlipHashes
 	}
 	var answers []client.FlipAnswer
 	reportAll := rand.Intn(10) == 1
@@ -781,9 +752,21 @@ func getSessionName(isShort bool) string {
 	return "long"
 }
 
-func (process *Process) provideDelayedFlipKeyIfNeeded(u *user.User, nextValidationTime time.Time) {
+func (process *Process) submitOpenShortAnswers(u user.User) {
+	txHash, err := u.SubmitOpenShortAnswers()
+	if err == nil && len(txHash) == 0 {
+		return
+	}
+	if err != nil {
+		log.Warn(fmt.Sprintf("%v unable to submit open short answers: %v", u.GetInfo(), err))
+	} else {
+		log.Info(fmt.Sprintf("%v submitted open short answers, tx: %s", u.GetInfo(), txHash))
+	}
+}
+
+func (process *Process) provideDelayedFlipKeyIfNeeded(u user.User, nextValidationTime time.Time) {
 	users, present := process.sc.EpochDelayedFlipKeys[process.getCurrentTestIndex()]
-	if !present || pos(users, u.Index) == -1 {
+	if !present || pos(users, u.GetIndex()) == -1 {
 		return
 	}
 	log.Info(fmt.Sprintf("%v providing delayed flip key", u.GetInfo()))
@@ -794,8 +777,24 @@ func (process *Process) provideDelayedFlipKeyIfNeeded(u *user.User, nextValidati
 	process.startNode(u, node.DeleteNothing)
 }
 
-func (process *Process) getEpoch(u *user.User) client.Epoch {
-	epoch, err := u.Client.GetEpoch()
+func (process *Process) getEpoch(u user.User) client.Epoch {
+	epoch, err := u.GetEpoch()
 	process.handleError(err, fmt.Sprintf("%v unable to get epoch", u.GetInfo()))
 	return epoch
+}
+
+func (process *Process) sendPrivateFlipKeysPackages(u user.User) {
+	for {
+		if err := u.SendPrivateFlipKeysPackages(); err == nil {
+			return
+		} else {
+			log.Warn(fmt.Sprintf("%s unable to send private flip keys package: %v", u.GetInfo(), err.Error()))
+			time.Sleep(requestRetryDelay)
+		}
+	}
+}
+
+func (process *Process) sendPublicFlipKey(u user.User) {
+	err := u.SendPublicFlipKey()
+	process.handleError(err, fmt.Sprintf("%v unable to broadcast public flip key", u.GetInfo()))
 }

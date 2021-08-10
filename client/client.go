@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/idena-network/idena-go/api"
+	"github.com/idena-network/idena-go/common"
 	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-go/common/hexutil"
 	"github.com/idena-network/idena-test-go/events"
 	"github.com/idena-network/idena-test-go/log"
-	"github.com/idena-network/idena-test-go/node"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
@@ -22,21 +22,19 @@ import (
 const defaultTimeoutSec = 10
 
 type Client struct {
-	index       int
-	url         string
-	apiKey      string
-	reqIdHolder *ReqIdHolder
-	mutex       sync.Mutex
-	bus         eventbus.Bus
+	index  int
+	url    string
+	apiKey string
+	mutex  sync.Mutex
+	bus    eventbus.Bus
 }
 
-func NewClient(node node.Node, index int, apiKey string, reqIdHolder *ReqIdHolder, bus eventbus.Bus) *Client {
+func NewClient(nodeRpcPort int, index int, apiKey string, bus eventbus.Bus) *Client {
 	return &Client{
-		url:         "http://localhost:" + strconv.Itoa(node.RpcPort) + "/",
-		reqIdHolder: reqIdHolder,
-		apiKey:      apiKey,
-		bus:         bus,
-		index:       index,
+		url:    "http://localhost:" + strconv.Itoa(nodeRpcPort) + "/",
+		apiKey: apiKey,
+		bus:    bus,
+		index:  index,
 	}
 }
 
@@ -148,17 +146,14 @@ func (client *Client) SendInvite(to string, amount float32) (Invite, error) {
 	return invite, nil
 }
 
-func (client *Client) ActivateInvite(to string) (string, error) {
+func (client *Client) ActivateInvite(params api.ActivateInviteArgs) (string, error) {
 	client.mutex.Lock()
 	defer client.mutex.Unlock()
 
-	params := activateInviteArgs{
-		To: to,
-	}
 	req := request{
 		Id:      client.getReqId(),
 		Method:  "dna_activateInvite",
-		Payload: []activateInviteArgs{params},
+		Payload: []api.ActivateInviteArgs{params},
 		Key:     client.apiKey,
 	}
 	resp := response{}
@@ -217,16 +212,16 @@ func (client *Client) DeleteFlip(hash string) (string, error) {
 	return resp.Result.(string), nil
 }
 
-func (client *Client) GetShortFlipHashes() ([]FlipHashesResponse, error) {
-	return client.getFlipHashes("flip_shortHashes")
+func (client *Client) GetShortFlipHashes(address string) ([]FlipHashesResponse, error) {
+	return client.getFlipHashes(address, "flip_shortHashes")
 }
 
-func (client *Client) getFlipHashes(method string) ([]FlipHashesResponse, error) {
+func (client *Client) getFlipHashes(address, method string) ([]FlipHashesResponse, error) {
 	req := request{
 		Id:      client.getReqId(),
 		Method:  method,
 		Key:     client.apiKey,
-		Payload: []string{},
+		Payload: []string{address},
 	}
 	var hashes []FlipHashesResponse
 	resp := response{Result: &hashes}
@@ -304,8 +299,8 @@ func (client *Client) submitAnswers(answers []FlipAnswer, method string) (Submit
 	return submitResp, nil
 }
 
-func (client *Client) GetLongFlipHashes() ([]FlipHashesResponse, error) {
-	return client.getFlipHashes("flip_longHashes")
+func (client *Client) GetLongFlipHashes(address string) ([]FlipHashesResponse, error) {
+	return client.getFlipHashes(address, "flip_longHashes")
 }
 
 func (client *Client) SubmitLongAnswers(answers []FlipAnswer) (SubmitAnswersResponse, error) {
@@ -383,7 +378,7 @@ func (client *Client) SendTransaction(txType uint16, from string, to *string, am
 }
 
 func (client *Client) getReqId() int {
-	return client.reqIdHolder.GetNextReqId()
+	return 1
 }
 
 func cut(text string, limit int) string {
@@ -425,14 +420,16 @@ func (client *Client) sendRequest(req request, timeoutSec int, retry bool) ([]by
 		}
 		isCrashed := isNodeCrashed(err)
 		if isCrashed {
-			client.bus.Publish(&events.NodeCrashedEvent{
-				Index: client.index,
-			})
+			if client.bus != nil {
+				client.bus.Publish(&events.NodeCrashedEvent{
+					Index: client.index,
+				})
+			}
 		} else {
 			counter--
 		}
 		if counter > 0 && retry {
-			log.Warn(fmt.Sprintf("%v. Retrying to send request due to error %v", client.url, err))
+			log.Warn(fmt.Sprintf("%v. Retrying to send request (%v) due to error %v", client.url, req.Method, err))
 			time.Sleep(time.Millisecond * 50)
 			continue
 		}
@@ -612,7 +609,7 @@ func (client *Client) GetFlipRaw(hash string) (FlipResponse2, error) {
 	}
 	flipResponse := FlipResponse2{}
 	resp := response{Result: &flipResponse}
-	if err := client.sendRequestAndParseResponse(req, 15, true, &resp); err != nil {
+	if err := client.sendRequestAndParseResponse(req, 5, false, &resp); err != nil {
 		return FlipResponse2{}, err
 	}
 	if resp.Error != nil {
@@ -621,11 +618,11 @@ func (client *Client) GetFlipRaw(hash string) (FlipResponse2, error) {
 	return flipResponse, nil
 }
 
-func (client *Client) GetFlipKeys(hash string) (FlipKeysResponse, error) {
+func (client *Client) GetFlipKeys(address, hash string) (FlipKeysResponse, error) {
 	req := request{
 		Id:      client.getReqId(),
 		Method:  "flip_getKeys",
-		Payload: []string{hash},
+		Payload: []string{address, hash},
 		Key:     client.apiKey,
 	}
 	flipKeysResponse := FlipKeysResponse{}
@@ -691,6 +688,23 @@ func (client *Client) AddIpfsData(dataHex string, pin bool) (string, error) {
 	return resp.Result.(string), nil
 }
 
+func (client *Client) IpfsDataCid(dataHex string) (string, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "ipfs_cid",
+		Payload: []interface{}{dataHex},
+		Key:     client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, 60, false, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
 func (client *Client) StoreToIpfs(cid string) (string, error) {
 	client.mutex.Lock()
 	defer client.mutex.Unlock()
@@ -712,4 +726,180 @@ func (client *Client) StoreToIpfs(cid string) (string, error) {
 		return "", errors.New(resp.Error.Message)
 	}
 	return resp.Result.(string), nil
+}
+
+func (client *Client) SendRawTx(raw []byte) (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	dataHex := hexutil.Encode(raw)
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "bcn_sendRawTx",
+		Payload: []string{dataHex},
+		Key:     client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
+func (client *Client) GetRawTx(txType uint16, from string, to *string, amount, maxFee float32, payload []byte) (string, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	var payloadHex *string
+	if len(payload) > 0 {
+		ph := hexutil.Encode(payload)
+		payloadHex = &ph
+	}
+
+	params := sendTxArgs{
+		From:       from,
+		To:         to,
+		Amount:     amount,
+		Type:       txType,
+		PayloadHex: payloadHex,
+		UseProto:   true,
+	}
+	if maxFee > 0 {
+		params.MaxFee = &maxFee
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "bcn_getRawTx",
+		Payload: []sendTxArgs{params},
+		Key:     client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return "", err
+	}
+	if resp.Error != nil {
+		return "", errors.New(resp.Error.Message)
+	}
+	return resp.Result.(string), nil
+}
+
+func (client *Client) WordsSeed() (hexutil.Bytes, error) {
+	req := request{
+		Id:     client.getReqId(),
+		Method: "dna_wordsSeed",
+		Key:    client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return hexutil.Bytes{}, err
+	}
+	if resp.Error != nil {
+		return hexutil.Bytes{}, errors.New(resp.Error.Message)
+	}
+	return hexutil.Decode(resp.Result.(string))
+}
+
+func (client *Client) SubmitRawFlip(tx *hexutil.Bytes, encryptedPublicHex *hexutil.Bytes, encryptedPrivateHex *hexutil.Bytes) (FlipSubmitResponse, error) {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	params := api.RawFlipSubmitArgs{
+		Tx:                  tx,
+		EncryptedPrivateHex: encryptedPrivateHex,
+		EncryptedPublicHex:  encryptedPublicHex,
+	}
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_rawSubmit",
+		Payload: []api.RawFlipSubmitArgs{params},
+		Key:     client.apiKey,
+	}
+	submitResp := FlipSubmitResponse{}
+	resp := response{Result: &submitResp}
+	if err := client.sendRequestAndParseResponse(req, 0, false, &resp); err != nil {
+		return FlipSubmitResponse{}, err
+	}
+	if resp.Error != nil {
+		return FlipSubmitResponse{}, errors.New(resp.Error.Message)
+	}
+	return submitResp, nil
+}
+
+func (client *Client) WordPairs(addr string, vrfHash hexutil.Bytes) ([]api.FlipWords, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_wordPairs",
+		Payload: []interface{}{addr, vrfHash},
+		Key:     client.apiKey,
+	}
+	var res []api.FlipWords
+	resp := response{Result: &res}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return nil, err
+	}
+	if resp.Error != nil {
+		return nil, errors.New(resp.Error.Message)
+	}
+	return res, nil
+}
+
+func (client *Client) SendPublicEncryptionKey(args api.EncryptionKeyArgs) error {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_sendPublicEncryptionKey",
+		Payload: []api.EncryptionKeyArgs{args},
+		Key:     client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
+		return err
+	}
+	if resp.Error != nil {
+		return errors.New(resp.Error.Message)
+	}
+	return nil
+}
+
+func (client *Client) SendPrivateEncryptionKeysPackage(args api.EncryptionKeyArgs) error {
+	client.mutex.Lock()
+	defer client.mutex.Unlock()
+
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_sendPrivateEncryptionKeysPackage",
+		Payload: []api.EncryptionKeyArgs{args},
+		Key:     client.apiKey,
+	}
+	resp := response{}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, false, &resp); err != nil {
+		return err
+	}
+	if resp.Error != nil {
+		return errors.New(resp.Error.Message)
+	}
+	return nil
+}
+
+func (client *Client) PrivateEncryptionKeyCandidates(addr common.Address) ([]hexutil.Bytes, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "flip_privateEncryptionKeyCandidates",
+		Payload: []interface{}{addr},
+		Key:     client.apiKey,
+	}
+	var res []hexutil.Bytes
+	resp := response{Result: &res}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return nil, err
+	}
+	if resp.Error != nil {
+		return nil, errors.New(resp.Error.Message)
+	}
+	return res, nil
 }

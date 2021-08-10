@@ -53,7 +53,8 @@ func (process *Process) generateTxs(flag *EpochCompletionFlag) {
 		sender := activeUsers[senderIdx]
 		recipient := activeUsers[recipientIdx]
 		amount := float32(0.01)
-		hash, err := sender.Client.SendTransaction(types.SendTx, sender.Address, &recipient.Address, amount, 1.0, nil)
+		recipientAddress := recipient.GetAddress()
+		hash, err := sender.SendTransaction(types.SendTx, &recipientAddress, amount, 1.0, nil)
 		if err != nil {
 			log.Error(fmt.Sprintf("Unable to send transaction (amount=%f) from %s to %s: %v", amount, sender.GetInfo(), recipient.GetInfo(), err))
 		}
@@ -64,11 +65,11 @@ func (process *Process) generateTxs(flag *EpochCompletionFlag) {
 	log.Info(fmt.Sprintf("Stop generating txs (test #%d)", testIndex))
 }
 
-func (process *Process) filterActiveUsers(users []int) []*user.User {
-	var activeUsers []*user.User
+func (process *Process) filterActiveUsers(users []int) []user.User {
+	var activeUsers []user.User
 	for _, userIdx := range users {
 		u := process.users[userIdx]
-		if u.Active {
+		if u.IsActive() {
 			activeUsers = append(activeUsers, u)
 		}
 	}

@@ -29,12 +29,12 @@ func GetDefaultScenario() Scenario {
 	return defaultScenario
 }
 
-func Load(workDir string, fileName string, godMode bool) Scenario {
+func Load(workDir string, fileName string, godMode bool, nodes int) Scenario {
 	incomingScenario := load(workDir, fileName)
 	if err := incomingScenario.validate(); err != nil {
 		panic(err)
 	}
-	sc := convert(incomingScenario, godMode)
+	sc := convert(incomingScenario, godMode, nodes)
 	return sc
 }
 
