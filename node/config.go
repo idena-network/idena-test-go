@@ -27,8 +27,10 @@ type specConfig struct {
 }
 
 type p2pConfig struct {
-	MaxDelay       *int
-	CollectMetrics bool
+	MaxInboundPeers  *int `json:"MaxInboundPeers,omitempty"`
+	MaxOutboundPeers *int `json:"MaxOutboundPeers,omitempty"`
+	MaxDelay         *int
+	CollectMetrics   bool
 }
 
 type rpcConfig struct {
@@ -70,7 +72,8 @@ func buildConfig(node *Node) interface{} {
 	if node.baseConfigData == nil {
 		return conf
 	}
-	return addConfig(conf, node.baseConfigData)
+	addConfig(conf, node.baseConfigData)
+	return conf
 }
 
 func (node *Node) buildNodeConfigFileData() []byte {
@@ -84,23 +87,14 @@ func (node *Node) buildNodeConfigFileData() []byte {
 	return bytes
 }
 
-func addConfig(c *specConfig, configData []byte) interface{} {
+func addConfig(c *specConfig, configData []byte) {
 	if configData == nil {
-		return c
+		return
 	}
-	cData, err := json.Marshal(c)
+	err := json.Unmarshal(configData, c)
 	if err != nil {
 		panic(err)
 	}
-	cMap := make(map[string]interface{})
-	if err := json.Unmarshal(cData, &cMap); err != nil {
-		panic(err)
-	}
-	cMap["GenesisConf"].(map[string]interface{})["Alloc"] = c.GenesisConf.Alloc
-	if err := json.Unmarshal(configData, &cMap); err != nil {
-		panic(err)
-	}
-	return cMap
 }
 
 func (node *Node) buildSpecificConfig() *specConfig {

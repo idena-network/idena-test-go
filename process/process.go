@@ -43,53 +43,56 @@ const (
 )
 
 type Process struct {
-	bus                    eventbus.Bus
-	sc                     scenario.Scenario
-	es                     *epochState
-	wg                     *sync.WaitGroup
-	workDir                string
-	execCommandName        string
-	users                  []*user.User
-	godUser                *user.User
-	godAddress             string
-	ipfsBootNode           string
-	ceremonyTime           int64
-	testCounter            int
-	reqIdHolder            *client.ReqIdHolder
-	verbosity              int
-	maxNetDelay            int
-	rpcHost                string
-	nodeBaseConfigFileName string
-	nodeBaseConfigData     []byte
-	godMode                bool
-	godHost                string
-	apiClient              *apiclient.Client
-	firstPortOffset        int
-	mutex                  sync.Mutex
-	nodeStartWaitingTime   time.Duration
-	nodeStartPauseTime     time.Duration
-	nodeStopWaitingTime    time.Duration
-	firstRpcPort           int
-	firstIpfsPort          int
-	firstPort              int
-	flipsChan              chan int
-	lowPowerProfileRate    float32
-	lowPowerProfileCount   int
-	ceremonyIntervals      *client.CeremonyIntervals
-	fastNewbie             bool
-	validationOnly         bool
-	minFlipSize            int
-	maxFlipSize            int
-	decryptFlips           bool
-	randomApiKeys          bool
-	predefinedApiKeys      []string
+	bus                           eventbus.Bus
+	sc                            scenario.Scenario
+	es                            *epochState
+	wg                            *sync.WaitGroup
+	workDir                       string
+	execCommandName               string
+	users                         []*user.User
+	godUser                       *user.User
+	godAddress                    string
+	ipfsBootNode                  string
+	ceremonyTime                  int64
+	testCounter                   int
+	reqIdHolder                   *client.ReqIdHolder
+	verbosity                     int
+	maxNetDelay                   int
+	rpcHost                       string
+	nodeBaseConfigFileName        string
+	nodeBaseConfigData            []byte
+	godMode                       bool
+	godHost                       string
+	apiClient                     *apiclient.Client
+	firstPortOffset               int
+	mutex                         sync.Mutex
+	nodeStartWaitingTime          time.Duration
+	nodeStartPauseTime            time.Duration
+	nodeStopWaitingTime           time.Duration
+	firstRpcPort                  int
+	firstIpfsPort                 int
+	firstPort                     int
+	flipsChan                     chan int
+	lowPowerProfileRate           float32
+	lowPowerProfileCount          int
+	ceremonyIntervals             *client.CeremonyIntervals
+	fastNewbie                    bool
+	validationOnly                bool
+	allowFailNotification         bool
+	minFlipSize                   int
+	maxFlipSize                   int
+	decryptFlips                  bool
+	randomApiKeys                 bool
+	predefinedApiKeys             []string
+	validationTimeoutExtraMinutes int
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
 	nodeBaseConfigFileName string, rpcHost string, verbosity int, maxNetDelay int, godMode bool, godHost string,
 	nodeStartWaitingTime time.Duration, nodeStartPauseTime time.Duration, nodeStopWaitingTime time.Duration,
 	firstRpcPort int, firstIpfsPort int, firstPort int, flipsChanSize int, lowPowerProfileRate float32,
-	fastNewbie bool, validationOnly bool, minFlipSize int, maxFlipSize int, decryptFlips, randomApiKeys bool, predefinedApiKeys []string) *Process {
+	fastNewbie, validationOnly, allowFailNotification bool, minFlipSize int, maxFlipSize int, decryptFlips,
+	randomApiKeys bool, predefinedApiKeys []string, validationTimeoutExtraMinutes int) *Process {
 	var apiClient *apiclient.Client
 	if !godMode {
 		apiClient = apiclient.NewClient(fmt.Sprintf("http://%s:%d/", godHost, 1111))
@@ -99,33 +102,35 @@ func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execC
 		flipsChan = make(chan int, flipsChanSize)
 	}
 	return &Process{
-		sc:                     sc,
-		workDir:                workDir,
-		reqIdHolder:            client.NewReqIdHolder(),
-		execCommandName:        execCommandName,
-		rpcHost:                rpcHost,
-		verbosity:              verbosity,
-		maxNetDelay:            maxNetDelay,
-		nodeBaseConfigFileName: nodeBaseConfigFileName,
-		godMode:                godMode,
-		godHost:                godHost,
-		apiClient:              apiClient,
-		firstPortOffset:        firstPortOffset,
-		nodeStartWaitingTime:   nodeStartWaitingTime,
-		nodeStartPauseTime:     nodeStartPauseTime,
-		nodeStopWaitingTime:    nodeStopWaitingTime,
-		firstRpcPort:           firstRpcPort,
-		firstIpfsPort:          firstIpfsPort,
-		firstPort:              firstPort,
-		flipsChan:              flipsChan,
-		lowPowerProfileRate:    lowPowerProfileRate,
-		fastNewbie:             fastNewbie,
-		validationOnly:         validationOnly,
-		minFlipSize:            minFlipSize,
-		maxFlipSize:            maxFlipSize,
-		decryptFlips:           decryptFlips,
-		randomApiKeys:          randomApiKeys,
-		predefinedApiKeys:      predefinedApiKeys,
+		sc:                            sc,
+		workDir:                       workDir,
+		reqIdHolder:                   client.NewReqIdHolder(),
+		execCommandName:               execCommandName,
+		rpcHost:                       rpcHost,
+		verbosity:                     verbosity,
+		maxNetDelay:                   maxNetDelay,
+		nodeBaseConfigFileName:        nodeBaseConfigFileName,
+		godMode:                       godMode,
+		godHost:                       godHost,
+		apiClient:                     apiClient,
+		firstPortOffset:               firstPortOffset,
+		nodeStartWaitingTime:          nodeStartWaitingTime,
+		nodeStartPauseTime:            nodeStartPauseTime,
+		nodeStopWaitingTime:           nodeStopWaitingTime,
+		firstRpcPort:                  firstRpcPort,
+		firstIpfsPort:                 firstIpfsPort,
+		firstPort:                     firstPort,
+		flipsChan:                     flipsChan,
+		lowPowerProfileRate:           lowPowerProfileRate,
+		fastNewbie:                    fastNewbie,
+		validationOnly:                validationOnly,
+		allowFailNotification:         allowFailNotification,
+		minFlipSize:                   minFlipSize,
+		maxFlipSize:                   maxFlipSize,
+		decryptFlips:                  decryptFlips,
+		randomApiKeys:                 randomApiKeys,
+		predefinedApiKeys:             predefinedApiKeys,
+		validationTimeoutExtraMinutes: validationTimeoutExtraMinutes,
 	}
 }
 

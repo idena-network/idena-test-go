@@ -9,32 +9,34 @@ import (
 )
 
 type Config struct {
-	Verbosity           int
-	NodeVerbosity       int
-	MaxNetDelay         *int
-	WorkDir             string
-	Command             string
-	Scenario            string
-	NodeConfig          string
-	RpcAddr             string
-	GodMode             bool
-	GodHost             string
-	PortOffset          int
-	NodeStartWaitingSec int
-	NodeStartPauseSec   int
-	NodeStopWaitingSec  int
-	FirstRpcPort        int
-	FirstIpfsPort       int
-	FirstPort           int
-	FlipsChanSize       int
-	LowPowerProfileRate float32
-	FastNewbie          bool
-	ValidationOnly      bool
-	MinFlipSize         int
-	MaxFlipSize         int
-	DecryptFlips        bool
-	RandomApiKeys       bool
-	PredefinedApiKeys   []string
+	Verbosity                     int
+	NodeVerbosity                 int
+	MaxNetDelay                   *int
+	WorkDir                       string
+	Command                       string
+	Scenario                      string
+	NodeConfig                    string
+	RpcAddr                       string
+	GodMode                       bool
+	GodHost                       string
+	PortOffset                    int
+	NodeStartWaitingSec           int
+	NodeStartPauseSec             int
+	NodeStopWaitingSec            int
+	FirstRpcPort                  int
+	FirstIpfsPort                 int
+	FirstPort                     int
+	FlipsChanSize                 int
+	LowPowerProfileRate           float32
+	FastNewbie                    bool
+	ValidationOnly                bool
+	AllowFailNotification         bool
+	MinFlipSize                   int
+	MaxFlipSize                   int
+	DecryptFlips                  bool
+	RandomApiKeys                 bool
+	PredefinedApiKeys             []string
+	ValidationTimeoutExtraMinutes int
 }
 
 func LoadFromFileWithDefaults(path string, godBotMode bool, portOffset int) Config {
@@ -73,24 +75,25 @@ func defaultConfig() Config {
 	}
 	defaultMaxNetDelay := 500
 	return Config{
-		Verbosity:           int(log.LvlInfo),
-		NodeVerbosity:       int(log.LvlTrace),
-		MaxNetDelay:         &defaultMaxNetDelay,
-		WorkDir:             defaultWorkDir,
-		Command:             "idena-go",
-		RpcAddr:             "localhost",
-		NodeStartWaitingSec: 10,
-		NodeStartPauseSec:   1,
-		NodeStopWaitingSec:  4,
-		FirstRpcPort:        9010,
-		FirstIpfsPort:       4010,
-		FirstPort:           40410,
-		FlipsChanSize:       0,
-		LowPowerProfileRate: 0,
-		MinFlipSize:         80000,
-		MaxFlipSize:         160000,
-		DecryptFlips:        false,
-		RandomApiKeys:       false,
+		Verbosity:                     int(log.LvlInfo),
+		NodeVerbosity:                 int(log.LvlTrace),
+		MaxNetDelay:                   &defaultMaxNetDelay,
+		WorkDir:                       defaultWorkDir,
+		Command:                       "idena-go",
+		RpcAddr:                       "localhost",
+		NodeStartWaitingSec:           10,
+		NodeStartPauseSec:             1,
+		NodeStopWaitingSec:            4,
+		FirstRpcPort:                  9010,
+		FirstIpfsPort:                 4010,
+		FirstPort:                     40410,
+		FlipsChanSize:                 0,
+		LowPowerProfileRate:           0,
+		MinFlipSize:                   80000,
+		MaxFlipSize:                   160000,
+		DecryptFlips:                  false,
+		RandomApiKeys:                 false,
+		ValidationTimeoutExtraMinutes: 5,
 	}
 }
 
@@ -148,7 +151,11 @@ func merge(from *Config, to *Config) {
 	}
 	to.FastNewbie = from.FastNewbie
 	to.ValidationOnly = from.ValidationOnly
+	to.AllowFailNotification = from.AllowFailNotification
 	to.DecryptFlips = from.DecryptFlips
 	to.RandomApiKeys = from.RandomApiKeys
 	to.PredefinedApiKeys = from.PredefinedApiKeys
+	if from.ValidationTimeoutExtraMinutes > 0 {
+		to.ValidationTimeoutExtraMinutes = from.ValidationTimeoutExtraMinutes
+	}
 }

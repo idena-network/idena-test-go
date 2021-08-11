@@ -101,11 +101,13 @@ func main() {
 			conf.LowPowerProfileRate,
 			conf.FastNewbie,
 			conf.ValidationOnly,
+			conf.AllowFailNotification,
 			conf.MinFlipSize,
 			conf.MaxFlipSize,
 			conf.DecryptFlips,
 			conf.RandomApiKeys,
 			conf.PredefinedApiKeys,
+			conf.ValidationTimeoutExtraMinutes,
 		)
 
 		if conf.GodMode {
