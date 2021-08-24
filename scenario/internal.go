@@ -27,6 +27,7 @@ type Scenario struct {
 	MultiBotPools    *MultiBotPools
 	StoreToIpfsTxs   map[int]map[int]*StoreToIpfsTxs
 	Kills            map[int][]int
+	ExternalUserKeys []string
 }
 
 type NewUsers struct {

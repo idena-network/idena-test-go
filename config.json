@@ -1,14 +1,20 @@
 {
   "Verbosity": 3,
-  "NodeVerbosity": 5,
-  "MaxNetDelay": 500,
+  "NodeVerbosity": 3,
+  "MaxNetDelay": 0,
   "WorkDir": "",
   "Command": "idena-go",
   "Scenario": "scenario.json",
   "NodeConfig": "nodeConfig.json",
-  "RpcAddr": "localhost",
+  "RpcAddr": "0.0.0.0",
   "GodMode": true,
-  "MinFlipSize": 80000,
-  "MaxFlipSize": 160000,
-  "DecryptFlips": false
+  "DecryptFlips": false,
+  "FastNewbie": false,
+  "MinFlipSize":3,
+  "MaxFlipSize":5,
+  "FirstRpcPort": 9000,
+  "NodeStartWaitingSec": 20,
+  "NodeStartPauseSec": 2,
+  "LowPowerProfileRate": 0,
+  "RandomApiKeys": false
 }

@@ -41,6 +41,9 @@ func (process *Process) init() {
 
 	process.bus.Subscribe(events.NodeCrashedEventID, func(e eventbus.Event) {
 		nodeCrashedEvent := e.(*events.NodeCrashedEvent)
+		if nodeCrashedEvent.Index >= 500 {
+			return
+		}
 		u := process.users[nodeCrashedEvent.Index]
 		if !u.IsActive() {
 			log.Warn(fmt.Sprintf("%v node will not be restarted due to crash since it is not active", u.GetInfo()))
@@ -55,6 +58,8 @@ func (process *Process) init() {
 			}
 		}
 	})
+
+	process.createExternalUsers()
 
 	log.Debug("Initialization completed")
 }
@@ -109,7 +114,8 @@ func (process *Process) createGodUser() {
 	if profile == lowPowerProfile {
 		process.lowPowerProfileCount++
 	}
-	n := node.NewNode(index,
+	n := node.NewNode("",
+		index,
 		process.workDir,
 		process.execCommandName,
 		DataDir,
@@ -205,4 +211,40 @@ func (process *Process) restartGodNode() {
 	u.UpdateNodeParameters(process.godAddress, process.ipfsBootNode, process.ceremonyTime)
 	process.handleError(u.Start(node.DeleteDb), "Unable to start node")
 	log.Info("Restarted god node")
+}
+
+func (process *Process) createExternalUsers() {
+	index := 500
+	for _, privateKey := range process.sc.ExternalUserKeys {
+		rpcPort := process.firstRpcPort + process.firstPortOffset + index
+		apiKey := generateApiKey(index, process.randomApiKeys, process.predefinedApiKeys)
+		profile := ""
+		n := node.NewNode(privateKey,
+			index,
+			process.workDir,
+			process.execCommandName,
+			DataDir,
+			getNodeDataDir(index, rpcPort),
+			process.firstPort+process.firstPortOffset+index,
+			false,
+			process.rpcHost,
+			rpcPort,
+			process.ipfsBootNode,
+			process.firstIpfsPort+process.firstPortOffset+index,
+			process.godAddress,
+			process.ceremonyTime,
+			process.verbosity,
+			process.maxNetDelay,
+			process.nodeBaseConfigData,
+			process.nodeStartWaitingTime,
+			process.nodeStopWaitingTime,
+			apiKey,
+			profile,
+			isNodeShared(index, process.sc),
+		)
+		u := user.NewUser(nil, client.NewClient(rpcPort, index, apiKey, process.bus), n, index)
+		process.externalUsers = append(process.externalUsers, u)
+		log.Info(fmt.Sprintf("%v created as external", u.GetInfo()))
+		index++
+	}
 }

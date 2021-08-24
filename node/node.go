@@ -7,6 +7,7 @@ import (
 	"github.com/idena-network/idena-go/crypto"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +34,7 @@ const (
 )
 
 type Node struct {
+	privateKey       string
 	index            int
 	workDir          string
 	execCommandName  string
@@ -61,12 +63,13 @@ type Node struct {
 	privateKeyMutex sync.Mutex
 }
 
-func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int,
+func NewNode(privateKey string, index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int,
 	autoMine bool, rpcHost string, rpcPort int, ipfsBootNode string, ipfsPort int, godAddress string,
 	ceremonyTime int64, verbosity int, maxNetDelay int, baseConfigData []byte, startWaitingTime time.Duration,
 	stopWaitingTime time.Duration, apiKeyValue string, profile string, isShared bool) *Node {
 
 	return &Node{
+		privateKey:       privateKey,
 		index:            index,
 		workDir:          workDir,
 		execCommandName:  execCommandName,
@@ -130,6 +133,9 @@ func (node *Node) Start(deleteMode StartMode) error {
 	if err := node.createConfigFile(); err != nil {
 		return err
 	}
+	if err := node.writePrivateKey(); err != nil {
+		return err
+	}
 
 	args := node.getArgs()
 	execCommandName := node.execCommandName
@@ -153,8 +159,33 @@ func (node *Node) Start(deleteMode StartMode) error {
 	node.process = command.Process
 	time.Sleep(node.startWaitingTime)
 
-	log.Info(fmt.Sprintf("Started node, command: %v, workDir: %v, parameters: %v", execCommandName, node.workDir, args))
+	log.Info(fmt.Sprintf("Started node, command: %v, workDir: %v, private key: %v, parameters: %v", execCommandName, node.workDir, node.readPrivateKey(), args))
 	return nil
+}
+
+func (node *Node) readPrivateKey() string {
+	path := filepath.Join(node.workDir, node.dataDir, node.nodeDataDir, "keystore", "nodekey")
+	keyBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Warn(fmt.Sprintf("Unable to read node key file %v", path))
+		return ""
+	}
+	return string(keyBytes)
+}
+
+func (node *Node) writePrivateKey() error {
+	if len(node.privateKey) == 0 {
+		return nil
+	}
+	dir := filepath.Join(node.workDir, node.dataDir, node.nodeDataDir, "keystore")
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return errors.Wrap(err, "unable to create keystore dir")
+		}
+	}
+	path := filepath.Join(dir, "nodekey")
+	return errors.Wrap(ioutil.WriteFile(path, []byte(node.privateKey), 0600), "unable to write private key file")
 }
 
 func (node *Node) Stop() error {

@@ -1,4 +1,8 @@
 {
-  "users": 5,
-  "ceremonyMinOffset": 4
+  "users": 6,
+  "ceremonyMinOffset": 8,
+  "externalUserKeys": [
+    "3000bff9cf23d53727ba070f3893b861391ec040ca3fd0765282cfaeb6891139",
+    "85a4918da904953422ae366544018b94bd48c8a01cfdf51b5f8e5838866edc1a"
+  ]
 }

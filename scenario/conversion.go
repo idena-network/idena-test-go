@@ -36,6 +36,7 @@ func convert(incomingSc incomingScenario, godMode bool, nodes int) Scenario {
 	sc.KillInvitees = convertKillInvitees(incomingSc.KillInvitees)
 	sc.StoreToIpfsTxs = convertStoreToIpfsTxs(incomingSc.StoreToIpfsTxs, godMode)
 	sc.Kills = convertEpochsNodes(incomingSc.Kills)
+	sc.ExternalUserKeys = incomingSc.ExternalUserKeys
 	return sc
 }
 

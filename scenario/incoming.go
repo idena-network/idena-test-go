@@ -23,6 +23,7 @@ type incomingScenario struct {
 	StoreToIpfsTxs     []storeToIpfsTxs     `json:"storeToIpfsTxs"`
 	Kills              []epochsNodes        `json:"kills"`
 	AddStakes          []addStakes          `json:"addStakes"`
+	ExternalUserKeys   []string             `json:"externalUserKeys"`
 }
 
 type newUsers struct {

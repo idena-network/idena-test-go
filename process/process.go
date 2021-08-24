@@ -53,6 +53,7 @@ type Process struct {
 	workDir                       string
 	execCommandName               string
 	users                         []user.User
+	externalUsers                 []user.User
 	godUser                       user.User
 	godAddress                    string
 	ipfsBootNode                  string
@@ -87,6 +88,7 @@ type Process struct {
 	randomApiKeys                 bool
 	predefinedApiKeys             []string
 	validationTimeoutExtraMinutes int
+	externalUsersMutex            sync.Mutex
 }
 
 func NewProcess(sc scenario.Scenario, firstPortOffset int, workDir string, execCommandName string,
@@ -150,6 +152,11 @@ func (process *Process) Start() {
 
 func (process *Process) destroy() {
 	for _, u := range process.users {
+		if err := u.DestroyNode(); err != nil {
+			log.Warn(err.Error())
+		}
+	}
+	for _, u := range process.externalUsers {
 		if err := u.DestroyNode(); err != nil {
 			log.Warn(err.Error())
 		}
@@ -308,7 +315,8 @@ func (process *Process) createUser(index int, command string, sharedNode *int) u
 		if profile == lowPowerProfile {
 			process.lowPowerProfileCount++
 		}
-		n := node.NewNode(index,
+		n := node.NewNode("",
+			index,
 			process.workDir,
 			process.execCommandName,
 			DataDir,

@@ -1,13 +1,18 @@
 {
   "Validation": {
-    "ValidationInterval": 600000000000,
-    "FlipLotteryDuration": 60000000000,
+    "ValidationInterval15minutes": 900000000000,
+    "ValidationInterval20minutes": 1200000000000,
+    "ValidationInterval2hours": 7200000000000,
+    "ValidationInterval": 7200000000000,
+    "FlipLotteryDuration": 120000000000,
     "ShortSessionDuration": 120000000000,
-    "LongSessionDuration": 120000000000
+    "LongSessionDuration": 240000000000
   },
   "Consensus": {
-    "StatusSwitchRange": 5,
-    "DelegationSwitchRange": 5,
-    "MinProposerThreshold": 0.1
+    "StatusSwitchRange": 1,
+    "MinProposerThreshold": 0.01
+  },
+  "IpfsConf": {
+    "Profile": "server"
   }
 }
