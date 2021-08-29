@@ -67,6 +67,7 @@ func (process *Process) testExternalUsers(users []user.User) {
 }
 
 func (process *Process) testExternalUser(u user.User) {
+	process.initTest(u)
 	process.startNode(u, node.DeleteNothing)
 
 	if len(u.GetAddress()) == 0 {

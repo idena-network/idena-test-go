@@ -34,30 +34,30 @@ const (
 )
 
 type Node struct {
-	privateKey       string
-	index            int
-	workDir          string
-	execCommandName  string
-	dataDir          string
-	nodeDataDir      string
-	port             int
-	autoMine         bool
-	RpcHost          string
-	RpcPort          int
-	IpfsBootNode     string
-	ipfsPort         int
-	GodAddress       string
-	CeremonyTime     int64
-	process          *os.Process
-	logWriter        *bufio.Writer
-	verbosity        int
-	maxNetDelay      int
-	baseConfigData   []byte
-	startWaitingTime time.Duration
-	stopWaitingTime  time.Duration
-	apiKeyValue      string
-	profile          string
-	isShared         bool
+	predefinedPrivateKey string
+	index                int
+	workDir              string
+	execCommandName      string
+	dataDir              string
+	nodeDataDir          string
+	port                 int
+	autoMine             bool
+	RpcHost              string
+	RpcPort              int
+	IpfsBootNode         string
+	ipfsPort             int
+	GodAddress           string
+	CeremonyTime         int64
+	process              *os.Process
+	logWriter            *bufio.Writer
+	verbosity            int
+	maxNetDelay          int
+	baseConfigData       []byte
+	startWaitingTime     time.Duration
+	stopWaitingTime      time.Duration
+	apiKeyValue          string
+	profile              string
+	isShared             bool
 
 	privateKey      *ecdsa.PrivateKey
 	privateKeyMutex sync.Mutex
@@ -69,28 +69,28 @@ func NewNode(privateKey string, index int, workDir string, execCommandName strin
 	stopWaitingTime time.Duration, apiKeyValue string, profile string, isShared bool) *Node {
 
 	return &Node{
-		privateKey:       privateKey,
-		index:            index,
-		workDir:          workDir,
-		execCommandName:  execCommandName,
-		dataDir:          dataDir,
-		nodeDataDir:      nodeDataDir,
-		port:             port,
-		autoMine:         autoMine,
-		RpcHost:          rpcHost,
-		RpcPort:          rpcPort,
-		IpfsBootNode:     ipfsBootNode,
-		ipfsPort:         ipfsPort,
-		GodAddress:       godAddress,
-		CeremonyTime:     ceremonyTime,
-		verbosity:        verbosity,
-		maxNetDelay:      maxNetDelay,
-		baseConfigData:   baseConfigData,
-		startWaitingTime: startWaitingTime,
-		stopWaitingTime:  stopWaitingTime,
-		apiKeyValue:      apiKeyValue,
-		profile:          profile,
-		isShared:         isShared,
+		predefinedPrivateKey: privateKey,
+		index:                index,
+		workDir:              workDir,
+		execCommandName:      execCommandName,
+		dataDir:              dataDir,
+		nodeDataDir:          nodeDataDir,
+		port:                 port,
+		autoMine:             autoMine,
+		RpcHost:              rpcHost,
+		RpcPort:              rpcPort,
+		IpfsBootNode:         ipfsBootNode,
+		ipfsPort:             ipfsPort,
+		GodAddress:           godAddress,
+		CeremonyTime:         ceremonyTime,
+		verbosity:            verbosity,
+		maxNetDelay:          maxNetDelay,
+		baseConfigData:       baseConfigData,
+		startWaitingTime:     startWaitingTime,
+		stopWaitingTime:      stopWaitingTime,
+		apiKeyValue:          apiKeyValue,
+		profile:              profile,
+		isShared:             isShared,
 	}
 }
 
@@ -174,7 +174,7 @@ func (node *Node) readPrivateKey() string {
 }
 
 func (node *Node) writePrivateKey() error {
-	if len(node.privateKey) == 0 {
+	if len(node.predefinedPrivateKey) == 0 {
 		return nil
 	}
 	dir := filepath.Join(node.workDir, node.dataDir, node.nodeDataDir, "keystore")
@@ -185,7 +185,7 @@ func (node *Node) writePrivateKey() error {
 		}
 	}
 	path := filepath.Join(dir, "nodekey")
-	return errors.Wrap(ioutil.WriteFile(path, []byte(node.privateKey), 0600), "unable to write private key file")
+	return errors.Wrap(ioutil.WriteFile(path, []byte(node.predefinedPrivateKey), 0600), "unable to write private key file")
 }
 
 func (node *Node) Stop() error {
