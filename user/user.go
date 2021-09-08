@@ -49,7 +49,7 @@ type User interface {
 	Transaction(hash string) (api.Transaction, error)
 	SendInvite(to string, amount float32) (client.Invite, error)
 	ActivateInvite() (string, error)
-	GetRequiredFlipsInfo() (int, []api.FlipWords, error)
+	GetRequiredFlipsInfo() (int, []FlipWords, error)
 	SubmitFlip(privateHex, publicHex string, wordPairIdx uint8) (client.FlipSubmitResponse, error)
 	SendPrivateFlipKeysPackages() error
 	SendPublicFlipKey() error
@@ -66,6 +66,16 @@ type User interface {
 
 	AddIpfsData(dataHex string, pin bool) (string, error)
 	StoreToIpfs(cid string) (string, error)
+}
+
+type FlipWords struct {
+	Words [2]FlipWord
+}
+
+type FlipWord struct {
+	Id          uint32
+	Name        string
+	Description string
 }
 
 type user struct {
@@ -259,7 +269,7 @@ func (u *user) SubmitFlip(privateHex, publicHex string, wordPairIdx uint8) (clie
 	return res, err
 }
 
-func (u *user) GetRequiredFlipsInfo() (int, []api.FlipWords, error) {
+func (u *user) GetRequiredFlipsInfo() (int, []FlipWords, error) {
 	identity, err := u.client.GetIdentity(u.GetAddress())
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "unable to get identity")
@@ -275,7 +285,31 @@ func (u *user) GetRequiredFlipsInfo() (int, []api.FlipWords, error) {
 			}
 		}
 	}
-	return int(flipsCount) - len(identity.Flips), identity.FlipKeyWordPairs, nil
+	flipsWords, err := loadKeyWords(identity.FlipKeyWordPairs, u.client)
+	if err != nil {
+		return 0, nil, err
+	}
+	return int(flipsCount) - len(identity.Flips), flipsWords, nil
+}
+
+func loadKeyWords(apiFlipWords []api.FlipWords, client *client.Client) ([]FlipWords, error) {
+	flipsWords := make([]FlipWords, 0, len(apiFlipWords))
+	for _, pair := range apiFlipWords {
+		flipWord := FlipWords{}
+		for i, word := range pair.Words {
+			fw, err := client.KeyWord(int(word))
+			if err != nil {
+				return nil, errors.Wrapf(err, "unable to get keyword %v", word)
+			}
+			flipWord.Words[i] = FlipWord{
+				Id:          word,
+				Name:        fw.Name,
+				Description: fw.Desc,
+			}
+		}
+		flipsWords = append(flipsWords, flipWord)
+	}
+	return flipsWords, nil
 }
 
 func (u *user) SendPrivateFlipKeysPackages() error {

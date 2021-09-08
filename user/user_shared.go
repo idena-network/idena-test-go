@@ -426,7 +426,7 @@ func (u *sharedNodeUser) SubmitFlip(privateHex, publicHex string, wordPairIdx ui
 	return res, err
 }
 
-func (u *sharedNodeUser) GetRequiredFlipsInfo() (int, []api.FlipWords, error) {
+func (u *sharedNodeUser) GetRequiredFlipsInfo() (int, []FlipWords, error) {
 	identity, err := u.client.GetIdentity(u.GetAddress())
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "unable to get identity")
@@ -448,7 +448,11 @@ func (u *sharedNodeUser) GetRequiredFlipsInfo() (int, []api.FlipWords, error) {
 	}
 	hash, _ := u.vrfEvaluate(wordsSeed)
 	flipKeyWordPairs, err := u.client.WordPairs(u.GetAddress(), hash[:])
-	return int(flipsCount) - len(identity.Flips), flipKeyWordPairs, nil
+	flipsWords, err := loadKeyWords(flipKeyWordPairs, u.client)
+	if err != nil {
+		return 0, nil, err
+	}
+	return int(flipsCount) - len(identity.Flips), flipsWords, nil
 }
 
 func (u *sharedNodeUser) SendPrivateFlipKeysPackages() error {

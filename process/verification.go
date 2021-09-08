@@ -386,7 +386,7 @@ func (process *Process) submitFlips(u user.User, godAddress string) {
 		}
 		log.Info(fmt.Sprintf("%v submitted flip %v", u.GetInfo(), flip))
 		if process.getCurrentTestIndex() > 0 {
-			process.es.wordsByCid[flipCid] = [2]uint32{words[wordPairIdx].Words[0], words[wordPairIdx].Words[1]}
+			process.es.wordsByCid[flipCid] = [2]uint32{words[wordPairIdx].Words[0].Id, words[wordPairIdx].Words[1].Id}
 		}
 		if process.flipsChan != nil {
 			<-process.flipsChan
@@ -437,7 +437,7 @@ func determineFlipAnswer(flipHash client.FlipHashesResponse) byte {
 	return answer
 }
 
-func (process *Process) getFlipsInfoToSubmit(u user.User, godAddress string) (int, []api.FlipWords) {
+func (process *Process) getFlipsInfoToSubmit(u user.User, godAddress string) (int, []user.FlipWords) {
 	requiredFlipsCount, words := process.getRequiredFlipsInfo(u)
 	if process.getCurrentTestIndex() == 0 && u.GetAddress() == godAddress && requiredFlipsCount == 0 {
 		requiredFlipsCount = initialRequiredFlips
@@ -462,7 +462,7 @@ func (process *Process) getScUserCeremony(u user.User) *scenario.UserCeremony {
 	return ceremony.UserCeremonies[u.GetIndex()]
 }
 
-func (process *Process) getRequiredFlipsInfo(u user.User) (int, []api.FlipWords) {
+func (process *Process) getRequiredFlipsInfo(u user.User) (int, []user.FlipWords) {
 	flipsToSubmit, words, err := u.GetRequiredFlipsInfo()
 	process.handleError(err, fmt.Sprintf("%v unable to get required flips info", u.GetInfo()))
 	return flipsToSubmit, words

@@ -8,6 +8,7 @@ import (
 	"github.com/idena-network/idena-go/common"
 	"github.com/idena-network/idena-go/common/eventbus"
 	"github.com/idena-network/idena-go/common/hexutil"
+	"github.com/idena-network/idena-go/keywords"
 	"github.com/idena-network/idena-test-go/events"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/pkg/errors"
@@ -902,4 +903,22 @@ func (client *Client) PrivateEncryptionKeyCandidates(addr common.Address) ([]hex
 		return nil, errors.New(resp.Error.Message)
 	}
 	return res, nil
+}
+
+func (client *Client) KeyWord(index int) (keywords.Keyword, error) {
+	req := request{
+		Id:      client.getReqId(),
+		Method:  "bcn_keyWord",
+		Payload: []int{index},
+		Key:     client.apiKey,
+	}
+	keywordResponse := keywords.Keyword{}
+	resp := response{Result: &keywordResponse}
+	if err := client.sendRequestAndParseResponse(req, defaultTimeoutSec, true, &resp); err != nil {
+		return keywords.Keyword{}, err
+	}
+	if resp.Error != nil {
+		return keywords.Keyword{}, errors.New(resp.Error.Message)
+	}
+	return keywordResponse, nil
 }
