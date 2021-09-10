@@ -4,7 +4,7 @@ require (
 	github.com/deckarep/golang-set v1.7.1
 	github.com/go-stack/stack v1.8.0
 	github.com/google/tink/go v0.0.0-20200401233402-a389e601043a
-	github.com/idena-network/idena-go v0.26.7
+	github.com/idena-network/idena-go v0.26.8-0.20210826204204-d6f9cb986632
 	github.com/imdario/mergo v0.3.12
 	github.com/ipfs/go-cid v0.0.7
 	github.com/pkg/errors v0.9.1

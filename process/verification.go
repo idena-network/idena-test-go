@@ -39,7 +39,7 @@ func (process *Process) test() {
 	process.wg.Add(len(process.users) + newUsers)
 	process.es = &epochState{
 		userStates: make(map[int]*userEpochState),
-		wordsByCid: make(map[string][2]uint32),
+		wordsByCid: &sync.Map{},
 	}
 	process.testUsers(process.users)
 
@@ -386,7 +386,7 @@ func (process *Process) submitFlips(u user.User, godAddress string) {
 		}
 		log.Info(fmt.Sprintf("%v submitted flip %v", u.GetInfo(), flip))
 		if process.getCurrentTestIndex() > 0 {
-			process.es.wordsByCid[flipCid] = [2]uint32{words[wordPairIdx].Words[0].Id, words[wordPairIdx].Words[1].Id}
+			process.es.wordsByCid.Store(flipCid, [2]uint32{words[wordPairIdx].Words[0].Id, words[wordPairIdx].Words[1].Id})
 		}
 		if process.flipsChan != nil {
 			<-process.flipsChan
@@ -515,8 +515,8 @@ func (process *Process) assertFlipWords(u user.User, flipHash string, flipWordsR
 			fmt.Sprintf("%v equal flip words: %v, cid %s", u.GetInfo(), flipWordsResponse.Words, flipHash)
 		process.handleError(errors.New(message), "")
 	}
-	if words, ok := process.es.wordsByCid[flipHash]; ok {
-		if uint32(flipWordsResponse.Words[0]) != words[0] || uint32(flipWordsResponse.Words[1]) != words[1] {
+	if words, ok := process.es.wordsByCid.Load(flipHash); ok {
+		if uint32(flipWordsResponse.Words[0]) != words.([2]uint32)[0] || uint32(flipWordsResponse.Words[1]) != words.([2]uint32)[1] {
 			message :=
 				fmt.Sprintf("%v invalid flip words: %v, expected: %v, cid %s", u.GetInfo(), flipWordsResponse.Words, words, flipHash)
 			process.handleError(errors.New(message), "")

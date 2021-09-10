@@ -12,7 +12,7 @@ import (
 
 type epochState struct {
 	userStates map[int]*userEpochState // user index -> userEpochState
-	wordsByCid map[string][2]uint32
+	wordsByCid *sync.Map
 }
 
 type userEpochState struct {
