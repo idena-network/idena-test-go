@@ -249,7 +249,13 @@ func (process *Process) startNewNodesAndSendInvites(epochInviterNewUsers *scenar
 	process.getNodeAddresses(users)
 
 	if epochInviterNewUsers.Inviter != nil {
-		process.sendInvites(*epochInviterNewUsers.Inviter, users)
+		var amount float32
+		if epochInviterNewUsers.InviteAmount != nil {
+			amount = *epochInviterNewUsers.InviteAmount
+		} else {
+			amount = process.sc.InviteAmount
+		}
+		process.sendInvites(*epochInviterNewUsers.Inviter, amount, users)
 	}
 
 	return users
@@ -383,7 +389,7 @@ func (process *Process) stopNode(u user.User) {
 	log.Info(fmt.Sprintf("Stopped node %v", u.GetInfo()))
 }
 
-func (process *Process) sendInvites(inviterIndex int, users []user.User) {
+func (process *Process) sendInvites(inviterIndex int, inviteAmount float32, users []user.User) {
 	if process.godMode {
 		invitesCount := 0
 		for _, u := range users {
@@ -394,7 +400,7 @@ func (process *Process) sendInvites(inviterIndex int, users []user.User) {
 			} else {
 				recipient = u.GetAddress()
 			}
-			invite, err := sender.SendInvite(recipient, process.sc.InviteAmount)
+			invite, err := sender.SendInvite(recipient, inviteAmount)
 			process.handleError(err, fmt.Sprintf("%v unable to send invite to %v", sender.GetInfo(), u.GetInfo()))
 			log.Info(fmt.Sprintf("%s sent invite %s to %s", sender.GetInfo(), invite.Hash, u.GetInfo()))
 			invitesCount++

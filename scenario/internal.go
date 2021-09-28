@@ -27,10 +27,11 @@ type Scenario struct {
 }
 
 type NewUsers struct {
-	Count      int
-	Inviter    *int
-	Command    string
-	SharedNode *int
+	Count        int
+	Inviter      *int
+	Command      string
+	SharedNode   *int
+	InviteAmount *float32
 }
 
 type Txs struct {

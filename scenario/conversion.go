@@ -65,10 +65,11 @@ func convertEpochNewUsers(incomingUsers int, incomingNewUsers []newUsers) map[in
 		epochs, _ := parseNums(du.Epochs)
 		for _, epoch := range epochs {
 			newUsersByEpoch[epoch] = append(newUsersByEpoch[epoch], &NewUsers{
-				Inviter:    du.Inviter,
-				Command:    du.Command,
-				Count:      du.Count,
-				SharedNode: du.SharedNode,
+				Inviter:      du.Inviter,
+				Command:      du.Command,
+				Count:        du.Count,
+				SharedNode:   du.SharedNode,
+				InviteAmount: du.InviteAmount,
 			})
 		}
 	}

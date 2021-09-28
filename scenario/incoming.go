@@ -23,11 +23,12 @@ type incomingScenario struct {
 }
 
 type newUsers struct {
-	Epochs     string `json:"epochs"` // example: "1,3-5,8" means 1,3,4,5,8
-	Count      int    `json:"count"`
-	Inviter    *int   `json:"inviter"`
-	Command    string `json:"command"`
-	SharedNode *int   `json:"sharedNode"`
+	Epochs       string   `json:"epochs"` // example: "1,3-5,8" means 1,3,4,5,8
+	Count        int      `json:"count"`
+	Inviter      *int     `json:"inviter"`
+	Command      string   `json:"command"`
+	SharedNode   *int     `json:"sharedNode"`
+	InviteAmount *float32 `json:"inviteAmount"`
 }
 
 type epochsNodes struct {
