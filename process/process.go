@@ -249,14 +249,26 @@ func (process *Process) startNewNodesAndSendInvites(epochInviterNewUsers *scenar
 
 	process.getNodeAddresses(users)
 
+	var amount float32
+	if epochInviterNewUsers.InviteAmount != nil {
+		amount = *epochInviterNewUsers.InviteAmount
+	} else {
+		amount = process.sc.InviteAmount
+	}
 	if epochInviterNewUsers.Inviter != nil {
-		var amount float32
-		if epochInviterNewUsers.InviteAmount != nil {
-			amount = *epochInviterNewUsers.InviteAmount
-		} else {
-			amount = process.sc.InviteAmount
-		}
 		process.sendInvites(*epochInviterNewUsers.Inviter, amount, users)
+	} else if amount > 0 && process.godMode {
+		const SendTx = 0x0
+		for _, u := range users {
+			sender := process.godUser
+			to := u.GetAddress()
+			hash, err := sender.SendTransaction(SendTx, &to, amount, 0, nil)
+			if err != nil {
+				process.handleError(err, fmt.Sprintf("%v unable to send initial coins to %v", sender.GetInfo(), u.GetInfo()))
+			}
+			log.Info(fmt.Sprintf("%v sent initial coins, amount: %v, hash: %v", sender.GetInfo(), amount, hash))
+		}
+
 	}
 
 	return users
