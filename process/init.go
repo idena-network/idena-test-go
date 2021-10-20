@@ -105,6 +105,10 @@ func isNodeShared(index int, sc scenario.Scenario) bool {
 func (process *Process) createGodUser() {
 	index := 0
 	apiKey := generateApiKey(index, process.randomApiKeys, process.predefinedApiKeys)
+	profile := process.defineNewNodeProfile(true, isNodeShared(index, process.sc))
+	if profile == lowPowerProfile {
+		process.lowPowerProfileCount++
+	}
 	n := node.NewNode(index,
 		process.workDir,
 		process.execCommandName,
@@ -124,7 +128,7 @@ func (process *Process) createGodUser() {
 		process.nodeStartWaitingTime,
 		process.nodeStopWaitingTime,
 		apiKey,
-		"",
+		profile,
 		isNodeShared(index, process.sc),
 	)
 	u := user.NewUser(nil, client.NewClient(n.RpcPort, index, apiKey, process.bus), n, index)

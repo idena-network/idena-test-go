@@ -32,6 +32,7 @@ const (
 	periodLongSession  = "LongSession"
 	periodNone         = "None"
 	lowPowerProfile    = "lowpower"
+	sharedProfile      = "shared"
 
 	DataDir           = "datadir"
 	requestRetryDelay = 8 * time.Second
@@ -290,7 +291,7 @@ func (process *Process) createUser(index int, command string, sharedNode *int) u
 	if sharedNode == nil {
 		rpcPort := getRpcPort(index)
 		apiKey := generateApiKey(index, process.randomApiKeys, process.predefinedApiKeys)
-		profile := process.defineNewNodeProfile()
+		profile := process.defineNewNodeProfile(false, isNodeShared(index, process.sc))
 		if profile == lowPowerProfile {
 			process.lowPowerProfileCount++
 		}
@@ -331,7 +332,13 @@ func (process *Process) createUser(index int, command string, sharedNode *int) u
 	return u
 }
 
-func (process *Process) defineNewNodeProfile() string {
+func (process *Process) defineNewNodeProfile(isGod, isShared bool) string {
+	if isShared {
+		return sharedProfile
+	}
+	if isGod {
+		return ""
+	}
 	ownNodeUsers := 0
 	for _, u := range process.users {
 		if !u.SharedNode() {
