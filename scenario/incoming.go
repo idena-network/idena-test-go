@@ -20,6 +20,7 @@ type incomingScenario struct {
 	Undelegations      []epochsNodes        `json:"undelegations"`
 	MultiBotPools      *multiBotPools       `json:"multiBotPools"`
 	StoreToIpfsTxs     []storeToIpfsTxs     `json:"storeToIpfsTxs"`
+	Kills              []epochsNodes        `json:"kills"`
 }
 
 type newUsers struct {

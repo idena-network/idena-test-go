@@ -33,6 +33,7 @@ func convert(incomingSc incomingScenario, godMode bool, nodes int) Scenario {
 	sc.MultiBotPools = convertMultiBotPools(incomingSc.MultiBotPools)
 	sc.KillDelegators = convertKillDelegators(incomingSc.KillDelegators)
 	sc.StoreToIpfsTxs = convertStoreToIpfsTxs(incomingSc.StoreToIpfsTxs, godMode)
+	sc.Kills = convertEpochsNodes(incomingSc.Kills)
 	return sc
 }
 

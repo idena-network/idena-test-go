@@ -129,6 +129,7 @@ func (process *Process) testUser(u user.User, godAddress string, state *userEpoc
 	go process.undelegate(u)
 	go process.killDelegators(u)
 	go process.sendStoreToIpfsTxs(u)
+	go process.kill(u)
 
 	wasActive := u.IsActive()
 

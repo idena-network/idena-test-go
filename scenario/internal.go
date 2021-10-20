@@ -24,6 +24,7 @@ type Scenario struct {
 	KillDelegators   map[int]map[int][]int // Epoch -> delegatee -> delegators to kill
 	MultiBotPools    *MultiBotPools
 	StoreToIpfsTxs   map[int]map[int]*StoreToIpfsTxs
+	Kills            map[int][]int
 }
 
 type NewUsers struct {
