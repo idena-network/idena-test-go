@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	util "github.com/idena-network/idena-go/common/ulimit"
 	"github.com/idena-network/idena-test-go/api"
 	"github.com/idena-network/idena-test-go/config"
 	"github.com/idena-network/idena-test-go/initializer"
@@ -138,6 +139,12 @@ func initApp(workDir string, verbosity int) {
 		panic(err)
 	}
 	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(verbosity), log.MultiHandler(log.StreamHandler(os.Stdout, log.LogfmtFormat()), fileHandler)))
+
+	if changed, value, err := util.ManageFdLimit(); changed {
+		log.Info("Set new fd limit", "value", value)
+	} else if err != nil {
+		log.Warn("Failed to set new fd limit", "err", err)
+	}
 }
 
 func createWorkDir(workDir string) {

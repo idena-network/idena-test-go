@@ -254,7 +254,7 @@ func (u *sharedNodeUser) SubmitOpenShortAnswers() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "cannot get hash from proof")
 	}
-	payload := attachments.CreateShortAnswerAttachment(answers, getWordsRnd(h))
+	payload := attachments.CreateShortAnswerAttachment(answers, getWordsRnd(h), 99)
 	txHash, err := u.sendTransaction(types.SubmitShortAnswersTx, nil, 0, 0, payload)
 	if err != nil {
 		return "", err
