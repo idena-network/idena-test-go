@@ -345,11 +345,8 @@ func (process *Process) createUser(index int, command string, sharedNode *int) u
 }
 
 func (process *Process) defineNewNodeProfile(isGod, isShared bool) string {
-	if isShared {
+	if isShared || isGod {
 		return sharedProfile
-	}
-	if isGod {
-		return ""
 	}
 	ownNodeUsers := 0
 	for _, u := range process.users {
