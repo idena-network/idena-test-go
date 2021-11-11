@@ -289,7 +289,7 @@ func (u *sharedNodeUser) SubmitLongAnswers(answers []client.FlipAnswer) (client.
 		flipCid, _ := cid.Parse(flipHash.Hash)
 		flips = append(flips, flipCid.Bytes())
 	}
-	preparedAnswers := prepareAnswers(apiAnswers, flips, true)
+	preparedAnswers := prepareAnswers(apiAnswers, flips, false)
 	preparedAnswersBytes := preparedAnswers.Bytes()
 
 	epoch := u.GetTestContext().Epoch
