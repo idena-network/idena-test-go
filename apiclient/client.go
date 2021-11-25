@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	defaultTimeout  = time.Second * 15
+	defaultAttempts = 10
+)
+
 type Client struct {
 	url string
 }
@@ -24,7 +29,7 @@ func NewClient(url string) *Client {
 }
 
 func (c *Client) GetGodAddress() (string, error) {
-	resp, err := c.sendRequest("/api/GetGodAddress", nil)
+	resp, err := c.sendRequest("/api/GetGodAddress", defaultTimeout, defaultAttempts, nil)
 	if err != nil {
 		return "", err
 	}
@@ -32,7 +37,7 @@ func (c *Client) GetGodAddress() (string, error) {
 }
 
 func (c *Client) GetBootNode() (string, error) {
-	resp, err := c.sendRequest("/api/GetBootNode", nil)
+	resp, err := c.sendRequest("/api/GetBootNode", defaultTimeout, defaultAttempts, nil)
 	if err != nil {
 		return "", err
 	}
@@ -40,7 +45,7 @@ func (c *Client) GetBootNode() (string, error) {
 }
 
 func (c *Client) GetIpfsBootNode() (string, error) {
-	resp, err := c.sendRequest("/api/GetIpfsBootNode", nil)
+	resp, err := c.sendRequest("/api/GetIpfsBootNode", defaultTimeout, defaultAttempts, nil)
 	if err != nil {
 		return "", err
 	}
@@ -48,7 +53,7 @@ func (c *Client) GetIpfsBootNode() (string, error) {
 }
 
 func (c *Client) CreateInvites(addresses []string) ([]string, error) {
-	resp, err := c.sendRequest("/api/CreateInvites", map[string]string{
+	resp, err := c.sendRequest("/api/CreateInvites", time.Second*120, 1, map[string]string{
 		"addresses": strings.Join(addresses, ","),
 	})
 	if err != nil {
@@ -63,7 +68,7 @@ func (c *Client) CreateInvites(addresses []string) ([]string, error) {
 }
 
 func (c *Client) GetCeremonyTime() (int64, error) {
-	resp, err := c.sendRequest("/api/GetCeremonyTime", nil)
+	resp, err := c.sendRequest("/api/GetCeremonyTime", defaultTimeout, defaultAttempts, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -75,7 +80,7 @@ func (c *Client) GetCeremonyTime() (int64, error) {
 }
 
 func (c *Client) GetEpoch() (uint16, error) {
-	resp, err := c.sendRequest("/api/GetEpoch", nil)
+	resp, err := c.sendRequest("/api/GetEpoch", defaultTimeout, defaultAttempts, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -87,20 +92,20 @@ func (c *Client) GetEpoch() (uint16, error) {
 }
 
 func (c *Client) SendFailNotification(message string) error {
-	_, err := c.sendRequest("/api/SendFailNotification", map[string]string{
+	_, err := c.sendRequest("/api/SendFailNotification", defaultTimeout, defaultAttempts, map[string]string{
 		"message": message,
 	})
 	return err
 }
 
 func (c *Client) SendWarnNotification(message string) error {
-	_, err := c.sendRequest("/api/SendWarnNotification", map[string]string{
+	_, err := c.sendRequest("/api/SendWarnNotification", defaultTimeout, defaultAttempts, map[string]string{
 		"message": message,
 	})
 	return err
 }
 
-func (c *Client) sendRequest(path string, params map[string]string) ([]byte, error) {
+func (c *Client) sendRequest(path string, timeout time.Duration, attempts int, params map[string]string) ([]byte, error) {
 	if params == nil {
 		params = make(map[string]string)
 	}
@@ -127,11 +132,11 @@ func (c *Client) sendRequest(path string, params map[string]string) ([]byte, err
 		}
 		resp.Body.Close()
 	}()
-	counter := 10
+	counter := attempts
 	for {
 		counter--
 		httpClient := &http.Client{
-			Timeout: time.Second * 15,
+			Timeout: timeout,
 		}
 		resp, err = httpClient.Do(httpReq)
 		if err == nil && resp.StatusCode != http.StatusOK {
