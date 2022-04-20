@@ -637,19 +637,28 @@ func (client *Client) GetFlipKeys(address, hash string) (FlipKeysResponse, error
 	return flipKeysResponse, nil
 }
 
-func (client *Client) CheckSyncing() (api.Syncing, error) {
+type Syncing struct {
+	Syncing      bool   `json:"syncing"`
+	CurrentBlock uint64 `json:"currentBlock"`
+	HighestBlock uint64 `json:"highestBlock"`
+	WrongTime    bool   `json:"wrongTime"`
+	GenesisBlock uint64 `json:"genesisBlock"`
+	Message      string `json:"message"`
+}
+
+func (client *Client) CheckSyncing() (Syncing, error) {
 	req := request{
 		Id:     client.getReqId(),
 		Method: "bcn_syncing",
 		Key:    client.apiKey,
 	}
-	syncingResponse := api.Syncing{}
+	syncingResponse := Syncing{}
 	resp := response{Result: &syncingResponse}
 	if err := client.sendRequestAndParseResponse(req, 15, true, &resp); err != nil {
-		return api.Syncing{}, err
+		return Syncing{}, err
 	}
 	if resp.Error != nil {
-		return api.Syncing{}, errors.New(resp.Error.Message)
+		return Syncing{}, errors.New(resp.Error.Message)
 	}
 	return syncingResponse, nil
 }
