@@ -224,10 +224,9 @@ func (process *Process) switchOnlineState(u user.User, nextValidationTime time.T
 		}
 	}
 
-	// Become online by default if state is newbie
 	if !becomeOnline && !becomeOffline && !u.GetAutoOnlineSent() {
 		identity := process.getIdentity(u)
-		if identity.State == newbie || identity.State == verified {
+		if identity.State == verified || identity.State == human || identity.State == newbie && u.SharedNode() {
 			if attempts, err := process.tryToSwitchOnlineState(u, nextValidationTime, true); err != nil {
 				log.Warn(fmt.Sprintf("%v unable to become online, attempts: %d, error: %v", u.GetInfo(), attempts, err))
 			} else {

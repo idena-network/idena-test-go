@@ -26,6 +26,7 @@ const (
 	candidate = "Candidate"
 	newbie    = "Newbie"
 	verified  = "Verified"
+	human     = "Human"
 
 	periodFlipLottery  = "FlipLottery"
 	periodShortSession = "ShortSession"
