@@ -29,9 +29,11 @@ func convert(incomingSc incomingScenario, godMode bool, nodes int) Scenario {
 	sc.Ceremonies = convertCeremonies(incomingSc.Ceremonies, sc.DefaultAnswer)
 	sc.EpochNodeUpdates = convertNodeUpdates(incomingSc.NodeUpdates)
 	sc.Delegations = convertDelegations(incomingSc.Delegations)
+	sc.AddStakes = convertAddStakes(incomingSc.AddStakes)
 	sc.Undelegations = convertEpochsNodes(incomingSc.Undelegations)
 	sc.MultiBotPools = convertMultiBotPools(incomingSc.MultiBotPools)
 	sc.KillDelegators = convertKillDelegators(incomingSc.KillDelegators)
+	sc.KillInvitees = convertKillInvitees(incomingSc.KillInvitees)
 	sc.StoreToIpfsTxs = convertStoreToIpfsTxs(incomingSc.StoreToIpfsTxs, godMode)
 	sc.Kills = convertEpochsNodes(incomingSc.Kills)
 	return sc
@@ -190,6 +192,7 @@ func convertUserCeremony(incomingUserCeremony userCeremony, defaultAnswer byte) 
 	//userCeremony.ShortAnswers = convertAnswers(incomingUserCeremony.ShortAnswerRates, incomingUserCeremony.ShortAnswers, defaultAnswer)
 	//userCeremony.LongAnswers = convertAnswers(incomingUserCeremony.LongAnswerRates, incomingUserCeremony.LongAnswers, defaultAnswer)
 	userCeremony.SkipValidation = incomingUserCeremony.SkipValidation
+	userCeremony.FailShortSession = incomingUserCeremony.FailShortSession
 	return &userCeremony
 }
 
@@ -320,6 +323,29 @@ func convertDelegations(incomingDelegations []delegations) map[int]map[int]int {
 	return result
 }
 
+func convertAddStakes(incomingAddStakes []addStakes) map[int]map[int]float32 {
+	result := make(map[int]map[int]float32)
+	for _, incomingAddStake := range incomingAddStakes {
+		epochs, err := parseNums(incomingAddStake.Epochs)
+		if err != nil {
+			panic(err)
+		}
+		nodes, err := parseNums(incomingAddStake.Nodes)
+		if err != nil {
+			panic(err)
+		}
+		for _, epoch := range epochs {
+			for _, node := range nodes {
+				if _, present := result[epoch]; !present {
+					result[epoch] = make(map[int]float32)
+				}
+				result[epoch][node] = incomingAddStake.Amount
+			}
+		}
+	}
+	return result
+}
+
 func convertMultiBotPools(incomingMultiBotPools *multiBotPools) *MultiBotPools {
 	if incomingMultiBotPools == nil {
 		return nil
@@ -346,6 +372,27 @@ func convertKillDelegators(incomingKillDelegators []killDelegators) map[int]map[
 				result[epoch] = make(map[int][]int)
 			}
 			result[epoch][incomingKillDelegatorsItem.Delegatee] = append(result[epoch][incomingKillDelegatorsItem.Delegatee], nodes...)
+		}
+	}
+	return result
+}
+
+func convertKillInvitees(incomingKillInvitees []killInvitees) map[int]map[int][]int {
+	result := make(map[int]map[int][]int)
+	for _, incomingKillInviteesItem := range incomingKillInvitees {
+		epochs, err := parseNums(incomingKillInviteesItem.Epochs)
+		if err != nil {
+			panic(err)
+		}
+		nodes, err := parseNums(incomingKillInviteesItem.Nodes)
+		if err != nil {
+			panic(err)
+		}
+		for _, epoch := range epochs {
+			if _, present := result[epoch]; !present {
+				result[epoch] = make(map[int][]int)
+			}
+			result[epoch][incomingKillInviteesItem.Inviter] = append(result[epoch][incomingKillInviteesItem.Inviter], nodes...)
 		}
 	}
 	return result

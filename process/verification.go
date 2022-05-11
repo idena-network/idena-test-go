@@ -130,6 +130,8 @@ func (process *Process) testUser(u user.User, godAddress string, state *userEpoc
 	go process.killDelegators(u)
 	go process.sendStoreToIpfsTxs(u)
 	go process.kill(u)
+	go process.addStake(u)
+	go process.killInvitees(u)
 
 	wasActive := u.IsActive()
 
@@ -226,7 +228,7 @@ func (process *Process) switchOnlineState(u user.User, nextValidationTime time.T
 
 	if !becomeOnline && !becomeOffline && !u.GetAutoOnlineSent() {
 		identity := process.getIdentity(u)
-		if identity.State == verified || identity.State == human || identity.State == newbie && u.SharedNode() {
+		if identity.State == verified || identity.State == human || identity.State == newbie {
 			if attempts, err := process.tryToSwitchOnlineState(u, nextValidationTime, true); err != nil {
 				log.Warn(fmt.Sprintf("%v unable to become online, attempts: %d, error: %v", u.GetInfo(), attempts, err))
 			} else {
@@ -435,6 +437,17 @@ func determineFlipAnswer(flipHash client.FlipHashesResponse) byte {
 		answer = common.Right
 	}
 	return answer
+}
+
+func reverseAnswer(answer byte) byte {
+	switch answer {
+	case common.Left:
+		return common.Right
+	case common.Right:
+		return common.Left
+	default:
+		return answer
+	}
 }
 
 func (process *Process) getFlipsInfoToSubmit(u user.User, godAddress string) (int, []user.FlipWords) {
@@ -720,6 +733,8 @@ func (process *Process) getAnswers(u user.User, isShort bool) []client.FlipAnswe
 	}
 	var answers []client.FlipAnswer
 	reportAll := rand.Intn(10) == 1
+	userCeremony := process.getScUserCeremony(u)
+	failShortSession := userCeremony != nil && userCeremony.FailShortSession
 	for _, flipHash := range flipHashes {
 		var grade byte
 		if reportAll {
@@ -727,9 +742,13 @@ func (process *Process) getAnswers(u user.User, isShort bool) []client.FlipAnswe
 		} else {
 			grade = byte(rand.Intn(6))
 		}
+		answer := determineFlipAnswer(flipHash)
+		if failShortSession && isShort {
+			answer = reverseAnswer(answer)
+		}
 		answers = append(answers, client.FlipAnswer{
 			Grade:  grade,
-			Answer: determineFlipAnswer(flipHash),
+			Answer: answer,
 			Hash:   flipHash.Hash,
 		})
 	}

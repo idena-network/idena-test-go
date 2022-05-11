@@ -17,10 +17,12 @@ type incomingScenario struct {
 	NodeUpdates        []nodeUpdates        `json:"nodeUpdates"`
 	Delegations        []delegations        `json:"delegations"`
 	KillDelegators     []killDelegators     `json:"killDelegators"`
+	KillInvitees       []killInvitees       `json:"killInvitees"`
 	Undelegations      []epochsNodes        `json:"undelegations"`
 	MultiBotPools      *multiBotPools       `json:"multiBotPools"`
 	StoreToIpfsTxs     []storeToIpfsTxs     `json:"storeToIpfsTxs"`
 	Kills              []epochsNodes        `json:"kills"`
+	AddStakes          []addStakes          `json:"addStakes"`
 }
 
 type newUsers struct {
@@ -55,9 +57,10 @@ type ceremony struct {
 }
 
 type userCeremony struct {
-	Users          string `json:"users"` // "1,3-5,8" means 1,3,4,5,8
-	SubmitFlips    *int   `json:"submitFlips"`
-	SkipValidation bool   `json:"skipValidation"`
+	Users            string `json:"users"` // "1,3-5,8" means 1,3,4,5,8
+	SubmitFlips      *int   `json:"submitFlips"`
+	SkipValidation   bool   `json:"skipValidation"`
+	FailShortSession bool   `json:"failShortSession"`
 	// todo remove deprecated fields
 	ShortAnswers     []answer     `json:"shortAnswers"`     // deprecated
 	ShortAnswerRates *answerRates `json:"shortAnswerRates"` // deprecated
@@ -106,6 +109,11 @@ type delegations struct {
 	Delegatee int `json:"delegatee"`
 }
 
+type addStakes struct {
+	epochsNodes
+	Amount float32 `json:"amount"`
+}
+
 type multiBotPools struct {
 	Sizes             []int   `json:"sizes"`
 	BotDelegatorsRate float64 `json:"botDelegatorsRate"`
@@ -114,6 +122,11 @@ type multiBotPools struct {
 type killDelegators struct {
 	epochsNodes
 	Delegatee int `json:"delegatee"`
+}
+
+type killInvitees struct {
+	epochsNodes
+	Inviter int `json:"inviter"`
 }
 
 type storeToIpfsTxs struct {

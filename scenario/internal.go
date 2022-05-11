@@ -20,8 +20,10 @@ type Scenario struct {
 	Ceremonies       map[int]*Ceremony           // Epoch -> Ceremony
 	EpochNodeUpdates map[int]map[int]*NodeUpdate // Epoch -> node -> node updates
 	Delegations      map[int]map[int]int         // Epoch -> node -> delegatee
+	AddStakes        map[int]map[int]float32     // Epoch -> node -> amount to stake
 	Undelegations    map[int][]int
 	KillDelegators   map[int]map[int][]int // Epoch -> delegatee -> delegators to kill
+	KillInvitees     map[int]map[int][]int // Epoch -> inviter -> invitee to kill
 	MultiBotPools    *MultiBotPools
 	StoreToIpfsTxs   map[int]map[int]*StoreToIpfsTxs
 	Kills            map[int][]int
@@ -54,7 +56,8 @@ type UserCeremony struct {
 	SubmitFlips *int
 	//ShortAnswers   AnswersHolder
 	//LongAnswers    AnswersHolder
-	SkipValidation bool
+	SkipValidation   bool
+	FailShortSession bool
 }
 
 type AnswersHolder interface {

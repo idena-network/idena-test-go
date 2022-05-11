@@ -11,6 +11,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v0.0.0-20200227202807-02e2044944cc
 	gopkg.in/urfave/cli.v1 v1.20.0
+	github.com/stretchr/testify v1.7.0
 )
 
 replace github.com/cosmos/iavl => github.com/idena-network/iavl v0.12.3-0.20210604085842-854e73deab29
