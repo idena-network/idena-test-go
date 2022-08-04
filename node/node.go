@@ -2,13 +2,16 @@ package node
 
 import (
 	"bufio"
+	"crypto/ecdsa"
 	"fmt"
+	"github.com/idena-network/idena-go/crypto"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -53,6 +56,9 @@ type Node struct {
 	apiKeyValue      string
 	profile          string
 	isShared         bool
+
+	privateKey      *ecdsa.PrivateKey
+	privateKeyMutex sync.Mutex
 }
 
 func NewNode(index int, workDir string, execCommandName string, dataDir string, nodeDataDir string, port int,
@@ -83,6 +89,24 @@ func NewNode(index int, workDir string, execCommandName string, dataDir string, 
 		profile:          profile,
 		isShared:         isShared,
 	}
+}
+
+func (node *Node) GetPrivateKey() *ecdsa.PrivateKey {
+	if node.privateKey != nil {
+		return node.privateKey
+	}
+	node.privateKeyMutex.Lock()
+	defer node.privateKeyMutex.Unlock()
+	if node.privateKey != nil {
+		return node.privateKey
+	}
+	keyfile := filepath.Join(node.workDir, node.dataDir, node.nodeDataDir, "keystore", "nodekey")
+	privateKey, err := crypto.LoadECDSA(keyfile)
+	if err != nil {
+		return nil
+	}
+	node.privateKey = privateKey
+	return privateKey
 }
 
 func (node *Node) SetExecCommandName(execCommandName string) {

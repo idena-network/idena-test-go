@@ -1,6 +1,7 @@
 package process
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"github.com/idena-network/idena-test-go/log"
@@ -71,4 +72,18 @@ func (process *Process) toExternal(host string) string {
 	external = strings.Replace(external, "0.0.0.0", process.godHost, 1)
 	external = strings.Replace(external, "127.0.0.1", process.godHost, 1)
 	return external
+}
+
+type UserDetail struct {
+	PrivateKey *ecdsa.PrivateKey
+}
+
+func (process *Process) UserDetails() []UserDetail {
+	res := make([]UserDetail, 0, len(process.users))
+	for _, u := range process.users {
+		res = append(res, UserDetail{
+			PrivateKey: u.GetPrivateKey(),
+		})
+	}
+	return res
 }

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"github.com/idena-network/idena-go/api"
 	"github.com/idena-network/idena-go/common/hexutil"
@@ -66,6 +67,8 @@ type User interface {
 
 	AddIpfsData(dataHex string, pin bool) (string, error)
 	StoreToIpfs(cid string) (string, error)
+
+	GetPrivateKey() *ecdsa.PrivateKey
 }
 
 type FlipWords struct {
@@ -129,6 +132,10 @@ func NewUser(parentUser User, client *client.Client, node *node.Node, index int)
 	}
 	_ = u.InitAddress()
 	return u
+}
+
+func (u *user) GetPrivateKey() *ecdsa.PrivateKey {
+	return u.node.GetPrivateKey()
 }
 
 func (u *user) GetInfo() string {

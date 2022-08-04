@@ -1,7 +1,10 @@
 package api
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
+	"github.com/idena-network/idena-go/crypto"
 	"github.com/idena-network/idena-test-go/log"
 	"github.com/idena-network/idena-test-go/process"
 	"github.com/idena-network/idena-test-go/scenario"
@@ -128,4 +131,26 @@ func (api *Api) sendWarnNotification(r *http.Request) (string, error) {
 	message := r.FormValue("message")
 	api.process.SendWarnNotification(message, r.RemoteAddr)
 	return "OK", nil
+}
+
+func (api *Api) identities(r *http.Request) (string, error) {
+	exportKey := func(privateKey *ecdsa.PrivateKey, password string) string {
+		if privateKey == nil {
+			return ""
+		}
+		key := crypto.FromECDSA(privateKey)
+		encrypted, err := crypto.Encrypt(key, password)
+		if err != nil {
+			return ""
+		}
+		return hex.EncodeToString(encrypted)
+	}
+	var res string
+	userDetails := api.process.UserDetails()
+	const pass = "123"
+	for i, u := range userDetails {
+		encryptedKey := exportKey(u.PrivateKey, pass)
+		res += fmt.Sprintf("%v. %v\r\n", i+1, encryptedKey)
+	}
+	return res, nil
 }

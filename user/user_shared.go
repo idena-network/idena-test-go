@@ -41,6 +41,10 @@ func (u *sharedNodeUser) GetIndex() int {
 	return u.user.GetIndex()
 }
 
+func (u *sharedNodeUser) GetPrivateKey() *ecdsa.PrivateKey {
+	return u.privateKey
+}
+
 func (u *sharedNodeUser) GetInfo() string {
 	return fmt.Sprintf("[User %d-shared-%d]", u.GetIndex(), u.parentUser.GetIndex())
 }
