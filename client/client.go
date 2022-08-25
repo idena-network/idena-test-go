@@ -454,6 +454,12 @@ func (client *Client) sendRequestAndParseResponse(req request, timeoutSec int, r
 	if err := json.Unmarshal(responseBytes, &resp); err != nil {
 		return errors.Wrapf(err, "unable to deserialize response")
 	}
+	if resp.Error != nil && strings.Contains(resp.Error.Message, "does not exist/is not available") {
+		log.Warn(fmt.Sprintf("%v. Retrying to send request (%v) due to not available method", client.url, req.Method))
+		time.Sleep(time.Second * 5)
+		resp.Error = nil
+		return client.sendRequestAndParseResponse(req, timeoutSec, retry, resp)
+	}
 	return nil
 }
 
