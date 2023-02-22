@@ -732,15 +732,33 @@ func (process *Process) getAnswers(u user.User, isShort bool) []client.FlipAnswe
 		flipHashes = u.GetTestContext().LongFlipHashes
 	}
 	var answers []client.FlipAnswer
-	reportAll := rand.Intn(10) == 1
+
+	var reportAll, noApproves, severalIncreasedGrades bool
+	randomValue := rand.Intn(10)
+	reportAll = randomValue == 1
+	noApproves = randomValue == 2
+	severalIncreasedGrades = randomValue == 3
+
 	userCeremony := process.getScUserCeremony(u)
 	failShortSession := userCeremony != nil && userCeremony.FailShortSession
+
+	increasedGradeCnt := 0
+
 	for _, flipHash := range flipHashes {
 		var grade byte
 		if reportAll {
 			grade = 1
 		} else {
 			grade = byte(rand.Intn(6))
+			if noApproves && grade >= 2 {
+				grade = 0
+			}
+			if !severalIncreasedGrades && grade > 2 && increasedGradeCnt == 1 {
+				grade = 2
+			}
+			if grade > 2 {
+				increasedGradeCnt++
+			}
 		}
 		answer := determineFlipAnswer(flipHash)
 		if failShortSession && isShort {
