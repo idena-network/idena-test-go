@@ -4,7 +4,7 @@ require (
 	github.com/deckarep/golang-set v1.7.1
 	github.com/go-stack/stack v1.8.1
 	github.com/google/tink/go v0.0.0-20200401233402-a389e601043a
-	github.com/idena-network/idena-go v0.30.1-rc0.0.20220926170036-d4078dc9de58
+	github.com/idena-network/idena-go v1.0.0
 	github.com/imdario/mergo v0.3.12
 	github.com/ipfs/go-cid v0.2.0
 	github.com/pkg/errors v0.9.1
@@ -77,7 +77,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
-	github.com/idena-network/idena-wasm-binding v0.0.0-20220802044816-0a49889bfdf9 // indirect
+	github.com/idena-network/idena-wasm-binding v0.0.0-20230217101707-566cec67e058 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.0.0 // indirect
 	github.com/ipfs/go-bitswap v0.9.0 // indirect
@@ -272,9 +272,5 @@ require (
 )
 
 replace github.com/cosmos/iavl => github.com/idena-network/iavl v0.12.3-0.20210604085842-854e73deab29
-
-replace github.com/libp2p/go-libp2p-pnet => github.com/idena-network/go-libp2p-pnet v0.2.1-0.20200406075059-75d9ee9b85ed
-
-replace github.com/idena-network/idena-wasm-binding => ..\idena-wasm\idena-wasm-binding
 
 go 1.17
