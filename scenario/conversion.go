@@ -193,6 +193,7 @@ func convertUserCeremony(incomingUserCeremony userCeremony, defaultAnswer byte) 
 	//userCeremony.LongAnswers = convertAnswers(incomingUserCeremony.LongAnswerRates, incomingUserCeremony.LongAnswers, defaultAnswer)
 	userCeremony.SkipValidation = incomingUserCeremony.SkipValidation
 	userCeremony.FailShortSession = incomingUserCeremony.FailShortSession
+	userCeremony.SkipEpoch = incomingUserCeremony.SkipEpoch
 	return &userCeremony
 }
 

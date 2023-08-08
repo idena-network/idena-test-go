@@ -139,6 +139,13 @@ func (process *Process) testUser(u user.User, godAddress string, state *userEpoc
 		process.switchNodeIfNeeded(u)
 	}
 
+	userCeremony := process.getScUserCeremony(u)
+	skipEpoch := userCeremony != nil && userCeremony.SkipEpoch
+	if skipEpoch {
+		log.Info(fmt.Sprintf("%v skipped epoch", u.GetInfo()))
+		return
+	}
+
 	if !u.IsActive() {
 		log.Info(fmt.Sprintf(skipSessionMessageFormat, u.GetInfo()))
 		return

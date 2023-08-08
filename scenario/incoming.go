@@ -59,6 +59,7 @@ type ceremony struct {
 type userCeremony struct {
 	Users            string `json:"users"` // "1,3-5,8" means 1,3,4,5,8
 	SubmitFlips      *int   `json:"submitFlips"`
+	SkipEpoch        bool   `json:"skipEpoch"`
 	SkipValidation   bool   `json:"skipValidation"`
 	FailShortSession bool   `json:"failShortSession"`
 	// todo remove deprecated fields

@@ -58,6 +58,7 @@ type UserCeremony struct {
 	//LongAnswers    AnswersHolder
 	SkipValidation   bool
 	FailShortSession bool
+	SkipEpoch        bool
 }
 
 type AnswersHolder interface {
